@@ -6,7 +6,7 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 ## Waiting on testing
 
 - **v0.10.1 live:** halves and quarters, Home v Away, keeper pop-up, goal scorers.
-  beta test team invite code: `L9J-Q7H`.
+  Beta: https://match-day-beta-17b23.web.app (Beta Test Team code `L9J-Q7H`).
 - **Accounts:** Google sign-in works on live. Still to try: signing in on a second phone and
   seeing the teams come back.
 
