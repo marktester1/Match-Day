@@ -18,7 +18,8 @@ README.md has the setup and release commands.
 - Each release: bump `APP_VERSION` in index.html and `CACHE` in sw.js, merge to `main`, tag `vX.Y.Z`.
 - Rules changes go to beta first too: `firebase deploy --only firestore:rules --project beta`, then
   `--project live` with the user's go-ahead.
-- Test in beta's own test team (Beta Test Team, code `L9J-Q7H`). The old Test Team (code `L83-LTJ`)
+- The Beta Test Team (code `L9J-Q7H`) is the user's to play with: don't change its data. Claude's own
+  automated checks use **Claude Test Team** (code `4VT-AWE`), opened at http://127.0.0.1:8000 (beta data). The old Test Team (code `L83-LTJ`)
   is in the live database from before the split; don't use it.
 - Match Day is web-app only: no Claude artifact version, no `window.claude` code.
 - Hosting publishes only `public/`, built from the allowlist in `tools/build_public.sh` (runs as
