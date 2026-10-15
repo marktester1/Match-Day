@@ -57,7 +57,7 @@ h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:
 .sections button{border:0;background:none;padding:8px 4px 10px;font-family:var(--display);font-size:21px;font-weight:700;letter-spacing:.02em;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1px}
 .sections button.on{color:var(--ink);border-bottom-color:var(--grass)}
 .tabs{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
-body.sec-season .trow{display:none}
+body.sec-season .trow,body.ingame .trow{display:none}
 .tabs button{border:0;background:none;padding:9px 2px;border-radius:7px;font-family:var(--display);font-size:17px;font-weight:600;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:400px){.tabs button{font-size:15px}}
 .pickchips{display:flex;flex-wrap:wrap;gap:6px}
@@ -214,6 +214,22 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 .teamrow .who{flex:1 1 auto}
 .teamrow.cur .who{color:var(--grass)}
 .flag.run{color:var(--live)}
+.rk{font-family:var(--display);font-size:18px;color:var(--muted);min-width:22px}
+.note-item{padding:10px 12px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.note-item:first-child{border-top:0}
+.note-item .nt{white-space:pre-wrap;overflow-wrap:anywhere}
+.note-item .nm2{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.note-item.done .nt{color:var(--muted);text-decoration:line-through}
+.note-done-who{padding:8px 12px 0}
+.gstrip{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.gstrip::-webkit-scrollbar{display:none}
+.gs{flex:1 0 46px;display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 4px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--muted);position:relative}
+.gs b{font-family:var(--display);font-size:22px;line-height:1;color:var(--ink)}
+.gs small{font-size:11px}
+.gs.done{opacity:.7}
+.gs.on{background:var(--grass);border-color:var(--grass);color:var(--chalk);opacity:1}
+.gs.on b{color:var(--chalk)}
+.gs.live::after{content:"";position:absolute;top:5px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--live)}
 .lbl .us{font-size:10px;letter-spacing:.06em;color:var(--grass);border:1px solid currentColor;border-radius:5px;padding:0 4px;margin-left:4px}
 .weare{grid-column:1/-1;display:flex;flex-direction:column;gap:4px}
 .fixed{display:flex;flex-direction:column;gap:4px;min-width:0}
@@ -255,10 +271,10 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.13.0';
+const APP_VERSION='0.14.0';
 /*CFG*/const DEFAULT_CFG={team:'Example FC U10s',short:'Example FC',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
-  gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,teams:false,adding:false,acct:null,
+  gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,notes:[],noteFor:'',showDone:false,teams:false,adding:false,acct:null,
   awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const nice=d=>{if(!d)return'';const t=new Date(d+'T12:00');return isNaN(t)?d:t.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})};
@@ -288,7 +304,7 @@ const clockSub=g=>{if(nPer()===1)return 'of '+fmt((S.tour.len||10)*60000);const 
 function fmt(ms){const s=Math.floor(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}
 function fmtM(ms){const m=ms/60000;return m<1&&ms>0?fmt(ms):Math.round(m)+'m'}
 const bySubTime=g=>[...g.subs].sort((a,b)=>a.at-b.at);
-const SECTIONS={tournament:{label:'Tournament',tabs:[['games','Games'],['minutes','Minutes']]},
+const SECTIONS={tournament:{label:'Tournament',tabs:[['games','Games'],['minutes','Minutes'],['notes','Notes']]},
   season:{label:'Season',tabs:[['season','Results'],['awards','Awards'],['squad','Squad']]}};
 const secOf=t=>SECTIONS.season.tabs.some(([k])=>k===t)?'season':'tournament';
 const lastTab={tournament:'games',season:'season'}; // where you were in each section
@@ -360,6 +376,37 @@ function swap(id,a,aSide,b,bSide){
 function scoreSide(g,k){
   const nm=k==='us'?usName(g):(g.opponent||'Opponent'),who=k==='us'?'our':'their';
   return `<div class="side"><span class="nm">${esc(nm)}<small>${(k==='us')===!isAway(g)?'Home':'Away'}</small></span><div class="sc"><button data-act="score" data-k="${k}" data-d="-1" aria-label="Remove ${who} goal">−</button><b class="num">${g.score[k]}</b><button class="plus" data-act="score" data-k="${k}" data-d="1" aria-label="Add ${who} goal">+</button></div></div>`;
+}
+
+/* ---------- notes: something to pick up later with a player ---------- */
+function saveNotes(){put('club/notes',{items:S.notes});render()}
+function notesView(){
+  const open=S.notes.filter(n=>!n.done),done=S.notes.filter(n=>n.done).sort((a,b)=>b.at-a.at);
+  const byP={};open.forEach(n=>{(byP[n.p]=byP[n.p]||[]).push(n)});
+  const row=(n,isDone)=>`<div class="note-item ${isDone?'done':''}"><div class="nt">${esc(n.text)}</div>
+    <div class="nm2"><span class="note">${esc(nice(new Date(n.at).toISOString().slice(0,10)))}${n.by?' · '+esc(n.by):''}</span>
+      <span class="cbtns"><button class="x" data-act="notedone" data-id="${n.id}">${isDone?'Not done':'Done ✓'}</button>
+      <button class="x ${S.confirm==='nd-'+n.id?'sure':''}" data-act="notedel" data-id="${n.id}">${S.confirm==='nd-'+n.id?'Tap to delete':'Delete'}</button></span></div></div>`;
+  return `<div class="sec" style="gap:14px">
+  <form class="card" id="notef"><h3>New note</h3>
+    <label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">Player</span>
+      <select id="notep" aria-label="Player"><option value="">Choose a player</option>${S.squad.map(p=>`<option value="${p.id}" ${S.noteFor===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label>
+    <textarea id="notet" maxlength="300" placeholder="e.g. Talk about staying wide in defence"></textarea>
+    <button class="btn go" type="submit">Add note</button></form>
+  ${open.length?Object.keys(byP).sort((a,b)=>nameOf(a).localeCompare(nameOf(b))).map(p=>`<section class="sec"><h3>${esc(nameOf(p))}</h3>
+    <div class="rows">${byP[p].sort((a,b)=>b.at-a.at).map(n=>row(n,false)).join('')}</div></section>`).join('')
+    :`<div class="empty"><b>No notes to pick up</b>Add a note against a player above. It stays here until you tick it done.</div>`}
+  ${done.length?`<button class="btn small" data-act="notesdone" style="align-self:flex-start">${S.showDone?'Hide':'Show'} done notes (${done.length})</button>
+    ${S.showDone?`<div class="rows">${done.map(n=>`<div class="note-done-who lbl">${esc(nameOf(n.p))}</div>${row(n,true)}`).join('')}</div>`:''}`:''}
+  <p class="note">Every coach on the team sees these notes. Notes stay after a tournament is saved.</p>
+  </div>`;
+}
+
+/* ---------- game strip: jump between games without going back to the list ---------- */
+function gameStrip(cur){
+  return `<div class="gstrip" role="tablist" aria-label="Games">${gids().map(x=>{const g=G(x),st=started(g);
+    return `<button class="gs ${x===cur?'on':''} ${g.clock.running?'live':''} ${g.done?'done':''}" data-act="open" data-g="${x}" role="tab" aria-selected="${x===cur}" aria-label="Game ${g.n}${g.opponent?' v '+esc(g.opponent):''}">
+      <b class="num">${g.n}</b><small class="num">${st?scoreHA(g):g.time?esc(g.time):'&nbsp;'}</small></button>`}).join('')}</div>`;
 }
 
 /* ---------- kick-off: who's in goal, then players a side, then start the clock ---------- */
@@ -462,6 +509,7 @@ function render(){
   document.body.classList.toggle('gate',!!(S.gate||S.teams||S.menu));
   const mb=document.getElementById('menubtn');if(mb)mb.hidden=!(FB&&S.teamId&&!S.gate);
   const sec=secOf(S.tab);document.body.classList.toggle('sec-season',sec==='season');
+  document.body.classList.toggle('ingame',!(S.tab==='games'&&!S.game&&!S.fx)); // name/date only on the Games list
   document.getElementById('sections').innerHTML=Object.entries(SECTIONS).map(([k,x])=>`<button class="${k===sec?'on':''}" data-act="section" data-s="${k}" aria-pressed="${k===sec}">${x.label}</button>`).join('');
   document.getElementById('subtabs').innerHTML=SECTIONS[sec].tabs.map(([k,l])=>`<button class="${k===S.tab?'on':''}" data-act="tab" data-t="${k}">${l}</button>`).join('');
   const v=document.getElementById('view');
@@ -472,7 +520,7 @@ function render(){
   if(S.teams){v.innerHTML=teamsView();return}
   if(S.menu){v.innerHTML=menuView();return}
   if(S.cfgLoaded&&!S.cfg.team){v.innerHTML=setupView();return}
-  v.innerHTML=S.tab==='games'&&S.fx&&!S.game?fixturesView():S.tab==='games'?(S.game?gameView(S.game):gamesList()):S.tab==='minutes'?minutesView():S.tab==='awards'?awardsView():S.tab==='season'?seasonView():squadView();
+  v.innerHTML=S.tab==='games'&&S.fx&&!S.game?fixturesView():S.tab==='games'?(S.game?gameView(S.game):gamesList()):S.tab==='minutes'?minutesView():S.tab==='notes'?notesView():S.tab==='awards'?awardsView():S.tab==='season'?seasonView():squadView();
 }
 function syncHeader(force){
   const n=document.getElementById('tname'),d=document.getElementById('tdate');
@@ -537,7 +585,7 @@ function gameView(id){
     ${S.addLate?`<div class="rows">${others.map(p=>`<div class="row"><span class="who">${esc(p.name)}</span><button class="x" data-act="addbench" data-p="${p.id}">+ Bench</button></div>`).join('')}</div>`:''}</section>`:'';
   const subs=[...g.subs].sort((a,b)=>b.at-a.at);
   return `<div class="sec" style="gap:14px">
-  <button class="back" data-act="back">← All games</button>
+  ${gameStrip(id)}
   <div class="ghead"><h2>Game ${g.n}</h2>${status(g)}</div>
   <div class="meta">
     ${['home','away'].map(sd=>{const ours=(sd==='away')===isAway(g),lbl=`<span class="lbl">${sd==='home'?'Home':'Away'}${ours?' <span class="us">us</span>':''}</span>`;
@@ -770,8 +818,10 @@ function seasonView(){
   const ts=[...S.archive].sort((a,b)=>(b.date||'').localeCompare(a.date||'')||b.savedAt-a.savedAt);
   const all=record(ts.flatMap(t=>t.games||[]));
   const tot={},gp={};ts.forEach(t=>(t.games||[]).forEach(g=>Object.entries(g.mins||{}).forEach(([p,ms])=>{tot[p]=(tot[p]||0)+ms;gp[p]=(gp[p]||0)+1})));
-  const ac=awardCounts(),gl=goalTally(ts.flatMap(t=>t.games||[]));
-  const scorers=Object.entries(gl).sort((a,b)=>b[1]-a[1]||nameOf(a[0]).localeCompare(nameOf(b[0])));
+  const ac=awardCounts(),gl=goalTally(ts.flatMap(t=>t.games||[])),now=goalTally(gids().map(G));
+  const allG={...gl};Object.entries(now).forEach(([p,n])=>{allG[p]=(allG[p]||0)+n});
+  const scorers=Object.entries(allG).sort((a,b)=>b[1]-a[1]||nameOf(a[0]).localeCompare(nameOf(b[0])));
+  const rank=scorers.map(([,n],i,arr)=>arr.findIndex(([,m])=>m===n)+1); // joint places share a number
   const ppl=new Map();S.squad.forEach(p=>ppl.set(p.id,p.name));Object.keys(tot).forEach(p=>{if(!ppl.has(p))ppl.set(p,nameOf(p))});
   const rows=[...ppl].map(([id,name])=>({id,name,t:tot[id]||0,n:gp[id]||0,a:ac[id]||0})).sort((a,b)=>a.t-b.t);
   const max=Math.max(1,...rows.map(r=>r.t)),avg=rows.length?rows.reduce((s,r)=>s+r.t,0)/rows.length:0;
@@ -781,7 +831,8 @@ function seasonView(){
   ${ts.length&&rows.length?`<p class="note">Saved tournaments only, least time first.</p><div class="rows">${rows.map(r=>{const low=avg>0&&r.t<avg*0.8;return `<div class="mrow ${low?'low':''}"><span class="who">${esc(r.name)}${low?'<span class="flag">Needs time</span>':''}</span><span class="tot num">${fmtM(r.t)}</span>
     <span class="bar"><i style="width:${(r.t/max*100).toFixed(1)}%"></i></span><span class="brk num">${r.n} game${r.n===1?'':'s'}${gl[r.id]?` · ${gl[r.id]} goal${gl[r.id]>1?'s':''}`:''}${r.a?` · <span class="star">★${r.a}</span> award${r.a>1?'s':''}`:''}</span></div>`}).join('')}</div>`
   :`<div class="empty"><b>Nothing saved yet</b>When a tournament ends, tap "Finish tournament and save to season" on the Games tab.</div>`}</section>
-  ${scorers.length?`<section class="sec"><h3>Top scorers</h3><div class="rows">${scorers.map(([p,n])=>`<div class="row"><span class="who">${esc(nameOf(p))}</span><b class="num">${n}</b></div>`).join('')}</div></section>`:''}
+  ${scorers.length?`<section class="sec"><h3>Goal scorers</h3><p class="note">Every scorer this season, most goals first${Object.keys(now).length?', including the tournament in progress':''}.</p>
+    <div class="rows">${scorers.map(([p,n],i)=>`<div class="row"><span class="rk num">${rank[i]}</span><span class="who">${esc(nameOf(p))}${now[p]?` <span class="note">(${now[p]} today)</span>`:''}</span><b class="num">${n}</b></div>`).join('')}</div></section>`:''}
   ${ts.length?`<section class="sec"><h3>Tournaments</h3>${ts.map(t=>{const r=record(t.games||[]),open=S.openT===t.id;
     return `<div class="tcard"><button data-act="topen" data-id="${t.id}"><span><span class="tn">${esc(t.name||'Tournament')}</span><span class="ts" style="display:block">${esc(nice(t.date))}</span></span>
       <span class="num" style="text-align:right"><b>W${r.W} D${r.D} L${r.L}</b><span class="ts" style="display:block">Goals ${r.F}–${r.A}</span></span></button>
@@ -797,9 +848,10 @@ document.addEventListener('click',e=>{
   if(suppressClick){suppressClick=false;return}
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act,id=S.game,p=b.dataset.p;
-  if(!['reset','del','finish','awdel','tdel','wipe','leave','clock0','subdel','signout'].includes(a))S.confirm=null;
+  if(!['reset','del','finish','awdel','tdel','wipe','leave','clock0','subdel','signout','notedel'].includes(a))S.confirm=null;
   switch(a){
-    case'tab':S.tab=b.dataset.t;lastTab[secOf(S.tab)]=S.tab;S.pick=null;render();break;
+    case'tab':if(b.dataset.t===S.tab&&S.game){S.game=null;S.fix=null;S.pick=null;render();break}
+      S.tab=b.dataset.t;lastTab[secOf(S.tab)]=S.tab;S.pick=null;render();break;
     case'section':S.tab=lastTab[b.dataset.s]||SECTIONS[b.dataset.s].tabs[0][0];S.pick=null;render();window.scrollTo(0,0);break;
     case'open':S.game=b.dataset.g;S.pick=null;S.addLate=false;render();window.scrollTo(0,0);break;
     case'back':S.fix=null;S.game=null;S.pick=null;render();break;
@@ -844,6 +896,9 @@ document.addEventListener('click',e=>{
     case'signout':if(S.confirm==='signout')signOutAccount();else{S.confirm='signout';render()}break;
     case'side':mut(id,g=>{g.side=b.dataset.v==='away'?'away':'home'});break;
     case'fxside':mut(b.dataset.g,g=>{g.side=isAway(g)?'home':'away'});break;
+    case'notedone':S.notes=S.notes.map(n=>n.id===b.dataset.id?{...n,done:!n.done}:n);saveNotes();break;
+    case'notedel':{const k='nd-'+b.dataset.id;if(S.confirm===k){S.confirm=null;S.notes=S.notes.filter(n=>n.id!==b.dataset.id);saveNotes()}else{S.confirm=k;render()}break}
+    case'notesdone':S.showDone=!S.showDone;render();break;
     case'periods':S.tour={...S.tour,periods:+b.dataset.v};saveTour();render();break;
     case'menu':S.menu=true;S.teams=false;S.game=null;S.fix=null;render();window.scrollTo(0,0);break;
     case'menuclose':S.menu=false;S.acct=null;render();break;
@@ -923,6 +978,10 @@ document.addEventListener('pointerup',e=>endDrag(e,false));
 document.addEventListener('pointercancel',e=>endDrag(e,true));
 
 document.addEventListener('submit',e=>{
+  if(e.target.id==='notef'){e.preventDefault();const p=document.getElementById('notep').value,t=document.getElementById('notet').value.trim().slice(0,300);
+    if(!p){toast('Choose a player first.');return}if(!t){toast('Write the note first.');return}
+    S.notes=[...S.notes,{id:'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),p,text:t,at:Date.now(),done:false,by:FB?myName():''}];S.noteFor=p;
+    document.getElementById('notet').value='';document.activeElement?.blur();saveNotes();toast(`Note added for ${nameOf(p)}.`);return}
   if(e.target.id==='joinf'){e.preventDefault();joinTeam(document.getElementById('joincode').value);return}
   if(e.target.id==='acctf'){e.preventDefault();document.activeElement?.blur();(e.target.dataset.mode==='create'?createAccount:signInAccount)();return}
   if(e.target.id!=='addf')return;e.preventDefault();
@@ -969,6 +1028,7 @@ function setSync(on,txt){const s=document.getElementById('sync');s.textContent=t
 function subscribe(err){
   db.doc('club/settings').onSnapshot(s=>{S.cfg=s.exists?{...DEFAULT_CFG,...s.data()}:{...DEFAULT_CFG};S.cfgLoaded=true;render()},err);
   db.doc('club/squad').onSnapshot(s=>{S.squad=s.exists?alpha(s.data().players||[]):[];render()},err);
+  db.doc('club/notes').onSnapshot(s=>{S.notes=s.exists?[...(s.data().items||[])]:[];render()},err);
   db.doc('club/tournament').onSnapshot(s=>{if(s.exists)S.tour={...S.tour,...s.data()};render()},err);
   db.collection('awards').onSnapshot(s=>{S.awards=s.docs.map(d=>({id:d.id,...d.data()}));render()},err);
   db.collection('archive').onSnapshot(s=>{S.archive=s.docs.map(d=>({id:d.id,...d.data()}));render()},err);
