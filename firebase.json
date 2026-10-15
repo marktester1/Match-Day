@@ -1,7 +1,7 @@
 {
   "hosting": {
-    "public": ".",
-    "ignore": ["firebase.json", "firestore.rules", "README.md", "tools/**", "**/.*", "**/.*/**", "**/node_modules/**"],
+    "public": "public",
+    "predeploy": ["sh tools/build_public.sh"],
     "headers": [
       { "source": "**/@(index.html|sw.js|firebase-config.js|manifest.webmanifest)", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
       { "source": "/", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }

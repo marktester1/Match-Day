@@ -33,11 +33,11 @@
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font:16px/1.45 var(--body);padding-inline:16px;padding-block:12px 40px}
 .wrap{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
-button,input,textarea{font:inherit;color:inherit}
+button,input,textarea,select{font:inherit;color:inherit}
 button{cursor:pointer}
 button:disabled{opacity:.45;cursor:default}
 button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--grass);outline-offset:2px}
-input,textarea{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%;min-width:0}
+input,textarea,select{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%;min-width:0}
 textarea{min-height:90px;resize:vertical;font-size:14px}
 h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:0;text-wrap:balance}
 .num{font-variant-numeric:tabular-nums}
@@ -119,6 +119,15 @@ h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:
 .clock{text-align:center;padding-inline:4px}
 .clock .t{font-family:var(--display);font-size:34px;font-weight:600;line-height:1}
 .clock small{display:block;color:var(--muted);font-size:12px}
+.lenbtn{display:block;margin:2px auto 0;border:0;background:none;color:var(--muted);font-size:12px;text-decoration:underline dotted;padding:4px 6px}
+.fix{display:flex;flex-direction:column;gap:10px}
+.fix h3{margin:6px 0 0}
+.fix .lenrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.fix .lenrow input{width:80px}
+.subadd{display:grid;grid-template-columns:80px 1fr 1fr;gap:8px}
+.subadd label{display:flex;flex-direction:column;gap:4px;min-width:0}
+.subadd select,.subadd input{width:100%;min-width:0}
+.subt{width:72px;flex:0 0 auto}
 .cbtns{display:flex;gap:8px;flex-wrap:wrap}
 .btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:11px 14px;font-weight:700;flex:1;text-align:center}
 .btn.go{background:var(--grass);border-color:var(--grass);color:var(--chalk)}
@@ -209,11 +218,11 @@ h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.1.0';
+const APP_VERSION='0.2.0';
 /*CFG*/const DEFAULT_CFG={team:'Example FC U10s',short:'Example FC',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   imp:{open:false,busy:false,msg:'',result:null},
-  gate:false,teamId:null,invite:'',restore:null,
+  gate:false,teamId:null,invite:'',restore:null,fix:null,
   awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const nice=d=>{if(!d)return'';const t=new Date(d+'T12:00');return isNaN(t)?d:t.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})};
@@ -281,6 +290,51 @@ function swap(id,a,aSide,b,bSide){
   const wasK=keeper(g)===off;
   mut(id,g=>{g.subs.push({at:el(g),off,on,...(wasK?{gk:true}:{})})});
   toast(`${nameOf(on)} on, ${nameOf(off)} off at ${fmt(el(G(id)))}${wasK?' (now in goal)':''}`);
+}
+
+/* ---------- corrections: game length, clock, subs after the fact ---------- */
+// Subs are recorded live by default; this panel fixes the clock and adds, retimes or removes subs.
+function parseT(v){const m=String(v||'').trim().replace('.',':').match(/^(\d{1,3})(?::(\d{1,2}))?$/);if(!m)return null;return (+m[1]*60+(+(m[2]||0)))*1000}
+function keeperAt(g,t,skip){const ev=[...bySubTime(g).filter(e=>e!==skip&&e.gk&&e.at<=t).map(e=>({at:e.at,p:e.on})),...(g.gkChanges||[]).filter(c=>c.at<=t)].sort((a,b)=>a.at-b.at);let k=g.gk;ev.forEach(e=>k=e.p);return k}
+function onPitchAt(g,t){const s=new Set(g.starters);for(const e of bySubTime(g)){if(e.at>t)break;s.delete(e.off);if(e.on)s.add(e.on)}return s}
+function subsProblem(g){ // replay every sub in time order: each one must take off someone who was on, and bring on someone who wasn't
+  const s=new Set(g.starters),end=el(g);
+  for(const e of bySubTime(g)){
+    if(e.at>end)return `${fmt(e.at)} is later than the clock (${fmt(end)}).`;
+    if(!s.has(e.off))return `${nameOf(e.off)} wasn't on the pitch at ${fmt(e.at)}.`;
+    if(e.on&&s.has(e.on))return `${nameOf(e.on)} was already on the pitch at ${fmt(e.at)}.`;
+    s.delete(e.off);if(e.on)s.add(e.on);
+  }
+  return null;
+}
+function tryFix(id,fn,ok){ // apply a correction only if the subs still make sense afterwards
+  const g=structuredClone(G(id));fn(g);
+  g.subs.forEach(e=>{const k=keeperAt(g,e.at,e)===e.off;if(k)e.gk=true;else delete e.gk});
+  const bad=subsProblem(g);if(bad){toast(bad+' Nothing was changed.');return false}
+  S.games[id]=g;put('games/'+id,g);if(ok)toast(ok);render();return true;
+}
+function fixPanel(id,g,st){
+  const now=fmt(el(g)),inG=inGame(g),subs=g.subs.map((e,i)=>({e,i})).sort((a,b)=>b.e.at-a.e.at);
+  const opt=(ids,ph)=>`<option value="">${ph}</option>`+ids.map(p=>`<option value="${p}">${esc(nameOf(p))}</option>`).join('');
+  return `<section class="card fix"><h3>Game length</h3>
+    <label class="lenrow"><span>Minutes per game</span><input class="num" type="number" min="1" max="60" data-tour="len" value="${S.tour.len||10}"></label>
+    <p class="note">Applies to every game in this tournament.</p>
+  ${st?`<h3>Clock</h3>
+    <div class="addf"><input id="clkset" class="num" inputmode="decimal" placeholder="e.g. 4:30" value="${now}" aria-label="Set the clock to"><button class="btn" data-act="clockset">Set clock</button></div>
+    <button class="btn warn" data-act="clock0">${S.confirm==='clk0'?'Tap again to reset the clock to 0:00':'Reset clock to 0:00'}</button>
+    <p class="note">Subs recorded after the new time move back to it, so playing time stays right.</p>
+  <h3>Add a sub that already happened</h3>
+    <div class="subadd">
+      <label><span class="lbl">Time</span><input id="psat" class="num" inputmode="decimal" value="${now}" placeholder="4:30"></label>
+      <label><span class="lbl">Off</span><select id="psoff">${opt(inG,'Choose')}</select></label>
+      <label><span class="lbl">On</span><select id="pson">${opt(S.squad.map(p=>p.id),'Choose')}</select></label>
+    </div>
+    <button class="btn go" data-act="pastsub">Add sub</button>
+  ${subs.length?`<h3>Change a sub's time</h3>
+    <div class="rows">${subs.map(({e,i})=>`<div class="row"><input class="num subt" data-subat="${i}" value="${fmt(e.at)}" inputmode="decimal" aria-label="Time of this sub"><span class="txt"><span class="onn">▲ ${esc(nameOf(e.on))}</span> <span class="off">▼ ${esc(nameOf(e.off))}</span></span>
+      <button class="x ${S.confirm==='sd'+i?'sure':''}" data-act="subdel" data-i="${i}">${S.confirm==='sd'+i?'Tap to delete':'Delete'}</button></div>`).join('')}</div>
+    <p class="note">Type a new time and tap away to save it.</p>`:''}`:''}
+  </section>`;
 }
 
 /* ---------- render ---------- */
@@ -385,10 +439,11 @@ function gameView(id){
   </div>
   <section class="board" aria-label="Score">
     <div class="side"><span class="nm">${esc(g.team||S.cfg.short||'Us')}</span><div class="sc"><button data-act="score" data-k="us" data-d="-1" aria-label="Remove our goal">−</button><b class="num">${g.score.us}</b><button class="plus" data-act="score" data-k="us" data-d="1" aria-label="Add our goal">+</button></div></div>
-    <div class="clock"><span class="t num" data-clock="${id}">${fmt(el(g))}</span><small class="num">of ${fmt(len)}</small></div>
+    <div class="clock"><span class="t num" data-clock="${id}">${fmt(el(g))}</span><button class="lenbtn num" data-act="fix" aria-label="Change game length or fix the clock">of ${fmt(len)}</button></div>
     <div class="side"><span class="nm">${esc(g.opponent||'Opponent')}</span><div class="sc"><button data-act="score" data-k="them" data-d="-1" aria-label="Remove their goal">−</button><b class="num">${g.score.them}</b><button class="plus" data-act="score" data-k="them" data-d="1" aria-label="Add their goal">+</button></div></div>
   </section>
-  <div class="cbtns">${cb}</div>
+  <div class="cbtns">${cb}<button class="btn" data-act="fix">${S.fix===id?'Done':st?'Corrections':'Game length'}</button></div>
+  ${S.fix===id?fixPanel(id,g,st):''}
   ${hint}
   <div class="pitch"><span class="lbl">On the pitch</span><span class="cnt num">${pitch.length}/${S.cfg.size}</span>
     <div class="chips">${pitch.length?pitch.map(p=>chip(p,'pitch')).join(''):'<span style="color:#ffffffcc;font-size:14px;padding-top:24px">Pick the starters below</span>'}</div></div>
@@ -658,11 +713,11 @@ document.addEventListener('click',e=>{
   if(suppressClick){suppressClick=false;return}
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act,id=S.game,p=b.dataset.p;
-  if(!['reset','del','impapply','finish','awdel','tdel','wipe','leave'].includes(a))S.confirm=null;
+  if(!['reset','del','impapply','finish','awdel','tdel','wipe','leave','clock0','subdel'].includes(a))S.confirm=null;
   switch(a){
     case'tab':S.tab=b.dataset.t;S.pick=null;render();break;
     case'open':S.game=b.dataset.g;S.pick=null;S.addLate=false;render();window.scrollTo(0,0);break;
-    case'back':S.game=null;S.pick=null;render();break;
+    case'back':S.fix=null;S.game=null;S.pick=null;render();break;
     case'reset':if(S.confirm==='reset'){S.confirm=null;gids().forEach(g=>{const o=G(g),n=blank(o.n);Object.assign(n,{opponent:o.opponent,time:o.time,pitch:o.pitch,team:o.team});S.games[g]=n;put('games/'+g,n)});toast('Scores, line-ups and subs cleared. Fixtures kept.');render()}else{S.confirm='reset';render()}break;
     case'score':mut(id,g=>{g.score[b.dataset.k]=Math.max(0,g.score[b.dataset.k]+ +b.dataset.d)});break;
     case'kick':mut(id,g=>{g.clock.running=true;g.clock.startedAt=Date.now();g.done=false});break;
@@ -678,6 +733,14 @@ document.addEventListener('click',e=>{
       if(S.pick&&S.pick.g===id&&S.pick.p!==p&&(S.pick.side!==side||side==='pitch')){const pk=S.pick;S.pick=null;swap(id,pk.p,pk.side,p,side);if(!S.pick)render()}
       else{S.pick=S.pick&&S.pick.p===p?null:{g:id,p,side};render()}break}
     case'cancel':S.pick=null;render();break;
+    case'fix':S.fix=S.fix===id?null:id;render();break;
+    case'clockset':{const v=parseT(document.getElementById('clkset')?.value);if(v==null){toast('Type the time like 4:30.');break}
+      tryFix(id,g=>{g.clock.acc=v;if(g.clock.running)g.clock.startedAt=Date.now();g.subs.forEach(e=>{if(e.at>v)e.at=v});(g.gkChanges||[]).forEach(c=>{if(c.at>v)c.at=v})},`Clock set to ${fmt(v)}.`);break}
+    case'clock0':if(S.confirm==='clk0'){S.confirm=null;tryFix(id,g=>{g.clock.acc=0;if(g.clock.running)g.clock.startedAt=Date.now();g.subs.forEach(e=>e.at=0);(g.gkChanges||[]).forEach(c=>c.at=0)},'Clock reset to 0:00.')}else{S.confirm='clk0';render()}break;
+    case'pastsub':{const at=parseT(document.getElementById('psat')?.value),off=document.getElementById('psoff')?.value,on=document.getElementById('pson')?.value;
+      if(at==null){toast('Type the time like 4:30.');break}if(!off||!on){toast('Pick who came off and who went on.');break}if(off===on){toast('Pick two different players.');break}
+      tryFix(id,g=>{g.subs.push({at,off,on});if(!inGame(g).includes(on))g.bench.push(on)},`${nameOf(on)} on, ${nameOf(off)} off at ${fmt(at)}.`);break}
+    case'subdel':{const i=+b.dataset.i,k='sd'+i;if(S.confirm===k){S.confirm=null;tryFix(id,g=>{g.subs.splice(i,1)},'Sub deleted.')}else{S.confirm=k;render()}break}
     case'undo':mut(id,g=>{const last=[...g.subs].sort((a,b)=>b.at-a.at)[0];g.subs=g.subs.filter(x=>x!==last)});toast('Last sub removed.');break;
     case'late':S.addLate=!S.addLate;render();break;
     case'addbench':mut(id,g=>{if(!g.bench.includes(p))g.bench.push(p)});break;
@@ -756,6 +819,8 @@ document.addEventListener('change',e=>{
   const t=e.target;
   if(t.id==='impfile'&&t.files&&t.files[0]){const f=t.files[0];runImport(impPrompt(''),[f]);return}
   if(t.id==='restorefile'&&t.files&&t.files[0]){readBackup(t.files[0]);t.value='';return}
+  if(t.dataset.subat&&S.game){const i=+t.dataset.subat,v=parseT(t.value);if(v==null){toast('Type the time like 4:30.');render();return}
+    if(!tryFix(S.game,g=>{g.subs[i].at=v},`Sub moved to ${fmt(v)}.`))render();return}
   if(t.dataset.cfg&&S.cfgLoaded&&S.cfg.team){const k=t.dataset.cfg;let v=t.value.trim().slice(0,40);if(k==='size')v=Math.min(11,Math.max(3,parseInt(v)||5));if(k==='team'&&!v)return;
     S.cfg={...S.cfg,[k]:v};put('club/settings',S.cfg);render();return}
   if(t.dataset.fx){const [id,f]=t.dataset.fx.split('|');const v=t.value.trim().slice(0,40);if(G(id)[f]!==v)mut(id,g=>{g[f]=v});return}
@@ -811,10 +876,13 @@ async function connectFirebase(){
   setSync(false,'Connecting…');
   const [{initializeApp},A,F]=await Promise.all(['app','auth','firestore'].map(m=>import(FB_SDK+'firebase-'+m+'.js')));
   const app=initializeApp(cfg);
-  FB={A,F,auth:A.getAuth(app),fs:F.initializeFirestore(app,{ignoreUndefinedProperties:true,localCache:F.persistentLocalCache({tabManager:F.persistentMultipleTabManager()})})};
+  let fs;
+  try{fs=F.initializeFirestore(app,{ignoreUndefinedProperties:true,experimentalAutoDetectLongPolling:true,localCache:F.persistentLocalCache({tabManager:F.persistentMultipleTabManager()})})}
+  catch(_){fs=F.initializeFirestore(app,{ignoreUndefinedProperties:true,experimentalAutoDetectLongPolling:true,localCache:F.memoryLocalCache()})}
+  FB={A,F,auth:A.getAuth(app),fs};
   // Each phone gets an anonymous sign-in: no passwords. Joining a team with its invite code is what grants access.
   await FB.auth.authStateReady();
-  if(!FB.auth.currentUser)await A.signInAnonymously(FB.auth);
+  await signedIn().catch(()=>{});
   const t=lsGet(TEAM_KEY);
   if(t)openTeam(t);else{S.gate=true;setSync(false,'No team yet');render()}
   return true;
@@ -829,30 +897,36 @@ function openTeam(t){
 const CODE_CHARS='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O or 1/I to misread
 const newCode=()=>Array.from(crypto.getRandomValues(new Uint8Array(6)),n=>CODE_CHARS[n%CODE_CHARS.length]).join('');
 const showCode=c=>c?c.slice(0,3)+'-'+c.slice(3):'';
+const errCode=e=>String(e&&(e.code||e.name||e.message)||'unknown').replace(/^(auth|firestore)\//,'').slice(0,40);
+async function signedIn(){if(!FB.auth.currentUser)await FB.A.signInAnonymously(FB.auth);return FB.auth.currentUser.uid}
 async function createTeam(){
-  const {F,fs,auth}=FB,uid=auth.currentUser.uid;
+  const {F,fs}=FB;
   if(!navigator.onLine){toast('You need a signal to create a team.');return}
+  let uid;try{uid=await signedIn()}catch(e){toast(`Couldn't sign in (${errCode(e)}). Check your signal and try again.`);return}
+  let last=null;
   for(let i=0;i<3;i++){ // retry if the random code is already taken
     const tref=F.doc(F.collection(fs,'teams')),code=newCode(),b=F.writeBatch(fs);
     b.set(tref,{code,createdBy:uid,created:F.serverTimestamp()});
     b.set(F.doc(fs,'teams',tref.id,'members',uid),{code,joined:F.serverTimestamp()});
     b.set(F.doc(fs,'codes',code),{team:tref.id});
     b.set(F.doc(fs,'teams',tref.id,'club','settings'),{...DEFAULT_CFG,team:'',short:''});
-    try{await b.commit();openTeam(tref.id);return}catch(e){if(e.code!=='permission-denied')break}
+    try{await b.commit();openTeam(tref.id);return}catch(e){last=e;if(e.code!=='permission-denied')break}
   }
-  toast("Couldn't create the team. Check your connection and try again.");
+  toast(`Couldn't create the team (${errCode(last)}). Check your signal and try again.`);
 }
 async function joinTeam(raw){
   const {F,fs,auth}=FB,code=String(raw||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
   if(code.length!==6){toast('Invite codes are 6 letters and numbers, like ABC-234.');return}
   if(!navigator.onLine){toast('You need a signal to join a team.');return}
   try{
-    const s=await F.getDoc(F.doc(fs,'codes',code));
+    await signedIn();
+    const ref=F.doc(fs,'codes',code);
+    const s=await F.getDoc(ref).catch(()=>F.getDocFromServer(ref));
     if(!s.exists()){toast("That code didn't match a team. Check it with the coach who sent it.");return}
     const t=s.data().team;
     await F.setDoc(F.doc(fs,'teams',t,'members',auth.currentUser.uid),{code,joined:F.serverTimestamp()});
     openTeam(t);toast('Joined.');
-  }catch(e){toast("Couldn't join. Check your connection and try again.")}
+  }catch(e){toast(`Couldn't join (${errCode(e)}). Check your signal and try again, or tell the person who sent you the app.`)}
 }
 function leaveTeam(remote=true){
   const {F,fs,auth}=FB;
@@ -867,6 +941,7 @@ function gateView(){
   <div class="card"><h3>Join a team</h3>
     <p class="note">Ask a coach for the team's invite code. It's on their Squad tab.</p>
     <form class="addf" id="joinf"><input id="joincode" placeholder="e.g. ABC-234" autocomplete="off" autocapitalize="characters" aria-label="Invite code"><button class="btn go" data-act="join" type="submit">Join</button></form></div>
+  <p class="note num" style="text-align:center">Match Day v${APP_VERSION}</p>
   </div>`;
 }
 function teamCard(){

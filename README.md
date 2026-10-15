@@ -101,8 +101,9 @@ Security rules publish separately: `firebase deploy --only firestore:rules`.
 - A phone that loses its sign-in (cleared browser data, new phone) rejoins with the invite
   code; the data is safe. Email sign-in before real customers would remove that risk.
 
-`firebase.json` controls which files go online. Only the app files should be published:
-check the "found N files" line (8 today) if you add anything.
+Only the files listed in `tools/build_public.sh` go online: Firebase runs it before every
+publish and uploads just the `public/` folder it makes (8 files today). A new app file must be
+added to that list; anything else (team exports, notes, git history) can't be published.
 
 ## Moving to a store app (plan)
 
