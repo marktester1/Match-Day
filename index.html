@@ -246,7 +246,7 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.10.1';
+const APP_VERSION='0.10.2';
 /*CFG*/const DEFAULT_CFG={team:'Example FC U10s',short:'Example FC',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,teams:false,adding:false,acct:null,
@@ -454,8 +454,9 @@ function gamesList(){
       <span class="res">${started(g)?`<span class="scr num">${scoreHA(g)}</span>`:''}${status(g)}${started(g)&&!g.done?`<span class="sub num" data-clock="${id}">${nPer()>1?perShort(perOf(el(g)))+' ':''}${clockText(g)}</span>`:''}</span>
     </button>`}).join('')}</div>
   <button class="btn" data-act="fxopen">Enter opponents and kick-off times</button>
-  <div class="lenrow"><label for="len">Game length (minutes)</label><input id="len" class="num" type="number" min="1" max="60" data-tour="len" value="${S.tour.len||10}">
-    <label for="cnt">Games</label><input id="cnt" class="num" type="number" min="1" max="10" data-tour="count" value="${S.tour.count||6}"></div>
+  <div class="meta">
+    <label><span class="lbl">Minutes per game</span><input id="len" class="num" type="number" min="1" max="60" data-tour="len" value="${S.tour.len||10}"></label>
+    <label><span class="lbl">Games</span><input id="cnt" class="num" type="number" min="1" max="10" data-tour="count" value="${S.tour.count||6}"></label></div>
   <span class="seg fill" role="group" aria-label="Periods">${[[1,'One period'],[2,'Halves'],[4,'Quarters']].map(([v,l])=>`<button class="${nPer()===v?'on':''}" data-act="periods" data-v="${v}">${l}</button>`).join('')}</span>
   ${nPer()>1?`<p class="note">${nPer()===2?'Two halves':'Four quarters'} of ${fmt(perLen())}. The clock pauses by itself at each break.</p>`:''}
   <button class="btn go" data-act="finish">${S.confirm==='finish'?'Tap again to save and start fresh':'Finish tournament and save to season'}</button>
