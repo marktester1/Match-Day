@@ -31,3 +31,7 @@ README.md has the setup and release commands.
   or remove them; restore must keep reading old backups.
 - `firestore.rules` changes are published separately (`firebase deploy --only firestore:rules`)
   and need the user's go-ahead, since they apply to live data immediately.
+
+## Style
+
+- App text is British English (football terms: kick-off, full time, pitch, fixtures, "v" not "vs"; dates as Thu 15 Oct).

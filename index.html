@@ -203,7 +203,7 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 .teamrow.cur .who{color:var(--grass)}
 .flag.run{color:var(--live)}
 .hint.scorer{display:flex;flex-direction:column;gap:8px}
-.modal{position:fixed;inset:0;z-index:50;background:#0008;display:flex;align-items:flex-end;justify-content:center;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+.modal{position:fixed;inset:0;z-index:50;background:#0009;display:flex;align-items:center;justify-content:center;padding:16px}
 .modal .box{background:var(--surface);color:var(--ink);border-radius:16px;padding:18px 16px;width:100%;max-width:480px;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 40px #0006}
 .modal h3{margin:0}
 .scsel{flex:1 1 auto;width:auto}
@@ -241,7 +241,7 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.9.3';
+const APP_VERSION='0.9.4';
 /*CFG*/const DEFAULT_CFG={team:'Example FC U10s',short:'Example FC',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,teams:false,adding:false,acct:null,
@@ -633,7 +633,7 @@ function fixturesView(){
   <p class="note">Each box saves as you leave it. Opponents you've played before appear as suggestions.</p>
   <div class="card"><h3>Paste fixtures</h3>
     <p class="note">Copy the fixture list from an email or WhatsApp and paste it here, one game per line. If it lists other teams' games too, only lines mentioning ${esc(S.cfg.short||'your team')} are used.</p>
-    <textarea id="fxpaste" placeholder="9.30am ${esc(S.cfg.short||'Us')} vs Riverside (Pitch 2)&#10;9.45am Hillside vs ${esc(S.cfg.short||'Us')} (Pitch 2)"></textarea>
+    <textarea id="fxpaste" placeholder="9.30am ${esc(S.cfg.short||'Us')} v Riverside (Pitch 2)&#10;9.45am Hillside v ${esc(S.cfg.short||'Us')} (Pitch 2)"></textarea>
     <button class="btn" data-act="fxparse">Fill in fixtures</button>
     <p class="note">This replaces the times, opponents and pitches above. Line-ups and scores are kept.</p></div>
   </div>`;
