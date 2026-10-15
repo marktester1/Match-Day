@@ -2,7 +2,7 @@
 
 A touchline app for grassroots football coaches: fixtures, line-ups, drag-and-drop subs,
 live scores, playing time per player, awards, and a season record. Built for
-Winscombe U9 Girls (5-a-side tournaments of 6 games); works for any team size from 3 to 11.
+youth 5-a-side tournaments of 6 games; works for any team size from 3 to 11.
 
 ## What's here
 
@@ -60,6 +60,22 @@ One-time setup (Spark plan, no card needed):
    and copy the `firebaseConfig` values into `firebase-config.js`.
 6. Run `python3 -m http.server 8000` and open http://localhost:8000 (it must be served, not
    opened as a file).
+
+## Publishing the web app
+
+Live at https://match-day-17b23.web.app (Firebase Hosting, free plan). Coaches open the link
+on their phone and use **Share → Add to Home Screen** (iPhone, Safari) or **⋮ → Add to Home
+screen / Install app** (Android, Chrome). It then opens full-screen with its own icon, and
+`sw.js` lets it open with no signal.
+
+To publish changes (after a one-time `firebase login`):
+
+```sh
+firebase deploy --only hosting,firestore:rules
+```
+
+`firebase.json` controls which files go online. Only the app files should be published:
+check the "found N files" line (8 today) if you add anything.
 
 ## Moving to a store app (plan)
 

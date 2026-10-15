@@ -1,4 +1,16 @@
-<title>Winscombe U9 Match Day</title>
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Match Day</title>
+<meta name="theme-color" content="#f2f5f0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1511" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Match Day">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
 <style>
@@ -197,7 +209,7 @@ h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:
 <div id="toast" hidden></div>
 
 <script>
-/*CFG*/const DEFAULT_CFG={team:'Winscombe U9 Girls',short:'Winscombe',size:5};/*END*/
+/*CFG*/const DEFAULT_CFG={team:'Example FC U10s',short:'Example FC',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   imp:{open:false,busy:false,msg:'',result:null},
   gate:false,teamId:null,invite:'',
@@ -411,9 +423,9 @@ function squadView(){
 function settingsCard(first){
   const c=S.cfg;
   return `<div class="card"><h3>${first?'Set up your team':'Team settings'}</h3>
-    <label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">Team name</span><input id="cfg-team" data-cfg="team" value="${esc(c.team)}" placeholder="e.g. Winscombe U10 Boys"></label>
+    <label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">Team name</span><input id="cfg-team" data-cfg="team" value="${esc(c.team)}" placeholder="e.g. Example FC U10s"></label>
     <div class="meta">
-      <label><span class="lbl">Name on the scoreboard</span><input id="cfg-short" data-cfg="short" value="${esc(c.short)}" placeholder="e.g. Winscombe"></label>
+      <label><span class="lbl">Name on the scoreboard</span><input id="cfg-short" data-cfg="short" value="${esc(c.short)}" placeholder="e.g. Example FC"></label>
       <label><span class="lbl">Players a side</span><input id="cfg-size" class="num" type="number" min="3" max="11" data-cfg="size" value="${c.size||5}"></label>
     </div>
     ${first?'':'<p class="note">Changes apply straight away for every coach.</p>'}</div>`;
@@ -814,7 +826,9 @@ function teamCard(){
 render();
 (async()=>{
   try{
-    if(!window.claude||!window.claude.use){if(!await connectFirebase())setSync(false,'Not syncing');return}
+    if(!window.claude||!window.claude.use){
+      if('serviceWorker' in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+      if(!await connectFirebase())setSync(false,'Not syncing');return}
     window.claude.use('sample').then(async s=>{sample=s;if(s){const l=await s.limits().catch(()=>null);canPhoto=!!(l&&l.images)}render()});
     db=await window.claude.use('db');
     if(!db){setSync(false,'Not syncing');toast('Changes are only on this device right now.');return}

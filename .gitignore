@@ -3,3 +3,7 @@
 exports/
 *.jpg
 *.png
+!icons/*.png
+.firebase/
+.claude/
+node_modules/
