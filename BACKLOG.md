@@ -19,26 +19,26 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
      season view.
    - Question: should players removed from the squad keep their season stats?
 
-3. **Sport per team, chosen when the team is set up (football or rugby).** A choice on the
+2. **Sport per team, chosen when the team is set up (football or rugby).** A choice on the
    team set-up screen; each team keeps its own sport, and words, scoring and the keeper change with it.
    - Scoring buttons for tries, conversions and penalties instead of goals.
    - Questions: points per score (union 5 / 2 / 3?), or just count tries for younger age
      groups? Drop goals? Does "keeper" disappear for rugby?
    - Word changes: "goals" → "points", "pitch" stays, "GK" hidden.
 
-5. **Edit saved tournaments.** Change results, opponents and scorers on a tournament
+3. **Edit saved tournaments.** Change results, opponents and scorers on a tournament
    already saved to the Season tab.
 
-6. **Change the number of games after it's set.** Add or remove a game mid-tournament
+4. **Change the number of games after it's set.** Add or remove a game mid-tournament
    without losing the games already played.
    - Question: the Games count can already be changed at the bottom of the Games list;
      is the problem with saved tournaments, or something else?
 
-7. **Awards outside tournaments.** Awards that aren't tied to a tournament or training
+5. **Awards outside tournaments.** Awards that aren't tied to a tournament or training
    (e.g. end of season, player of the month).
    - Question: is that the meaning, or should the awards screen move somewhere else?
 
-8. **Players a side per match.** Change how many play on each side for a single game
+6. **Players a side per match.** Change how many play on each side for a single game
    (e.g. 5-a-side normally, 7-a-side in one fixture), without changing the team default.
    - Today "Players a side" is one setting for the whole team (Squad → Team settings).
    - Question: set it per game, or per tournament?
@@ -47,4 +47,3 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 - Combined fixtures view across all of a coach's teams.
 - Paid-plan automatic database backups once real teams depend on it.
-- A separate test Firebase project so beta testing never touches live data.
