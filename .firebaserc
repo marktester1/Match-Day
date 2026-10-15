@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "match-day-17b23"
+    "default": "match-day-17b23",
+    "live": "match-day-17b23",
+    "beta": "match-day-beta-17b23"
   }
 }

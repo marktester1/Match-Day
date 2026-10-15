@@ -193,6 +193,7 @@ input[type=date]::-webkit-date-and-time-value{text-align:left}
 .addf{display:flex;gap:8px}
 .addf .btn{flex:0 0 auto}
 .teamsw{cursor:pointer;white-space:nowrap}
+body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--live-bg);background:var(--live);border-radius:6px;padding:2px 6px;margin-left:8px;vertical-align:middle}
 .acctf{display:flex;flex-direction:column;gap:8px}
 .gbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin-bottom:8px;background:#fff;color:#1f1f1f;border:1px solid #dadce0}
 .teamsw::after{content:" ▾";font-size:.6em;color:var(--muted)}
@@ -233,7 +234,7 @@ input[type=date]::-webkit-date-and-time-value{text-align:left}
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.5.0';
+const APP_VERSION='0.6.0';
 /*CFG*/const DEFAULT_CFG={team:'Example FC U10s',short:'Example FC',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   imp:{open:false,busy:false,msg:'',result:null},
@@ -924,8 +925,9 @@ function switchTeam(t){ // a fresh page load keeps each team's live updates clea
 function liveLabel(){if(FB&&db)setSync(navigator.onLine,navigator.onLine?'Shared · live':'Offline · saved on this phone')}
 addEventListener('online',liveLabel);addEventListener('offline',liveLabel);
 async function connectFirebase(){
-  let cfg=null;try{cfg=(await import('./firebase-config.js')).default}catch(_){}
+  let cfg=null,env='live';try{const m=await import('./firebase-config.js');cfg=m.default;env=m.ENV||'live'}catch(_){}
   if(!cfg||!cfg.apiKey)return false;
+  if(env==='beta')document.body.classList.add('beta'); // beta has its own data and sign-ins
   setSync(false,'Connecting…');
   const [{initializeApp},A,F]=await Promise.all(['app','auth','firestore'].map(m=>import(FB_SDK+'firebase-'+m+'.js')));
   // Google's sign-in hand-off has to come back to the same address the app runs on, or iPhones

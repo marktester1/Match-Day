@@ -19,7 +19,8 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 2. **Record who scores.** Tapping + for our team asks who scored (or "own goal / not
    sure"). Goals then show per game and in season stats.
 
-3. **Rugby option, chosen when the team is set up.**
+3. **Sport per team, chosen when the team is set up (football or rugby).** A choice on the
+   team set-up screen; each team keeps its own sport, and words, scoring and the keeper change with it.
    - Scoring buttons for tries, conversions and penalties instead of goals.
    - Questions: points per score (union 5 / 2 / 3?), or just count tries for younger age
      groups? Drop goals? Does "keeper" disappear for rugby?

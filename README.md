@@ -76,16 +76,16 @@ beta link first. `main` always matches what's live.
 
 1. Bump `APP_VERSION` in `index.html` (shown at the bottom of the Squad tab) and the cache
    name in `sw.js`.
-2. Publish to the beta link (live is untouched):
+2. Publish to beta (live is untouched):
    ```sh
-   firebase hosting:channel:deploy beta --expires 30d
+   firebase deploy --only hosting --project beta
    ```
-   Beta uses the **same database** as live. Test with the Test Team (invite code `L83-LTJ`),
-   not a real team. Beta is a different web address, so each phone joins with the code again.
+   Beta (https://match-day-beta-17b23.web.app) is its own Firebase project with its **own
+   database and sign-ins**, so testing never touches coaches' data. It shows a BETA label.
 3. Commit, merge to `main`, tag and push: `git tag v0.2.0 && git push --tags`.
 4. Promote exactly what you tested on beta to live:
    ```sh
-   firebase hosting:clone match-day-17b23:beta match-day-17b23:live
+   firebase hosting:clone match-day-beta-17b23:live match-day-17b23:live
    ```
 5. If something goes wrong: Firebase console → Hosting → release history → **Rollback**.
 

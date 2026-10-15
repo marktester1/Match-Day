@@ -5,14 +5,21 @@ README.md has the setup and release commands.
 
 ## Releases: always beta first
 
-- Never publish straight to live. Every change goes to the beta preview channel first
-  (`firebase hosting:channel:deploy beta --expires 30d`), and the user is given the beta link to
+- Beta is a separate Firebase project (`match-day-beta-17b23`, https://match-day-beta-17b23.web.app)
+  with its own database and sign-ins. `firebase-config.js` picks live or beta from the address,
+  so the same files run on both; localhost uses beta.
+- Never publish straight to live. Every change goes to beta first
+  (`firebase deploy --only hosting --project beta`), and the user is given the beta link to
   test before anything is promoted.
-- Promote to live only when the user says so, and only by cloning the tested beta
-  (`firebase hosting:clone match-day-17b23:beta match-day-17b23:live`), never by a fresh
-  `firebase deploy --only hosting`.
+- Promote to live only when the user says so, and only by copying the tested beta
+  (`firebase hosting:clone match-day-beta-17b23:live match-day-17b23:live`). If a cross-project
+  clone isn't possible, deploy the same commit with `firebase deploy --only hosting --project live`
+  and check live's index.html matches beta's byte for byte.
 - Each release: bump `APP_VERSION` in index.html and `CACHE` in sw.js, merge to `main`, tag `vX.Y.Z`.
-- Beta and live share one Firestore database. Test with the Test Team (code `L83-LTJ`), never a club team.
+- Rules changes go to beta first too: `firebase deploy --only firestore:rules --project beta`, then
+  `--project live` with the user's go-ahead.
+- The old Test Team (code `L83-LTJ`) is in the live database from before the split; test in beta's
+  own test team instead.
 - Hosting publishes only `public/`, built from the allowlist in `tools/build_public.sh` (runs as
   predeploy). Add new app files there; never widen it to the whole folder. `exports/` holds
   children's names and must never be published or committed.
