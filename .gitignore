@@ -1,0 +1,5 @@
+.DS_Store
+*.local.html
+exports/
+*.jpg
+*.png
