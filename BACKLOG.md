@@ -5,7 +5,7 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Waiting on testing
 
-- **v0.12.0 on beta, not yet live:** players a side per tournament, with a check when a game has
+- **v0.12.1 on beta, not yet live:** players a side per tournament; at kick-off the keeper check comes first, then the check when a game has
   more or fewer starters.
 - **v0.11.0 live:** ☰ menu with profile and team members; halves and quarters, Home v Away,
   keeper pop-up, goal scorers.

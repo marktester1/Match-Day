@@ -253,7 +253,7 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.12.0';
+const APP_VERSION='0.12.1';
 /*CFG*/const DEFAULT_CFG={team:'Example FC U10s',short:'Example FC',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,teams:false,adding:false,acct:null,
@@ -356,12 +356,25 @@ function scoreSide(g,k){
   return `<div class="side"><span class="nm">${esc(nm)}<small>${(k==='us')===!isAway(g)?'Home':'Away'}</small></span><div class="sc"><button data-act="score" data-k="${k}" data-d="-1" aria-label="Remove ${who} goal">−</button><b class="num">${g.score[k]}</b><button class="plus" data-act="score" data-k="${k}" data-d="1" aria-label="Add ${who} goal">+</button></div></div>`;
 }
 
+/* ---------- kick-off: who's in goal, then players a side, then start the clock ---------- */
+function tryKick(id,o={}){
+  const g=G(id);
+  if(!started(g)){
+    if(!g.gk&&!o.nokeeper){S.askGk=id;S.askSize=null;render();return}
+    const n=g.starters.length;
+    if(!o.sizeOk&&n&&n!==gameSize(g)){S.askGk=null;S.askSize={g:id,n,why:n<gameSize(g)?'fewer':'kickmore'};render();return}
+  }
+  S.askGk=null;S.askSize=null;
+  mut(id,g=>{g.clock.running=true;g.clock.startedAt=Date.now();g.done=false});
+  if(!started(g))toast('Kicked off.');
+}
+
 /* ---------- players a side: changing it for one game ---------- */
 function sizeAsk(g,a){
-  const more=a.why==='more';
+  const more=a.why==='more'||a.why==='kickmore';
   return `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="szq"><div class="box">
     <h3 id="szq">${more?`Play ${a.n}-a-side this game?`:`Only ${a.n} starting`}</h3>
-    <p class="note">${more?`That makes ${a.n} starting, but this game is ${gameSize(g)}-a-side.`:`This game is ${gameSize(g)}-a-side. Kick off with ${a.n} instead?`} Other games aren't changed.</p>
+    <p class="note">${more?`That makes ${a.n} starting${a.why==='kickmore'?' with the keeper':''}, but this game is ${gameSize(g)}-a-side.`:`This game is ${gameSize(g)}-a-side. Kick off with ${a.n} instead?`} Other games aren't changed.</p>
     <div class="cbtns"><button class="btn go" data-act="sizeyes">${more?`Yes, ${a.n}-a-side`:`Kick off ${a.n}-a-side`}</button><button class="btn" data-act="sizeno">${more?'No':'Cancel'}</button></div>
   </div></div>`;
 }
@@ -370,8 +383,9 @@ function sizeAsk(g,a){
 function keeperAsk(g){
   return `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="gkq"><div class="box">
     <h3 id="gkq">Who's in goal?</h3>
-    <p class="note">No keeper is picked for this game. Choose one of the starters and the game kicks off.</p>
-    <div class="pickchips">${byName(g.starters).map(p=>`<button class="pc" data-act="pickgk" data-p="${p}">${esc(nameOf(p))}</button>`).join('')}</div>
+    <p class="note">No keeper is picked for this game.</p>
+    ${g.starters.length?`<span class="lbl">Starting</span><div class="pickchips">${byName(g.starters).map(p=>`<button class="pc" data-act="pickgk" data-p="${p}">${esc(nameOf(p))}</button>`).join('')}</div>`:''}
+    ${g.bench.length?`<span class="lbl">On the bench</span><div class="pickchips">${byName(g.bench).map(p=>`<button class="pc" data-act="pickgk" data-p="${p}">${esc(nameOf(p))}</button>`).join('')}</div>`:''}
     <div class="cbtns"><button class="btn" data-act="kick" data-nokeeper="1">Kick off without a keeper</button><button class="btn" data-act="gkcancel">Cancel</button></div>
   </div></div>`;
 }
@@ -787,20 +801,17 @@ document.addEventListener('click',e=>{
       mut(id,g=>{g.score[k]=Math.max(0,g.score[k]+d)});break}
     case'scorer':{const sc=S.scorer;if(sc)mut(sc.g,g=>{if(g.goals&&g.goals[sc.i])g.goals[sc.i].p=b.dataset.p});S.scorer=null;render();break}
     case'scorerskip':S.scorer=null;render();break;
-    case'kick':{const g0=G(id);
-      if(!started(g0)&&g0.starters.length&&g0.starters.length<gameSize(g0)){S.askSize={g:id,n:g0.starters.length,why:'fewer'};render();break}
-      if(!started(g0)&&!g0.gk&&!b.dataset.nokeeper){S.askGk=id;render();break}
-      S.askGk=null;mut(id,g=>{g.clock.running=true;g.clock.startedAt=Date.now();g.done=false});break}
+    case'kick':tryKick(id,{nokeeper:!!b.dataset.nokeeper});break;
     case'sizeyes':{const a=S.askSize;S.askSize=null;if(!a)break;
       mut(a.g,g=>{g.size=a.n});
       if(a.why==='more'){mut(a.g,g=>{g.starters=g.starters.filter(x=>x!==a.p);g.bench=g.bench.filter(x=>x!==a.p);if(g.gk===a.p)g.gk=null;
         if(a.r==='gk'){g.gk=a.p;g.starters.unshift(a.p)}else g.starters.push(a.p)});toast(`Game ${G(a.g).n} is ${a.n}-a-side.`)}
-      else{toast(`Game ${G(a.g).n} is ${a.n}-a-side.`);document.querySelector('[data-act=kick]')?.click()}
+      else{toast(`Game ${G(a.g).n} is ${a.n}-a-side.`);tryKick(a.g,{sizeOk:true,nokeeper:true})}
       break}
     case'gsizereset':mut(id,g=>{delete g.size});break;
     case'sizeno':S.askSize=null;render();break;
-    case'pickgk':mut(id,g=>{g.gk=p;g.starters=[p,...g.starters.filter(x=>x!==p)]});S.askGk=null;
-      mut(id,g=>{g.clock.running=true;g.clock.startedAt=Date.now();g.done=false});toast(`${nameOf(p)} is in goal. Kicked off.`);break;
+    case'pickgk':mut(id,g=>{g.gk=p;g.bench=g.bench.filter(x=>x!==p);g.starters=[p,...g.starters.filter(x=>x!==p)]});S.askGk=null;
+      toast(`${nameOf(p)} is in goal.`);tryKick(id,{nokeeper:true});break;
     case'gkcancel':S.askGk=null;render();break;
     case'pause':mut(id,g=>{g.clock.acc=el(g);g.clock.running=false});break;
     case'ft':S.pick=null;mut(id,g=>{g.clock.acc=el(g);g.clock.running=false;g.done=true});break;
