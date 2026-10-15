@@ -49,7 +49,7 @@ h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:
 .brand h1 span{color:var(--grass)}
 .sync{font-size:12px;padding:3px 9px;border-radius:99px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
 .sync.on{color:var(--good);border-color:currentColor}
-.trow{display:grid;grid-template-columns:1fr 150px;gap:8px}
+.trow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,150px);gap:8px}
 @media(max-width:420px){.trow{grid-template-columns:1fr 130px}}
 
 .tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
@@ -107,7 +107,10 @@ h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:
 .back{border:0;background:none;color:var(--grass);font-weight:700;padding:4px 0;align-self:flex-start}
 .ghead{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .ghead h2{font-size:30px}
-.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.meta{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+/* iPhone Safari gives date boxes a fixed minimum width, which pushed them over their neighbours and widened the page */
+input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;min-height:42px;text-align:left}
+input[type=date]::-webkit-date-and-time-value{text-align:left}
 .meta label{display:flex;flex-direction:column;gap:4px;min-width:0}
 .board{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 10px}
 .side{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0}
@@ -164,6 +167,9 @@ h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:
 .row:first-child{border-top:0}
 .row .who{font-weight:700;min-width:0;overflow-wrap:anywhere}
 .seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex:0 0 auto}
+.meta.one{grid-template-columns:minmax(0,1fr);gap:12px}
+.seg.fill{width:100%}
+.seg.fill button{flex:1 1 0;min-width:0;padding-inline:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .seg button{border:0;background:var(--surface);padding:7px 9px;font-size:13px;font-weight:700;color:var(--muted)}
 .seg button+button{border-left:1px solid var(--line)}
 .seg button.on{background:var(--grass);color:var(--chalk)}
@@ -226,7 +232,7 @@ h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.4.0';
+const APP_VERSION='0.4.1';
 /*CFG*/const DEFAULT_CFG={team:'Example FC U10s',short:'Example FC',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   imp:{open:false,busy:false,msg:'',result:null},
@@ -385,7 +391,7 @@ function importCard(){
   return `<div class="card"><div class="ghead"><h3>Load a schedule</h3><button class="x" data-act="impclose">Close</button></div>
     <p class="note">Take a photo of the team sheet, or paste the fixtures and line-ups as text. Claude reads it and fills in the games. This uses your own Claude usage.</p>
     <div class="cbtns">${canPhoto?`<label class="btn go filebtn">${I.busy?'Reading…':'Photo of team sheet'}<input id="impfile" type="file" accept="image/*" ${I.busy?'disabled':''}></label>`:''}</div>
-    <textarea id="imptext" placeholder="e.g. 9:30 v Ilchester, Pitch 2. GK Daisy. Aubrey, Cora, Ella, Grace"></textarea>
+    <textarea id="imptext" placeholder="e.g. 9:30 v Riverside, Pitch 2. GK Sam. Alex, Charlie, Jo, Max"></textarea>
     <button class="btn" data-act="imptext" ${I.busy?'disabled':''}>${I.busy?'Reading…':'Read pasted text'}</button>
     ${I.msg?`<p class="note">${esc(I.msg)}</p>`:''}
     ${R?`<div class="preview"><div class="lbl">Check this before loading</div>
@@ -446,7 +452,7 @@ function gameView(id){
   <button class="back" data-act="back">← All games</button>
   <div class="ghead"><h2>Game ${g.n}</h2>${status(g)}</div>
   <div class="meta">
-    <label><span class="lbl">Opponent</span><input id="opp-${id}" data-field="opponent" value="${esc(g.opponent)}" placeholder="e.g. Ilchester"></label>
+    <label><span class="lbl">Opponent</span><input id="opp-${id}" data-field="opponent" value="${esc(g.opponent)}" placeholder="e.g. Riverside"></label>
     <label><span class="lbl">Our team</span><input id="team-${id}" data-field="team" value="${esc(g.team)}" placeholder="${esc(S.cfg.short)}"></label>
     <label><span class="lbl">Kick-off</span><input id="time-${id}" data-field="time" value="${esc(g.time)}" placeholder="9:30"></label>
     <label><span class="lbl">Pitch</span><input id="pitch-${id}" data-field="pitch" value="${esc(g.pitch)}" placeholder="2"></label>
@@ -593,7 +599,7 @@ function fixturesView(){
   <p class="note">Each box saves as you leave it. Opponents you've played before appear as suggestions.</p>
   <div class="card"><h3>Paste fixtures</h3>
     <p class="note">Copy the fixture list from an email or WhatsApp and paste it here, one game per line. If it lists other teams' games too, only lines mentioning ${esc(S.cfg.short||'your team')} are used.</p>
-    <textarea id="fxpaste" placeholder="9.30am ${esc(S.cfg.short||'Us')} vs Ilchester (Pitch 2)&#10;9.45am Chew Valley vs ${esc(S.cfg.short||'Us')} (Pitch 2)"></textarea>
+    <textarea id="fxpaste" placeholder="9.30am ${esc(S.cfg.short||'Us')} vs Riverside (Pitch 2)&#10;9.45am Hillside vs ${esc(S.cfg.short||'Us')} (Pitch 2)"></textarea>
     <button class="btn" data-act="fxparse">Fill in fixtures</button>
     <p class="note">This replaces the times, opponents and pitches above. Line-ups and scores are kept.</p></div>
   </div>`;
@@ -623,13 +629,13 @@ function awardsView(){
   const list=[...S.awards].sort((a,b)=>(b.date||'').localeCompare(a.date||'')||b.createdAt-a.createdAt);
   return `<div class="sec" style="gap:14px">
   <div class="card"><h3>Give awards</h3>
-    <div class="meta">
+    <div class="meta one">
       <label><span class="lbl">Date</span><input id="aw-date" type="date" data-aw="date" value="${esc(A.date||today())}"></label>
-      <div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span class="lbl">Session</span><span class="seg" style="align-self:flex-start">
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span class="lbl">Session</span><span class="seg fill">
         <button class="${A.type==='Training'?'on':''}" data-act="awtype" data-v="Training">Training</button>
         <button class="${A.type==='Tournament'?'on':''}" data-act="awtype" data-v="Tournament">Tournament</button></span></div>
     </div>
-    <label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">Name (optional)</span><input id="aw-label" data-aw="label" value="${esc(A.label)}" placeholder="${A.type==='Tournament'?'e.g. Clevedon tournament':'e.g. Wednesday training'}"></label>
+    <label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">Name (optional)</span><input id="aw-label" data-aw="label" value="${esc(A.label)}" placeholder="${A.type==='Tournament'?'e.g. County tournament':'e.g. Wednesday training'}"></label>
     <span class="lbl">Who gets one?</span>
     ${S.squad.length?`<div class="pickchips">${S.squad.map(p=>`<button class="pc ${p.id in A.picks?'on':''}" data-act="awpick" data-p="${p.id}">${p.id in A.picks?'★ ':''}${esc(p.name)}</button>`).join('')}</div>`:'<p class="note">Add the squad first.</p>'}
     ${picked.map(id=>`<label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">${esc(nameOf(id))} – what for?</span><input id="aw-r-${id}" data-awr="${id}" value="${esc(A.picks[id])}" placeholder="e.g. Brilliant saves in goal"></label>`).join('')}
@@ -686,7 +692,7 @@ function impPrompt(extra){
   return `You are reading a youth football tournament schedule for the ${S.cfg.team} team (they may be listed as ${S.cfg.short}). Extract ${S.cfg.short}'s fixtures in kick-off order and the planned line-up for each game.
 Known squad first names: ${S.squad.map(p=>p.name).join(', ')||'(none yet)'}.
 Reply with only JSON in this shape:
-{"name": string or null, "date": "YYYY-MM-DD" or null, "players": ["Aubrey", ...], "games": [{"time": "9:30", "opponent": "Ilchester", "pitch": "2", "keeper": "Daisy", "starters": ["Aubrey","Cora","Ella","Grace"]}]}
+{"name": string or null, "date": "YYYY-MM-DD" or null, "players": ["Alex", ...], "games": [{"time": "9:30", "opponent": "Riverside", "pitch": "2", "keeper": "Sam", "starters": ["Alex","Charlie"]}]}
 Rules: opponent is the other team, never ${S.cfg.short}. keeper is the goalkeeper for that game; starters are the other players starting (do not repeat the keeper). Use first names only, matching the known squad spelling where possible; if two players share a first name, add a surname initial (e.g. "Grace B"). Never include surnames otherwise. If names are crossed out with handwritten replacements, use the printed plan. players lists every ${S.cfg.short} player on the sheet. Leave a field null or empty if it is not shown.${extra?'\n\nSchedule text:\n'+extra:''}`;
 }
 async function runImport(input,images){
