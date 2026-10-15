@@ -193,6 +193,12 @@ input[type=date]::-webkit-date-and-time-value{text-align:left}
 .addf{display:flex;gap:8px}
 .addf .btn{flex:0 0 auto}
 .teamsw{cursor:pointer;white-space:nowrap}
+.hright{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.menubtn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;width:40px;height:40px;display:grid;place-items:center;padding:0}
+.member .who{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.member{flex-wrap:wrap}
+.tag{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);color:var(--muted);border-radius:5px;padding:1px 5px}
+.tag.mgr{color:var(--gold);border-color:currentColor}
 body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--live-bg);background:var(--live);border-radius:6px;padding:2px 6px;margin-left:8px;vertical-align:middle}
 .acctf{display:flex;flex-direction:column;gap:8px}
 .gbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin-bottom:8px;background:#fff;color:#1f1f1f;border:1px solid #dadce0}
@@ -228,7 +234,7 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1><span id="hteam" style="color:inherit"></span> <span>Match Day</span></h1><span id="sync" class="sync">Connecting…</span></div>
+    <div class="brand"><h1><span id="hteam" style="color:inherit"></span> <span>Match Day</span></h1><span class="hright"><span id="sync" class="sync">Connecting…</span><button id="menubtn" class="menubtn" data-act="menu" aria-label="Menu" hidden><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button></span></div>
     <div class="trow">
       <input id="tname" data-tour="name" placeholder="Tournament name" aria-label="Tournament name">
       <input id="tdate" data-tour="date" type="date" aria-label="Tournament date">
@@ -246,10 +252,10 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.10.2';
+const APP_VERSION='0.11.0';
 /*CFG*/const DEFAULT_CFG={team:'Example FC U10s',short:'Example FC',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
-  gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,teams:false,adding:false,acct:null,
+  gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,teams:false,adding:false,acct:null,
   awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const nice=d=>{if(!d)return'';const t=new Date(d+'T12:00');return isNaN(t)?d:t.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})};
@@ -418,7 +424,8 @@ function render(){
   if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA')&&a.type!=='file'&&a.closest('#view, .top')){pending=true;syncHeader(false);return}
   pending=false;syncHeader(true);
   document.body.classList.toggle('ro',S.readOnly);
-  document.body.classList.toggle('gate',!!(S.gate||S.teams));
+  document.body.classList.toggle('gate',!!(S.gate||S.teams||S.menu));
+  const mb=document.getElementById('menubtn');if(mb)mb.hidden=!(FB&&S.teamId&&!S.gate);
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===S.tab));
   const v=document.getElementById('view');
   const h=document.getElementById('hteam');h.textContent=S.gate?'':S.cfg.team||'';
@@ -426,6 +433,7 @@ function render(){
   h.classList.toggle('others',sw&&myTeams().some(t=>t!==S.teamId&&teamInfo[t]?.running?.length));
   if(S.gate){v.innerHTML=gateView();return}
   if(S.teams){v.innerHTML=teamsView();return}
+  if(S.menu){v.innerHTML=menuView();return}
   if(S.cfgLoaded&&!S.cfg.team){v.innerHTML=setupView();return}
   v.innerHTML=S.tab==='games'&&S.fx&&!S.game?fixturesView():S.tab==='games'?(S.game?gameView(S.game):gamesList()):S.tab==='minutes'?minutesView():S.tab==='awards'?awardsView():S.tab==='season'?seasonView():squadView();
 }
@@ -547,7 +555,8 @@ function squadView(){
     <textarea id="bulknames" placeholder="Paste names, one per line or separated by commas"></textarea>
     <button class="btn" data-act="bulkadd">Add to squad</button>
     <p class="note">Surnames are dropped automatically. If two players share a first name, the app adds their surname initial.</p></div>
-  ${settingsCard(false)}${teamCard()}${accountCard()}${backupCard()}
+  ${settingsCard(false)}
+  ${FB?'<p class="note">Invite code, team members, your account and backups are in the ☰ menu (top right).</p>':''}
   <p class="note num" style="text-align:center">Match Day v${APP_VERSION}</p></div>`;
 }
 function settingsCard(first){
@@ -788,11 +797,13 @@ document.addEventListener('click',e=>{
     case'side':mut(id,g=>{g.side=b.dataset.v==='away'?'away':'home'});break;
     case'fxside':mut(b.dataset.g,g=>{g.side=isAway(g)?'home':'away'});break;
     case'periods':S.tour={...S.tour,periods:+b.dataset.v};saveTour();render();break;
+    case'menu':S.menu=true;S.teams=false;S.game=null;S.fix=null;render();window.scrollTo(0,0);break;
+    case'menuclose':S.menu=false;S.acct=null;render();break;
     case'teams':S.teams=true;S.game=null;S.fix=null;render();window.scrollTo(0,0);break;
     case'teamsclose':S.teams=false;render();break;
     case'switch':if(b.dataset.id===S.teamId){S.teams=false;render()}else switchTeam(b.dataset.id);break;
-    case'addteam':S.teams=false;S.gate=true;S.adding=true;render();break;
-    case'gateback':S.gate=false;S.adding=false;S.teams=true;render();break;
+    case'addteam':S.menu=false;S.teams=false;S.gate=true;S.adding=true;render();break;
+    case'gateback':S.gate=false;S.adding=false;S.teams=false;S.menu=true;render();break;
     case'fix':S.fix=S.fix===id?null:id;render();if(S.fix)setTimeout(()=>document.querySelector('.fix')?.scrollIntoView({behavior:'smooth',block:'start'}),0);break;
     case'clockset':{const v=parseT(document.getElementById('clkset')?.value);if(v==null){toast('Type the time like 4:30.');break}
       tryFix(id,g=>{g.clock.acc=v;if(g.clock.running)g.clock.startedAt=Date.now();g.subs.forEach(e=>{if(e.at>v)e.at=v});(g.gkChanges||[]).forEach(c=>{if(c.at>v)c.at=v})},`Clock set to ${fmt(v)}.`);break}
@@ -874,6 +885,7 @@ document.addEventListener('submit',e=>{
 });
 document.addEventListener('change',e=>{
   const t=e.target;
+  if(t.id==='myname'){lsSet('matchday-name',t.value.trim().slice(0,40));myTeams().forEach(x=>touchMember(x,true));toast('Name saved.');return}
   if(t.id==='restorefile'&&t.files&&t.files[0]){readBackup(t.files[0]);t.value='';return}
   if(t.dataset.goalp&&S.game){const i=+t.dataset.goalp,v=t.value||null;mut(S.game,g=>{if(g.goals?.[i])g.goals[i].p=v});return}
   if(t.dataset.subat&&S.game){const i=+t.dataset.subat,v=parseT(t.value);if(v==null){toast('Type the time like 4:30.');render();return}
@@ -980,7 +992,8 @@ function openTeam(t){
   if(S.teamId&&S.teamId!==t){switchTeam(t);return} // adding a second team: reload into it
   saveTeams([...myTeams(),t]);syncTeamList();
   lsSet(TEAM_KEY,t);S.gate=false;S.adding=false;S.teamId=t;db=fsAdapter('teams/'+t);liveLabel();watchTeams();
-  F.getDoc(F.doc(fs,'teams',t)).then(s=>{S.invite=s.data()?.code||'';render()}).catch(()=>{});
+  F.getDoc(F.doc(fs,'teams',t)).then(s=>{S.invite=s.data()?.code||'';S.createdBy=s.data()?.createdBy||null;render()}).catch(()=>{});
+  watchMembers(t);touchMember(t);
   subscribe(e=>{if(e&&e.code==='permission-denied'){setSync(false,'Not a member');toast("This phone isn't a member of that team any more.");leaveTeam(false)}});
   render();
 }
@@ -997,7 +1010,7 @@ async function createTeam(){
   for(let i=0;i<3;i++){ // retry if the random code is already taken
     const tref=F.doc(F.collection(fs,'teams')),code=newCode(),b=F.writeBatch(fs);
     b.set(tref,{code,createdBy:uid,created:F.serverTimestamp()});
-    b.set(F.doc(fs,'teams',tref.id,'members',uid),{code,joined:F.serverTimestamp()});
+    b.set(F.doc(fs,'teams',tref.id,'members',uid),{code,joined:F.serverTimestamp(),name:myName(),via:signInVia(),seen:F.serverTimestamp()});
     b.set(F.doc(fs,'codes',code),{team:tref.id});
     b.set(F.doc(fs,'teams',tref.id,'club','settings'),{...DEFAULT_CFG,team:'',short:''});
     try{await b.commit();openTeam(tref.id);return}catch(e){last=e;if(e.code!=='permission-denied')break}
@@ -1014,7 +1027,7 @@ async function joinTeam(raw){
     const s=await F.getDoc(ref).catch(()=>F.getDocFromServer(ref));
     if(!s.exists()){toast("That code didn't match a team. Check it with the coach who sent it.");return}
     const t=s.data().team;
-    await F.setDoc(F.doc(fs,'teams',t,'members',auth.currentUser.uid),{code,joined:F.serverTimestamp()});
+    await F.setDoc(F.doc(fs,'teams',t,'members',auth.currentUser.uid),{code,joined:F.serverTimestamp(),name:myName(),via:signInVia(),seen:F.serverTimestamp()});
     openTeam(t);toast('Joined.');
   }catch(e){toast(`Couldn't join (${errCode(e)}). Check your signal and try again, or tell the person who sent you the app.`)}
 }
@@ -1057,7 +1070,7 @@ const acctVals=()=>({email:(document.getElementById('acctemail')?.value||'').tri
 async function createAccount(){
   const {A,auth}=FB,{email,pw}=acctVals();
   try{await signedIn();await A.linkWithCredential(auth.currentUser,A.EmailAuthProvider.credential(email,pw));
-    syncTeamList();S.acct=null;toast(S.teamId?'Account created. Sign in with it on any phone to get your teams back.':'Account created. Now create or join a team: it will be saved to your account.');render()}
+    syncTeamList();myTeams().forEach(t=>touchMember(t,true));S.acct=null;toast(S.teamId?'Account created. Sign in with it on any phone to get your teams back.':'Account created. Now create or join a team: it will be saved to your account.');render()}
   catch(e){toast(authMsg(e))}
 }
 async function signInAccount(){
@@ -1072,7 +1085,7 @@ async function moveTeamsTo(signIn){
   for(const t of myTeams()){const s=await within(F.getDoc(F.doc(fs,'teams',t)).catch(()=>null),3000);if(s?.exists())codes[t]=s.data().code}
   try{await signIn()}catch(e){toast(authMsg(e));return}
   const uid=auth.currentUser.uid;
-  await Promise.all(Object.entries(codes).map(([t,code])=>F.setDoc(F.doc(fs,'teams',t,'members',uid),{code,joined:F.serverTimestamp()}).catch(()=>{})));
+  await Promise.all(Object.entries(codes).map(([t,code])=>F.setDoc(F.doc(fs,'teams',t,'members',uid),{code,joined:F.serverTimestamp(),name:myName(),via:signInVia(),seen:F.serverTimestamp()}).catch(()=>{})));
   await loadAccountTeams();syncTeamList();
   if(!lsGet(TEAM_KEY))lsSet(TEAM_KEY,myTeams()[0]||null);
   location.reload();
@@ -1092,7 +1105,7 @@ async function finishGoogle(){ // runs at start-up after Google sends the coach 
   if(!lsGet('matchday-google'))return false;
   lsSet('matchday-google',null);
   const {A,auth}=FB;
-  try{const r=await A.getRedirectResult(auth);if(r){syncTeamList();toast(`Signed in as ${r.user.email}.`)}return false}
+  try{const r=await A.getRedirectResult(auth);if(r){syncTeamList();setTimeout(()=>myTeams().forEach(t=>touchMember(t,true)),1500);toast(`Signed in as ${r.user.email}.`)}return false}
   catch(e){
     const cred=A.GoogleAuthProvider.credentialFromError(e);
     if(cred&&/credential-already-in-use|email-already-in-use/.test(e.code||'')){await moveTeamsTo(()=>A.signInWithCredential(auth,cred));return true}
@@ -1155,7 +1168,59 @@ function teamsView(){
       ${i.gone?'<span class="flag">No longer a member</span>':''}
       <span class="note">${cur?'Open now':'Switch'}</span></button>`}).join('')}</div>
   <button class="btn go" data-act="addteam">+ Add a team</button>
-  <p class="note">Each team has its own squad, games, season and invite code. To leave a team, open it and go to the Squad tab.</p>
+  <p class="note">Each team has its own squad, games, season and invite code. To leave a team, open it and use the ☰ menu.</p>
+  </div>`;
+}
+/* ---------- members: who's in each team ---------- */
+const myName=()=>(lsGet('matchday-name')||FB?.auth?.currentUser?.displayName||'').slice(0,40);
+function signInVia(){const u=FB?.auth?.currentUser;if(!u)return'phone';return u.providerData.some(p=>p.providerId==='google.com')?'google':u.email?'email':'phone'}
+function touchMember(t,force){ // keep my entry in this team's member list up to date (at most every few hours)
+  const {F,fs,auth}=FB,u=auth.currentUser;if(!u||!t)return;
+  let seen={};try{seen=JSON.parse(lsGet('matchday-seen')||'{}')}catch(_){}
+  if(!force&&seen[t]&&Date.now()-seen[t]<6*3600e3)return;
+  F.setDoc(F.doc(fs,'teams',t,'members',u.uid),{name:myName(),via:signInVia(),seen:F.serverTimestamp()},{merge:true})
+    .then(()=>{seen[t]=Date.now();lsSet('matchday-seen',JSON.stringify(seen))}).catch(()=>{});
+}
+function watchMembers(t){
+  const {F,fs}=FB;
+  F.onSnapshot(F.collection(fs,'teams',t,'members'),s=>{S.members=s.docs.map(d=>({id:d.id,...d.data()}));if(S.menu)render()},()=>{});
+}
+function ago(ts){
+  const ms=ts?.toMillis?.();if(!ms)return'';const d=Math.floor((Date.now()-ms)/864e5);
+  return d<=0?'active today':d===1?'active yesterday':d<7?`active ${d} days ago`:d<60?`active ${Math.round(d/7)} week${Math.round(d/7)>1?'s':''} ago`:'not active lately';
+}
+function membersList(){
+  const me=FB.auth.currentUser?.uid,via={google:'Google',email:'Email',phone:'No account'};
+  const l=[...S.members].sort((a,b)=>(b.id===S.createdBy)-(a.id===S.createdBy)||(b.id===me)-(a.id===me)||(a.name||'~').localeCompare(b.name||'~'));
+  return `<div class="rows">${l.map(m=>`<div class="row member"><span class="who">${esc(m.name||(m.via==='phone'||!m.via?'Coach (no account)':'Coach'))}
+      ${m.id===S.createdBy?'<span class="tag mgr">Manager</span>':''}${m.id===me?'<span class="tag">you</span>':''}</span>
+    <span class="note">${via[m.via]||'No account'}${ago(m.seen)?' · '+ago(m.seen):''}</span></div>`).join('')||'<p class="note">Loading…</p>'}</div>`;
+}
+function menuView(){
+  const u=FB.auth.currentUser;
+  return `<div class="sec" style="gap:14px">
+  <button class="back" data-act="menuclose">← Back</button>
+  <div class="card"><h3>You</h3>
+    <label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">Your name (other coaches see this)</span>
+      <input id="myname" value="${esc(myName())}" placeholder="e.g. Sam (coach)" maxlength="40" autocomplete="name"></label>
+    ${isAccount()?`<p class="note">Signed in with ${signInVia()==='google'?'Google':'email'} as <b>${esc(u.email)}</b>. Only you see your email.</p>
+      <button class="x ${S.confirm==='signout'?'sure':''}" data-act="signout">${S.confirm==='signout'?'Tap again to sign out on this phone':'Sign out on this phone'}</button>`
+    :`<p class="note">Not signed in: your teams are only on this phone. Sign in to get them back on a new phone.</p>
+      ${S.acct?acctForm(S.acct):`${googleBtn()}<div class="cbtns"><button class="btn" data-act="acctcreate">Create an account with email</button><button class="btn" data-act="acctsignin">Sign in with email</button></div>`}`}
+  </div>
+  <div class="card"><h3>My teams</h3>
+    <div class="rows">${myTeams().map(t=>{const i=teamInfo[t]||{},cur=t===S.teamId;
+      return `<button class="row teamrow ${cur?'cur':''}" data-act="switch" data-id="${esc(t)}"><span class="who">${esc((cur?S.cfg.team:i.name)||'Loading…')}</span>
+        ${i.running&&i.running.length?`<span class="flag run">Game ${i.running.join(', ')} running</span>`:''}<span class="note">${cur?'Open now':'Switch'}</span></button>`}).join('')}</div>
+    <button class="btn" data-act="addteam">+ Add a team</button></div>
+  <div class="card"><h3>${esc(S.cfg.team||'This team')}</h3>
+    <p>Invite code: <b class="num" style="font-family:var(--display);font-size:26px;letter-spacing:.06em">${esc(showCode(S.invite))||'…'}</b></p>
+    <p class="note">Other coaches open the app, tap <b>Join a team</b> and enter this code.</p>
+    <span class="lbl">Team members</span>
+    ${membersList()}
+    <button class="x ${S.confirm==='leave'?'sure':''}" data-act="leave">${S.confirm==='leave'?'Tap again to leave this team on this phone':'Leave this team on this phone'}</button></div>
+  ${backupCard()}
+  <p class="note num" style="text-align:center">Match Day v${APP_VERSION}</p>
   </div>`;
 }
 function teamCard(){

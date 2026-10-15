@@ -25,11 +25,17 @@ service cloud.firestore {
         && request.resource.data.code.size() == 6;
 
       // Joining: a phone adds itself, and must quote the team's invite code.
+      // Members of a team can see who else is in it: a display name, how they sign in and when
+      // they last used the app. Never an email address.
       match /members/{uid} {
-        allow get, delete: if signedIn() && uid == request.auth.uid;
+        allow get: if signedIn() && (uid == request.auth.uid || exists(memberPath(t)));
+        allow list: if signedIn() && exists(memberPath(t));
+        allow delete: if signedIn() && uid == request.auth.uid;
         allow create, update: if signedIn() && uid == request.auth.uid
-          && request.resource.data.keys().hasOnly(['code', 'joined'])
-          && request.resource.data.code == teamAfter(t).code;
+          && request.resource.data.keys().hasOnly(['code', 'joined', 'name', 'via', 'seen'])
+          && request.resource.data.code == teamAfter(t).code
+          && (!('name' in request.resource.data) || (request.resource.data.name is string && request.resource.data.name.size() <= 40))
+          && (!('via' in request.resource.data) || request.resource.data.via in ['google', 'email', 'phone']);
       }
 
       // The app's data: club/settings, club/squad, club/tournament, games/*, awards/*, archive/*.

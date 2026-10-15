@@ -5,6 +5,8 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Waiting on testing
 
+- **v0.11.0 on beta, not yet live:** ☰ menu with your profile, my teams, team members (Manager tag)
+  and backup. Needs the new members rule published to live (with the user's go-ahead) before release.
 - **v0.10.2 live:** halves and quarters, Home v Away, keeper pop-up, goal scorers.
   Beta: https://match-day-beta-17b23.web.app (Beta Test Team code `L9J-Q7H`).
 - **Accounts:** Google sign-in works on live. Still to try: signing in on a second phone and
