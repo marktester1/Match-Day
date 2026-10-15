@@ -186,6 +186,13 @@ h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:
 
 .addf{display:flex;gap:8px}
 .addf .btn{flex:0 0 auto}
+.teamsw{cursor:pointer;white-space:nowrap}
+.teamsw::after{content:" ▾";font-size:.6em;color:var(--muted)}
+.teamsw.others::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--live);margin-right:6px;vertical-align:middle}
+.teamrow{width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);color:inherit;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.teamrow .who{flex:1 1 auto}
+.teamrow.cur .who{color:var(--grass)}
+.flag.run{color:var(--live)}
 .x{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:6px 10px;font-size:13px;font-weight:700;color:var(--muted)}
 .x.sure{color:var(--chalk);background:var(--bad);border-color:var(--bad)}
 .empty{text-align:center;padding:26px 16px;color:var(--muted);background:var(--surface);border:1px dashed var(--line);border-radius:12px}
@@ -218,11 +225,11 @@ h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.2.0';
+const APP_VERSION='0.3.1';
 /*CFG*/const DEFAULT_CFG={team:'Example FC U10s',short:'Example FC',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   imp:{open:false,busy:false,msg:'',result:null},
-  gate:false,teamId:null,invite:'',restore:null,fix:null,
+  gate:false,teamId:null,invite:'',restore:null,fix:null,teams:false,adding:false,
   awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const nice=d=>{if(!d)return'';const t=new Date(d+'T12:00');return isNaN(t)?d:t.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})};
@@ -239,6 +246,8 @@ const started=g=>g.clock.running||g.clock.acc>0;
 function fmt(ms){const s=Math.floor(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}
 function fmtM(ms){const m=ms/60000;return m<1&&ms>0?fmt(ms):Math.round(m)+'m'}
 const bySubTime=g=>[...g.subs].sort((a,b)=>a.at-b.at);
+const alpha=l=>[...l].sort((a,b)=>a.name.localeCompare(b.name,'en',{sensitivity:'base'}));
+const byName=ids=>[...ids].sort((a,b)=>nameOf(a).localeCompare(nameOf(b),'en',{sensitivity:'base'}));
 
 function onPitch(g){const s=new Set(g.starters);for(const e of bySubTime(g)){s.delete(e.off);if(e.on)s.add(e.on)}return s}
 function keeper(g){const ev=[...bySubTime(g).filter(e=>e.gk).map(e=>({at:e.at,p:e.on})),...(g.gkChanges||[])].sort((a,b)=>a.at-b.at);let k=g.gk;ev.forEach(e=>k=e.p);return k}
@@ -265,7 +274,7 @@ function remove(path){
   queues[path]=(queues[path]||Promise.resolve()).then(()=>db.doc(path).delete()).catch(()=>toast("Couldn't delete that. Check your connection and try again."));
 }
 function mut(id,fn){const g=structuredClone(G(id));fn(g);S.games[id]=g;put('games/'+id,g);render()}
-function saveSquad(){put('club/squad',{players:S.squad});render()}
+function saveSquad(){S.squad=alpha(S.squad);put('club/squad',{players:S.squad});render()}
 function saveTour(){put('club/tournament',S.tour)}
 
 let tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,3500)}
@@ -326,7 +335,7 @@ function fixPanel(id,g,st){
   <h3>Add a sub that already happened</h3>
     <div class="subadd">
       <label><span class="lbl">Time</span><input id="psat" class="num" inputmode="decimal" value="${now}" placeholder="4:30"></label>
-      <label><span class="lbl">Off</span><select id="psoff">${opt(inG,'Choose')}</select></label>
+      <label><span class="lbl">Off</span><select id="psoff">${opt(byName(inG),'Choose')}</select></label>
       <label><span class="lbl">On</span><select id="pson">${opt(S.squad.map(p=>p.id),'Choose')}</select></label>
     </div>
     <button class="btn go" data-act="pastsub">Add sub</button>
@@ -343,12 +352,15 @@ function render(){
   if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA')&&a.type!=='file'&&a.closest('#view, .top')){pending=true;syncHeader(false);return}
   pending=false;syncHeader(true);
   document.body.classList.toggle('ro',S.readOnly);
-  document.body.classList.toggle('gate',!!S.gate);
+  document.body.classList.toggle('gate',!!(S.gate||S.teams));
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===S.tab));
   const v=document.getElementById('view');
   const ta=document.getElementById('imptext');const keep=ta?ta.value:'';
-  document.getElementById('hteam').textContent=S.gate?'':S.cfg.team||'';
+  const h=document.getElementById('hteam');h.textContent=S.gate?'':S.cfg.team||'';
+  const sw=!!(FB&&S.teamId&&!S.gate);h.classList.toggle('teamsw',sw);if(sw)h.dataset.act='teams';else delete h.dataset.act;
+  h.classList.toggle('others',sw&&myTeams().some(t=>t!==S.teamId&&teamInfo[t]?.running?.length));
   if(S.gate){v.innerHTML=gateView();return}
+  if(S.teams){v.innerHTML=teamsView();return}
   if(S.cfgLoaded&&!S.cfg.team){v.innerHTML=setupView();return}
   v.innerHTML=S.tab==='games'&&S.fx&&!S.game?fixturesView():S.tab==='games'?(S.game?gameView(S.game):gamesList()):S.tab==='minutes'?minutesView():S.tab==='awards'?awardsView():S.tab==='season'?seasonView():squadView();
   const ta2=document.getElementById('imptext');if(ta2&&keep)ta2.value=keep;
@@ -405,7 +417,8 @@ function gamesList(){
 }
 function gameView(id){
   const g=G(id),st=started(g),pitch=[...onPitch(g)],bench=benchNow(g),m=mins(g),len=(S.tour.len||10)*60000,k=keeper(g);
-  pitch.sort((a,b)=>(b===k)-(a===k));
+  pitch.sort((a,b)=>(b===k)-(a===k)||nameOf(a).localeCompare(nameOf(b),'en',{sensitivity:'base'}));
+  bench.sort((a,b)=>nameOf(a).localeCompare(nameOf(b),'en',{sensitivity:'base'}));
   const pk=S.pick&&S.pick.g===id?S.pick:null;
   const chip=(p,side)=>`<button class="chip ${p===k&&side==='pitch'?'keeper':''} ${pk&&pk.p===p?'sel':''} ${pk&&pk.p!==p&&(pk.side!==side||(side==='pitch'&&(pk.p===k||p===k)))?'target':''}" data-act="tap" data-side="${side}" data-p="${p}" data-g="${id}">${p===k&&side==='pitch'?'<span class="gkb">GK</span>':''}<span class="n">${esc(nameOf(p))}</span><span class="m num" data-m="${id}|${p}">${fmt(m[p]||0)}</span></button>`;
   let hint='';
@@ -535,7 +548,7 @@ async function readBackup(f){
 function applyRestore(){
   const r=S.restore;S.restore=null;
   if(r.cfg&&r.cfg.team){S.cfg={...DEFAULT_CFG,...r.cfg};put('club/settings',S.cfg)}
-  S.squad=r.squad;put('club/squad',{players:S.squad});
+  S.squad=alpha(r.squad);put('club/squad',{players:S.squad});
   S.tour={...S.tour,...r.tour};put('club/tournament',S.tour);
   Object.keys(S.games).forEach(id=>{if(!(id in r.games))remove('games/'+id)});
   S.games=r.games;Object.entries(r.games).forEach(([id,g])=>put('games/'+id,g));
@@ -733,6 +746,11 @@ document.addEventListener('click',e=>{
       if(S.pick&&S.pick.g===id&&S.pick.p!==p&&(S.pick.side!==side||side==='pitch')){const pk=S.pick;S.pick=null;swap(id,pk.p,pk.side,p,side);if(!S.pick)render()}
       else{S.pick=S.pick&&S.pick.p===p?null:{g:id,p,side};render()}break}
     case'cancel':S.pick=null;render();break;
+    case'teams':S.teams=true;S.game=null;S.fix=null;render();window.scrollTo(0,0);break;
+    case'teamsclose':S.teams=false;render();break;
+    case'switch':if(b.dataset.id===S.teamId){S.teams=false;render()}else switchTeam(b.dataset.id);break;
+    case'addteam':S.teams=false;S.gate=true;S.adding=true;render();break;
+    case'gateback':S.gate=false;S.adding=false;S.teams=true;render();break;
     case'fix':S.fix=S.fix===id?null:id;render();break;
     case'clockset':{const v=parseT(document.getElementById('clkset')?.value);if(v==null){toast('Type the time like 4:30.');break}
       tryFix(id,g=>{g.clock.acc=v;if(g.clock.running)g.clock.startedAt=Date.now();g.subs.forEach(e=>{if(e.at>v)e.at=v});(g.gkChanges||[]).forEach(c=>{if(c.at>v)c.at=v})},`Clock set to ${fmt(v)}.`);break}
@@ -845,7 +863,7 @@ setInterval(()=>{
 function setSync(on,txt){const s=document.getElementById('sync');s.textContent=txt;s.classList.toggle('on',on)}
 function subscribe(err){
   db.doc('club/settings').onSnapshot(s=>{S.cfg=s.exists?{...DEFAULT_CFG,...s.data()}:{...DEFAULT_CFG};S.cfgLoaded=true;render()},err);
-  db.doc('club/squad').onSnapshot(s=>{S.squad=s.exists?[...(s.data().players||[])]:[];render()},err);
+  db.doc('club/squad').onSnapshot(s=>{S.squad=s.exists?alpha(s.data().players||[]):[];render()},err);
   db.doc('club/tournament').onSnapshot(s=>{if(s.exists)S.tour={...S.tour,...s.data()};render()},err);
   db.collection('awards').onSnapshot(s=>{S.awards=s.docs.map(d=>({id:d.id,...d.data()}));render()},err);
   db.collection('archive').onSnapshot(s=>{S.archive=s.docs.map(d=>({id:d.id,...d.data()}));render()},err);
@@ -854,7 +872,8 @@ function subscribe(err){
 
 /* firebase: used when the app runs outside Claude (web link or phone app) */
 const FB_SDK='https://www.gstatic.com/firebasejs/12.10.0/';
-const TEAM_KEY='matchday-team';
+const TEAM_KEY='matchday-team';   // the team open now
+const TEAMS_KEY='matchday-teams'; // every team this phone belongs to (a coach can have several)
 let FB=null;
 const lsGet=k=>{try{return localStorage.getItem(k)}catch(_){return null}};
 const lsSet=(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(_){}};
@@ -867,6 +886,25 @@ function fsAdapter(base){ // same shape as Claude's db, so put()/remove()/subscr
       onSnapshot:(cb,err)=>F.onSnapshot(ref(p),s=>cb({exists:s.exists(),data:()=>s.data()}),err)}),
     collection:c=>({onSnapshot:(cb,err)=>F.onSnapshot(F.collection(fs,base+'/'+c),s=>cb({docs:s.docs.map(d=>({id:d.id,data:()=>d.data()}))}),err)})
   };
+}
+function myTeams(){
+  let l=[];try{l=JSON.parse(lsGet(TEAMS_KEY)||'[]')}catch(_){}
+  const t=lsGet(TEAM_KEY);if(t&&!l.includes(t))l.push(t); // phones from before v0.3.0 only had the one team
+  return l.filter(x=>typeof x==='string'&&x);
+}
+const saveTeams=l=>lsSet(TEAMS_KEY,JSON.stringify([...new Set(l)]));
+const teamInfo={}; // id -> {name, running:[game numbers]} for the team switcher
+function watchTeams(){
+  const {F,fs}=FB;
+  myTeams().forEach(t=>{
+    if(teamInfo[t])return;teamInfo[t]={name:'',running:[]};
+    const gone=e=>{if(e&&e.code==='permission-denied')teamInfo[t].gone=true;render()};
+    F.onSnapshot(F.doc(fs,'teams',t,'club','settings'),s=>{teamInfo[t].name=s.data()?.team||'';render()},gone);
+    F.onSnapshot(F.collection(fs,'teams',t,'games'),s=>{teamInfo[t].running=s.docs.filter(d=>d.data().clock?.running).map(d=>d.data().n).sort((a,b)=>a-b);render()},gone);
+  });
+}
+function switchTeam(t){ // a fresh page load keeps each team's live updates cleanly apart
+  saveTeams([...myTeams(),t]);lsSet(TEAM_KEY,t);location.reload();
 }
 function liveLabel(){if(FB&&db)setSync(navigator.onLine,navigator.onLine?'Shared · live':'Offline · saved on this phone')}
 addEventListener('online',liveLabel);addEventListener('offline',liveLabel);
@@ -883,13 +921,15 @@ async function connectFirebase(){
   // Each phone gets an anonymous sign-in: no passwords. Joining a team with its invite code is what grants access.
   await FB.auth.authStateReady();
   await signedIn().catch(()=>{});
-  const t=lsGet(TEAM_KEY);
+  const t=lsGet(TEAM_KEY)||myTeams()[0];
   if(t)openTeam(t);else{S.gate=true;setSync(false,'No team yet');render()}
   return true;
 }
 function openTeam(t){
   const {F,fs}=FB;
-  lsSet(TEAM_KEY,t);S.gate=false;S.teamId=t;db=fsAdapter('teams/'+t);liveLabel();
+  if(S.teamId&&S.teamId!==t){switchTeam(t);return} // adding a second team: reload into it
+  saveTeams([...myTeams(),t]);
+  lsSet(TEAM_KEY,t);S.gate=false;S.adding=false;S.teamId=t;db=fsAdapter('teams/'+t);liveLabel();watchTeams();
   F.getDoc(F.doc(fs,'teams',t)).then(s=>{S.invite=s.data()?.code||'';render()}).catch(()=>{});
   subscribe(e=>{if(e&&e.code==='permission-denied'){setSync(false,'Not a member');toast("This phone isn't a member of that team any more.");leaveTeam(false)}});
   render();
@@ -928,13 +968,14 @@ async function joinTeam(raw){
     openTeam(t);toast('Joined.');
   }catch(e){toast(`Couldn't join (${errCode(e)}). Check your signal and try again, or tell the person who sent you the app.`)}
 }
-function leaveTeam(remote=true){
-  const {F,fs,auth}=FB;
-  if(remote&&S.teamId)F.deleteDoc(F.doc(fs,'teams',S.teamId,'members',auth.currentUser.uid)).catch(()=>{});
-  lsSet(TEAM_KEY,null);location.reload();
+async function leaveTeam(remote=true){
+  const {F,fs,auth}=FB,t=S.teamId;
+  if(remote&&t)await Promise.race([F.deleteDoc(F.doc(fs,'teams',t,'members',auth.currentUser.uid)).catch(()=>{}),new Promise(r=>setTimeout(r,2500))]);
+  const rest=myTeams().filter(x=>x!==t);saveTeams(rest);lsSet(TEAM_KEY,rest[0]||null);location.reload();
 }
 function gateView(){
   return `<div class="sec" style="gap:14px">
+  ${S.adding?`<button class="back" data-act="gateback">← My teams</button><h2>Add a team</h2>`:''}
   <div class="card"><h3>Start a new team</h3>
     <p class="note">You'll get an invite code to give the other coaches.</p>
     <button class="btn go" data-act="mkteam">Create a team</button></div>
@@ -942,6 +983,21 @@ function gateView(){
     <p class="note">Ask a coach for the team's invite code. It's on their Squad tab.</p>
     <form class="addf" id="joinf"><input id="joincode" placeholder="e.g. ABC-234" autocomplete="off" autocapitalize="characters" aria-label="Invite code"><button class="btn go" data-act="join" type="submit">Join</button></form></div>
   <p class="note num" style="text-align:center">Match Day v${APP_VERSION}</p>
+  </div>`;
+}
+function teamsView(){
+  const l=myTeams();
+  return `<div class="sec" style="gap:14px">
+  <button class="back" data-act="teamsclose">← Back</button>
+  <h2>My teams</h2>
+  <div class="rows">${l.map(t=>{const i=teamInfo[t]||{},cur=t===S.teamId,name=cur?S.cfg.team:i.name;
+    return `<button class="row teamrow ${cur?'cur':''}" data-act="switch" data-id="${esc(t)}">
+      <span class="who">${esc(name||'Loading…')}</span>
+      ${i.running&&i.running.length?`<span class="flag run">Game ${i.running.join(', ')} running</span>`:''}
+      ${i.gone?'<span class="flag">No longer a member</span>':''}
+      <span class="note">${cur?'Open now':'Switch'}</span></button>`}).join('')}</div>
+  <button class="btn go" data-act="addteam">+ Add a team</button>
+  <p class="note">Each team has its own squad, games, season and invite code. To leave a team, open it and go to the Squad tab.</p>
   </div>`;
 }
 function teamCard(){
