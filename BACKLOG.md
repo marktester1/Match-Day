@@ -5,9 +5,11 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Waiting on testing
 
-- **Accounts (live since v0.4.2):** creating an account and signing in on a second phone
-  haven't been tried yet. Needs Email/Password switched on in Firebase (Security →
-  Authentication → Sign-in method).
+- **Accounts (email live since v0.4.2; Google on beta in v0.5.0):** not yet tried on a real
+  phone. Google needs the app's addresses added as redirect URIs on the Web client in
+  Google Cloud → APIs & Services → Credentials:
+  `https://match-day-17b23.web.app/__/auth/handler` and
+  `https://match-day-17b23--beta-dmbeugk1.web.app/__/auth/handler`.
 
 ## Features
 

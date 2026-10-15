@@ -194,6 +194,7 @@ input[type=date]::-webkit-date-and-time-value{text-align:left}
 .addf .btn{flex:0 0 auto}
 .teamsw{cursor:pointer;white-space:nowrap}
 .acctf{display:flex;flex-direction:column;gap:8px}
+.gbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin-bottom:8px;background:#fff;color:#1f1f1f;border:1px solid #dadce0}
 .teamsw::after{content:" ▾";font-size:.6em;color:var(--muted)}
 .teamsw.others::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--live);margin-right:6px;vertical-align:middle}
 .teamrow{width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);color:inherit;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -232,7 +233,7 @@ input[type=date]::-webkit-date-and-time-value{text-align:left}
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.4.2';
+const APP_VERSION='0.5.0';
 /*CFG*/const DEFAULT_CFG={team:'Example FC U10s',short:'Example FC',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   imp:{open:false,busy:false,msg:'',result:null},
@@ -757,6 +758,7 @@ document.addEventListener('click',e=>{
     case'acctsignin':S.acct='signin';render();setTimeout(()=>document.getElementById('acctemail')?.focus(),0);break;
     case'acctcancel':S.acct=null;render();break;
     case'acctforgot':resetPassword();break;
+    case'google':b.disabled=true;googleSignIn().finally(()=>{b.disabled=false});break;
     case'signout':if(S.confirm==='signout')signOutAccount();else{S.confirm='signout';render()}break;
     case'teams':S.teams=true;S.game=null;S.fix=null;render();window.scrollTo(0,0);break;
     case'teamsclose':S.teams=false;render();break;
@@ -926,6 +928,9 @@ async function connectFirebase(){
   if(!cfg||!cfg.apiKey)return false;
   setSync(false,'Connecting…');
   const [{initializeApp},A,F]=await Promise.all(['app','auth','firestore'].map(m=>import(FB_SDK+'firebase-'+m+'.js')));
+  // Google's sign-in hand-off has to come back to the same address the app runs on, or iPhones
+  // (which block cross-site storage) lose the result. Firebase Hosting serves it on every site address.
+  if(/\.(web\.app|firebaseapp\.com)$/.test(location.hostname))cfg={...cfg,authDomain:location.hostname};
   const app=initializeApp(cfg);
   let fs;
   try{fs=F.initializeFirestore(app,{ignoreUndefinedProperties:true,experimentalAutoDetectLongPolling:true,localCache:F.persistentLocalCache({tabManager:F.persistentMultipleTabManager()})})}
@@ -933,6 +938,7 @@ async function connectFirebase(){
   FB={A,F,auth:A.getAuth(app),fs};
   // Each phone gets an anonymous sign-in: no passwords. Joining a team with its invite code is what grants access.
   await FB.auth.authStateReady();
+  if(await finishGoogle())return true; // reloading into the coach's existing account
   await signedIn().catch(()=>{});
   await loadAccountTeams();
   const t=lsGet(TEAM_KEY)||myTeams()[0];
@@ -1012,7 +1018,10 @@ function authMsg(e){
     'weak-password':'Use a password of at least 6 characters.','missing-password':'Type a password.',
     'too-many-requests':'Too many tries. Wait a few minutes and try again.',
     'network-request-failed':'You need a signal for this.',
-    'operation-not-allowed':"Email sign-in isn't switched on for this app yet."})[c]||`That didn't work (${c||errCode(e)}).`;
+    'operation-not-allowed':"That sign-in method isn't switched on for this app yet.",
+    'unauthorized-domain':"Google sign-in isn't set up for this web address yet.",
+    'redirect-cancelled-by-user':'Google sign-in was cancelled.','user-cancelled':'Google sign-in was cancelled.',
+    'web-storage-unsupported':"This browser is blocking sign-in. Open the app in Safari or Chrome itself."})[c]||`That didn't work (${c||errCode(e)}).`;
 }
 const acctVals=()=>({email:(document.getElementById('acctemail')?.value||'').trim(),pw:document.getElementById('acctpw')?.value||''});
 async function createAccount(){
@@ -1022,17 +1031,43 @@ async function createAccount(){
   catch(e){toast(authMsg(e))}
 }
 async function signInAccount(){
-  const {A,F,fs,auth}=FB,{email,pw}=acctVals();
+  const {A,auth}=FB,{email,pw}=acctVals();
   if(!email||!pw){toast('Type your email and password.');return}
+  await moveTeamsTo(()=>A.signInWithEmailAndPassword(auth,email,pw));
+}
+async function moveTeamsTo(signIn){
+  const {F,fs,auth}=FB;
   // Teams already on this phone move onto the account: note their invite codes before switching sign-in.
   const codes={};
   for(const t of myTeams()){const s=await within(F.getDoc(F.doc(fs,'teams',t)).catch(()=>null),3000);if(s?.exists())codes[t]=s.data().code}
-  try{await A.signInWithEmailAndPassword(auth,email,pw)}catch(e){toast(authMsg(e));return}
+  try{await signIn()}catch(e){toast(authMsg(e));return}
   const uid=auth.currentUser.uid;
   await Promise.all(Object.entries(codes).map(([t,code])=>F.setDoc(F.doc(fs,'teams',t,'members',uid),{code,joined:F.serverTimestamp()}).catch(()=>{})));
   await loadAccountTeams();syncTeamList();
   if(!lsGet(TEAM_KEY))lsSet(TEAM_KEY,myTeams()[0]||null);
   location.reload();
+}
+async function googleSignIn(){
+  const {A,auth}=FB;
+  try{
+    await signedIn();
+    const p=new A.GoogleAuthProvider();p.setCustomParameters({prompt:'select_account'});
+    lsSet('matchday-google','1');
+    // Upgrading the phone's sign-in keeps its teams. If that Google account is already a Match
+    // Day account, finishGoogle() below signs into it and moves the teams across instead.
+    await A.linkWithRedirect(auth.currentUser,p);
+  }catch(e){lsSet('matchday-google',null);toast(authMsg(e))}
+}
+async function finishGoogle(){ // runs at start-up after Google sends the coach back
+  if(!lsGet('matchday-google'))return false;
+  lsSet('matchday-google',null);
+  const {A,auth}=FB;
+  try{const r=await A.getRedirectResult(auth);if(r){syncTeamList();toast(`Signed in as ${r.user.email}.`)}return false}
+  catch(e){
+    const cred=A.GoogleAuthProvider.credentialFromError(e);
+    if(cred&&/credential-already-in-use|email-already-in-use/.test(e.code||'')){await moveTeamsTo(()=>A.signInWithCredential(auth,cred));return true}
+    toast(authMsg(e));return false;
+  }
 }
 async function resetPassword(){
   const {A,auth}=FB,{email}=acctVals();
@@ -1043,6 +1078,7 @@ async function resetPassword(){
 async function signOutAccount(){
   await FB.A.signOut(FB.auth);saveTeams([]);lsSet(TEAM_KEY,null);location.reload();
 }
+const googleBtn=()=>`<button class="btn gbtn" data-act="google"><svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 6.9-10.3 6.9-17.7z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.1 1.4-4.9 2.3-8.2 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>Continue with Google</button>`;
 function acctForm(mode){
   return `<form class="acctf" id="acctf" data-mode="${mode}">
     <input id="acctemail" type="email" autocomplete="username" placeholder="Email address" aria-label="Email address">
@@ -1059,8 +1095,8 @@ function accountCard(){
     <p class="note">Your teams are saved to this account. On a new phone, open the app and tap <b>Sign in</b> to get them all back.</p>
     <button class="x ${S.confirm==='signout'?'sure':''}" data-act="signout">${S.confirm==='signout'?'Tap again to sign out on this phone':'Sign out on this phone'}</button></div>`;
   return `<div class="card"><h3>Keep your teams safe</h3>
-    <p class="note">Right now your teams are only on this phone. Create a free account with your email, and you can get all your teams back on a new phone. Optional.</p>
-    ${S.acct?acctForm(S.acct):`<div class="cbtns"><button class="btn go" data-act="acctcreate">Create an account</button><button class="btn" data-act="acctsignin">I have an account</button></div>`}</div>`;
+    <p class="note">Right now your teams are only on this phone. Sign in with Google or make a free email account, and you can get all your teams back on a new phone. Optional.</p>
+    ${S.acct?acctForm(S.acct):`${googleBtn()}<div class="cbtns"><button class="btn" data-act="acctcreate">Create an account with email</button><button class="btn" data-act="acctsignin">Sign in with email</button></div>`}</div>`;
 }
 function gateView(){
   return `<div class="sec" style="gap:14px">
@@ -1072,8 +1108,8 @@ function gateView(){
     <p class="note">Ask a coach for the team's invite code. It's on their Squad tab.</p>
     <form class="addf" id="joinf"><input id="joincode" placeholder="e.g. ABC-234" autocomplete="off" autocapitalize="characters" aria-label="Invite code"><button class="btn go" data-act="join" type="submit">Join</button></form></div>
   ${FB&&!isAccount()?`<div class="card"><h3>Your account</h3>
-    <p class="note">Optional. With a free account (email and password) your teams are saved to you, so you can get them all back on a new phone. Already made one? Sign in.</p>
-    ${S.acct?acctForm(S.acct):'<div class="cbtns"><button class="btn" data-act="acctsignin">Sign in</button><button class="btn" data-act="acctcreate">Create an account</button></div>'}</div>`:''}
+    <p class="note">Optional. Sign in with Google or a free email account and your teams are saved to you, so you can get them all back on a new phone.</p>
+    ${S.acct?acctForm(S.acct):`${googleBtn()}<div class="cbtns"><button class="btn" data-act="acctsignin">Sign in with email</button><button class="btn" data-act="acctcreate">Create an account</button></div>`}</div>`:''}
   <p class="note num" style="text-align:center">Match Day v${APP_VERSION}</p>
   </div>`;
 }
