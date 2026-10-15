@@ -209,10 +209,11 @@ h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:
 <div id="toast" hidden></div>
 
 <script>
+const APP_VERSION='0.1.0';
 /*CFG*/const DEFAULT_CFG={team:'Example FC U10s',short:'Example FC',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   imp:{open:false,busy:false,msg:'',result:null},
-  gate:false,teamId:null,invite:'',
+  gate:false,teamId:null,invite:'',restore:null,
   awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const nice=d=>{if(!d)return'';const t=new Date(d+'T12:00');return isNaN(t)?d:t.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})};
@@ -418,7 +419,8 @@ function squadView(){
     <textarea id="bulknames" placeholder="Paste names, one per line or separated by commas"></textarea>
     <button class="btn" data-act="bulkadd">Add to squad</button>
     <p class="note">Surnames are dropped automatically. If two players share a first name, the app adds their surname initial.</p></div>
-  ${settingsCard(false)}${teamCard()}</div>`;
+  ${settingsCard(false)}${teamCard()}${backupCard()}
+  <p class="note num" style="text-align:center">Match Day v${APP_VERSION}</p></div>`;
 }
 function settingsCard(first){
   const c=S.cfg;
@@ -438,6 +440,54 @@ function setupView(){
     <p class="note">First names only are kept. You can add or remove players later on the Squad tab.</p></div>
   <button class="btn go" data-act="setupdone">Start using the app</button>
   ${teamCard()}</div>`;
+}
+
+/* ---------- backup ---------- */
+// A backup is one JSON file with every document the app stores. New versions may add fields
+// but must keep reading old backups, so never rename or remove a field.
+function backupCard(){
+  const r=S.restore;
+  if(r)return `<div class="card"><h3>Restore this backup?</h3>
+    <p>Saved ${esc(nice(r.exported.slice(0,10)))} from <b>${esc(r.cfg?.team||'a team')}</b>: ${[[r.squad.length,'player'],[Object.keys(r.games).length,'game'],[r.archive.length,'tournament'],[r.awards.length,'award']].map(([n,w])=>n+' '+w+(n===1?'':'s')).join(', ')}.</p>
+    <p class="note">This replaces the team's current squad, games, season record and awards for every coach on the team.</p>
+    <div class="cbtns"><button class="btn warn" data-act="restoreok">Replace with backup</button><button class="btn" data-act="restorecancel">Cancel</button></div></div>`;
+  return `<div class="card"><h3>Backup</h3>
+    <p class="note">Save a copy of everything (squad, games, season record, awards) to this phone. Do it before the end of the season, or before deleting anything.</p>
+    <div class="cbtns"><button class="btn" data-act="backup">Save a backup</button>
+    <label class="btn filebtn">Restore from a backup<input id="restorefile" type="file" accept=".json,application/json"></label></div></div>`;
+}
+async function saveBackup(){
+  const data={app:'match-day',version:APP_VERSION,exported:new Date().toISOString(),
+    cfg:S.cfg,squad:S.squad,tour:S.tour,games:S.games,awards:S.awards,archive:S.archive};
+  const slug=(S.cfg.short||S.cfg.team||'team').replace(/[^\w-]+/g,'-').toLowerCase();
+  const name=`match-day-${slug}-${today()}.json`;
+  const file=new File([JSON.stringify(data,null,1)],name,{type:'application/json'});
+  // Phones: the share sheet lets coaches save to Files, Drive or email. Computers: a normal download.
+  if(navigator.canShare&&navigator.canShare({files:[file]})&&/Mobi|Android|iPhone|iPad/.test(navigator.userAgent)){
+    try{await navigator.share({files:[file],title:name});return}catch(e){if(e.name==='AbortError')return}
+  }
+  const a=document.createElement('a');a.href=URL.createObjectURL(file);a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);toast('Backup saved.');
+}
+async function readBackup(f){
+  try{
+    const d=JSON.parse(await f.text());
+    if(d.app!=='match-day'||!Array.isArray(d.squad)||typeof d.games!=='object')throw 0;
+    S.restore={exported:String(d.exported||''),cfg:d.cfg||null,squad:d.squad,tour:d.tour||{},games:d.games||{},awards:d.awards||[],archive:d.archive||[]};
+  }catch(_){toast("That file isn't a Match Day backup.")}
+  render();
+}
+function applyRestore(){
+  const r=S.restore;S.restore=null;
+  if(r.cfg&&r.cfg.team){S.cfg={...DEFAULT_CFG,...r.cfg};put('club/settings',S.cfg)}
+  S.squad=r.squad;put('club/squad',{players:S.squad});
+  S.tour={...S.tour,...r.tour};put('club/tournament',S.tour);
+  Object.keys(S.games).forEach(id=>{if(!(id in r.games))remove('games/'+id)});
+  S.games=r.games;Object.entries(r.games).forEach(([id,g])=>put('games/'+id,g));
+  const keep=(list,coll)=>{const ids=new Set(list.map(x=>x.id));S[coll].forEach(x=>{if(!ids.has(x.id))remove(coll+'/'+x.id)});
+    list.forEach(({id,...doc})=>put(coll+'/'+id,doc));S[coll]=list};
+  keep(r.awards,'awards');keep(r.archive,'archive');
+  toast('Backup restored.');render();
 }
 
 /* ---------- squad helpers ---------- */
@@ -660,6 +710,9 @@ document.addEventListener('click',e=>{
       S.cfg=c;put('club/settings',c);addNames(document.getElementById('bulknames')?.value);toast('All set.');render();break}
     case'impapply':if(S.confirm==='imp')applyImport();else{S.confirm='imp';render()}break;
     case'mkteam':b.disabled=true;createTeam().finally(()=>{b.disabled=false});break;
+    case'backup':saveBackup();break;
+    case'restoreok':applyRestore();break;
+    case'restorecancel':S.restore=null;render();break;
     case'leave':if(S.confirm==='leave')leaveTeam();else{S.confirm='leave';render()}break;
   }
 });
@@ -702,6 +755,7 @@ document.addEventListener('submit',e=>{
 document.addEventListener('change',e=>{
   const t=e.target;
   if(t.id==='impfile'&&t.files&&t.files[0]){const f=t.files[0];runImport(impPrompt(''),[f]);return}
+  if(t.id==='restorefile'&&t.files&&t.files[0]){readBackup(t.files[0]);t.value='';return}
   if(t.dataset.cfg&&S.cfgLoaded&&S.cfg.team){const k=t.dataset.cfg;let v=t.value.trim().slice(0,40);if(k==='size')v=Math.min(11,Math.max(3,parseInt(v)||5));if(k==='team'&&!v)return;
     S.cfg={...S.cfg,[k]:v};put('club/settings',S.cfg);render();return}
   if(t.dataset.fx){const [id,f]=t.dataset.fx.split('|');const v=t.value.trim().slice(0,40);if(G(id)[f]!==v)mut(id,g=>{g[f]=v});return}

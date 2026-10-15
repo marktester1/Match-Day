@@ -68,11 +68,38 @@ on their phone and use **Share → Add to Home Screen** (iPhone, Safari) or **�
 screen / Install app** (Android, Chrome). It then opens full-screen with its own icon, and
 `sw.js` lets it open with no signal.
 
-To publish changes (after a one-time `firebase login`):
+### Releasing a new version
 
-```sh
-firebase deploy --only hosting,firestore:rules
-```
+Coaches' data lives in Firestore, separate from the code, so publishing never touches it.
+What can hurt it is a new version that reads old data wrongly, so every release goes to a
+beta link first. `main` always matches what's live.
+
+1. Bump `APP_VERSION` in `index.html` (shown at the bottom of the Squad tab) and the cache
+   name in `sw.js`.
+2. Publish to the beta link (live is untouched):
+   ```sh
+   firebase hosting:channel:deploy beta --expires 30d
+   ```
+   Beta uses the **same database** as live. Test with the Test Team (invite code `L83-LTJ`),
+   not a real team. Beta is a different web address, so each phone joins with the code again.
+3. Commit, merge to `main`, tag and push: `git tag v0.2.0 && git push --tags`.
+4. Promote exactly what you tested on beta to live:
+   ```sh
+   firebase hosting:clone match-day-17b23:beta match-day-17b23:live
+   ```
+5. If something goes wrong: Firebase console → Hosting → release history → **Rollback**.
+
+Security rules publish separately: `firebase deploy --only firestore:rules`.
+
+### Keeping data safe between versions
+
+- New versions may **add** fields but never rename or remove them. The app fills in missing
+  fields with defaults (`blank()`, `DEFAULT_CFG`), so old games still load.
+- The free plan has no automatic database backups. Coaches can use **Squad → Backup → Save a
+  backup** (a JSON file of everything) and **Restore from a backup**. Restore must keep
+  reading backups from older versions.
+- A phone that loses its sign-in (cleared browser data, new phone) rejoins with the invite
+  code; the data is safe. Email sign-in before real customers would remove that risk.
 
 `firebase.json` controls which files go online. Only the app files should be published:
 check the "found N files" line (8 today) if you add anything.
