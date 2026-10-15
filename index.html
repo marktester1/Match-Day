@@ -108,6 +108,7 @@ h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:
 .ghead{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .ghead h2{font-size:30px}
 .meta{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.meta.three{grid-template-columns:repeat(3,minmax(0,1fr))}
 /* iPhone Safari gives date boxes a fixed minimum width, which pushed them over their neighbours and widened the page */
 input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;min-height:42px;text-align:left}
 input[type=date]::-webkit-date-and-time-value{text-align:left}
@@ -252,10 +253,10 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.11.0';
+const APP_VERSION='0.12.0';
 /*CFG*/const DEFAULT_CFG={team:'Example FC U10s',short:'Example FC',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
-  gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,teams:false,adding:false,acct:null,
+  gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,teams:false,adding:false,acct:null,
   awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const nice=d=>{if(!d)return'';const t=new Date(d+'T12:00');return isNaN(t)?d:t.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})};
@@ -285,6 +286,8 @@ const clockSub=g=>{if(nPer()===1)return 'of '+fmt((S.tour.len||10)*60000);const 
 function fmt(ms){const s=Math.floor(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}
 function fmtM(ms){const m=ms/60000;return m<1&&ms>0?fmt(ms):Math.round(m)+'m'}
 const bySubTime=g=>[...g.subs].sort((a,b)=>a.at-b.at);
+const tourSize=()=>+S.tour.size||+S.cfg.size||5;   // players a side for this tournament
+const gameSize=g=>+g.size||tourSize();                  // ...unless changed for one game
 const isAway=g=>g.side==='away';
 const usName=()=>S.cfg.short||S.cfg.team||'Us';
 const homeName=g=>isAway(g)?(g.opponent||'Home team'):usName(g);
@@ -353,6 +356,16 @@ function scoreSide(g,k){
   return `<div class="side"><span class="nm">${esc(nm)}<small>${(k==='us')===!isAway(g)?'Home':'Away'}</small></span><div class="sc"><button data-act="score" data-k="${k}" data-d="-1" aria-label="Remove ${who} goal">−</button><b class="num">${g.score[k]}</b><button class="plus" data-act="score" data-k="${k}" data-d="1" aria-label="Add ${who} goal">+</button></div></div>`;
 }
 
+/* ---------- players a side: changing it for one game ---------- */
+function sizeAsk(g,a){
+  const more=a.why==='more';
+  return `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="szq"><div class="box">
+    <h3 id="szq">${more?`Play ${a.n}-a-side this game?`:`Only ${a.n} starting`}</h3>
+    <p class="note">${more?`That makes ${a.n} starting, but this game is ${gameSize(g)}-a-side.`:`This game is ${gameSize(g)}-a-side. Kick off with ${a.n} instead?`} Other games aren't changed.</p>
+    <div class="cbtns"><button class="btn go" data-act="sizeyes">${more?`Yes, ${a.n}-a-side`:`Kick off ${a.n}-a-side`}</button><button class="btn" data-act="sizeno">${more?'No':'Cancel'}</button></div>
+  </div></div>`;
+}
+
 /* ---------- keeper check before kick-off ---------- */
 function keeperAsk(g){
   return `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="gkq"><div class="box">
@@ -400,6 +413,8 @@ function fixPanel(id,g,st){
     <span class="seg fill" role="group" aria-label="Periods">${[[1,'One period'],[2,'Halves'],[4,'Quarters']].map(([v,l])=>`<button class="${nPer()===v?'on':''}" data-act="periods" data-v="${v}">${l}</button>`).join('')}</span>
     ${nPer()>1?`<p class="note">${nPer()===2?'Two halves':'Four quarters'} of ${fmt(perLen())}. Times below count from kick-off: ${Array.from({length:nPer()-1},(_,i)=>perName(i+1)+' starts at '+fmt((i+1)*perLen())).join(', ')}.</p>`:''}
     <p class="note">Applies to every game in this tournament.</p>
+    <label class="lenrow"><span>Players a side, this game</span><input class="num" type="number" min="3" max="11" data-gsize="1" value="${gameSize(g)}"></label>
+    ${gameSize(g)!==tourSize()?`<p class="note">The tournament is ${tourSize()}-a-side. <button class="x" data-act="gsizereset">Use ${tourSize()}</button></p>`:''}
   ${st?`<h3>Clock</h3>
     <div class="addf"><input id="clkset" class="num" inputmode="decimal" placeholder="e.g. 4:30" value="${now}" aria-label="Set the clock to"><button class="btn" data-act="clockset">Set clock</button></div>
     <button class="btn warn" data-act="clock0">${S.confirm==='clk0'?'Tap again to reset the clock to 0:00':'Reset clock to 0:00'}</button>
@@ -462,9 +477,10 @@ function gamesList(){
       <span class="res">${started(g)?`<span class="scr num">${scoreHA(g)}</span>`:''}${status(g)}${started(g)&&!g.done?`<span class="sub num" data-clock="${id}">${nPer()>1?perShort(perOf(el(g)))+' ':''}${clockText(g)}</span>`:''}</span>
     </button>`}).join('')}</div>
   <button class="btn" data-act="fxopen">Enter opponents and kick-off times</button>
-  <div class="meta">
-    <label><span class="lbl">Minutes per game</span><input id="len" class="num" type="number" min="1" max="60" data-tour="len" value="${S.tour.len||10}"></label>
-    <label><span class="lbl">Games</span><input id="cnt" class="num" type="number" min="1" max="10" data-tour="count" value="${S.tour.count||6}"></label></div>
+  <div class="meta three">
+    <label><span class="lbl">Minutes</span><input id="len" class="num" type="number" min="1" max="60" data-tour="len" value="${S.tour.len||10}"></label>
+    <label><span class="lbl">Games</span><input id="cnt" class="num" type="number" min="1" max="10" data-tour="count" value="${S.tour.count||6}"></label>
+    <label><span class="lbl">A side</span><input id="tsize" class="num" type="number" min="3" max="11" data-tour="size" value="${tourSize()}"></label></div>
   <span class="seg fill" role="group" aria-label="Periods">${[[1,'One period'],[2,'Halves'],[4,'Quarters']].map(([v,l])=>`<button class="${nPer()===v?'on':''}" data-act="periods" data-v="${v}">${l}</button>`).join('')}</span>
   ${nPer()>1?`<p class="note">${nPer()===2?'Two halves':'Four quarters'} of ${fmt(perLen())}. The clock pauses by itself at each break.</p>`:''}
   <button class="btn go" data-act="finish">${S.confirm==='finish'?'Tap again to save and start fresh':'Finish tournament and save to season'}</button>
@@ -493,7 +509,7 @@ function gameView(id){
       <button class="${r==='bench'?'on b':''}" data-act="role" data-p="${p.id}" data-r="bench">Bench</button>
       <button class="${r==='out'?'on':''}" data-act="role" data-p="${p.id}" data-r="out">Out</button></span></div>`}).join('')}</div>`
       :`<div class="empty"><b>No squad yet</b>Add the players on the Squad tab first.</div>`}
-    <p class="note">Pick a keeper and ${S.cfg.size-1} more to start. Anyone marked Out isn't in this game.</p></section>`:'';
+    <p class="note">Pick a keeper and ${gameSize(g)-1} more to start${gameSize(g)!==tourSize()?` (${gameSize(g)}-a-side this game)`:''}. Anyone marked Out isn't in this game.</p></section>`:'';
   const others=S.squad.filter(p=>!inGame(g).includes(p.id));
   const late=st&&!g.done&&others.length?`<section class="sec"><button class="btn small" data-act="late" style="align-self:flex-start">${S.addLate?'Hide':'Add a player to the bench'}</button>
     ${S.addLate?`<div class="rows">${others.map(p=>`<div class="row"><span class="who">${esc(p.name)}</span><button class="x" data-act="addbench" data-p="${p.id}">+ Bench</button></div>`).join('')}</div>`:''}</section>`:'';
@@ -516,9 +532,10 @@ function gameView(id){
   </section>
   ${S.scorer&&S.scorer.g===id&&g.goals?.[S.scorer.i]?scorerBar(g,S.scorer.i):''}
   ${S.askGk===id?keeperAsk(g):''}
+  ${S.askSize&&S.askSize.g===id?sizeAsk(g,S.askSize):''}
   <div class="cbtns">${cb}<button class="btn" data-act="fix">${S.fix===id?'Done':st?'Corrections':'Game length'}</button></div>
   ${hint}
-  <div class="pitch"><span class="lbl">On the pitch</span><span class="cnt num">${pitch.length}/${S.cfg.size}</span>
+  <div class="pitch"><span class="lbl">On the pitch</span><span class="cnt num">${pitch.length}/${gameSize(g)}</span>
     <div class="chips">${pitch.length?pitch.map(p=>chip(p,'pitch')).join(''):'<span style="color:#ffffffcc;font-size:14px;padding-top:24px">Pick the starters below</span>'}</div></div>
   <div class="benchbox"><div class="lbl" style="margin-bottom:8px">Bench</div>
     <div class="chips">${bench.length?bench.map(p=>chip(p,'bench')).join(''):'<span class="note">Nobody on the bench</span>'}</div></div>
@@ -718,7 +735,7 @@ function awardsView(){
 /* ---------- season ---------- */
 function finishTournament(){
   const ids=gids();
-  const games=ids.map(id=>{const g=G(id);return{n:g.n,opponent:g.opponent,team:usName(),side:isAway(g)?'away':'home',time:g.time,pitch:g.pitch,score:g.score,done:g.done,played:started(g),gk:keeper(g)||g.gk||null,mins:mins(g),goals:(g.goals||[]).map(x=>({at:x.at,p:x.p||null}))}});
+  const games=ids.map(id=>{const g=G(id);return{n:g.n,opponent:g.opponent,team:usName(),side:isAway(g)?'away':'home',size:gameSize(g),time:g.time,pitch:g.pitch,score:g.score,done:g.done,played:started(g),gk:keeper(g)||g.gk||null,mins:mins(g),goals:(g.goals||[]).map(x=>({at:x.at,p:x.p||null}))}});
   const doc={name:S.tour.name||'',date:S.tour.date||today(),savedAt:Date.now(),games,players:S.squad.map(p=>({id:p.id,name:p.name}))};
   const tid='t'+Date.now();
   put('archive/'+tid,doc);S.archive=[{id:tid,...doc},...S.archive.filter(t=>t.id!==tid)];
@@ -771,8 +788,17 @@ document.addEventListener('click',e=>{
     case'scorer':{const sc=S.scorer;if(sc)mut(sc.g,g=>{if(g.goals&&g.goals[sc.i])g.goals[sc.i].p=b.dataset.p});S.scorer=null;render();break}
     case'scorerskip':S.scorer=null;render();break;
     case'kick':{const g0=G(id);
+      if(!started(g0)&&g0.starters.length&&g0.starters.length<gameSize(g0)){S.askSize={g:id,n:g0.starters.length,why:'fewer'};render();break}
       if(!started(g0)&&!g0.gk&&!b.dataset.nokeeper){S.askGk=id;render();break}
       S.askGk=null;mut(id,g=>{g.clock.running=true;g.clock.startedAt=Date.now();g.done=false});break}
+    case'sizeyes':{const a=S.askSize;S.askSize=null;if(!a)break;
+      mut(a.g,g=>{g.size=a.n});
+      if(a.why==='more'){mut(a.g,g=>{g.starters=g.starters.filter(x=>x!==a.p);g.bench=g.bench.filter(x=>x!==a.p);if(g.gk===a.p)g.gk=null;
+        if(a.r==='gk'){g.gk=a.p;g.starters.unshift(a.p)}else g.starters.push(a.p)});toast(`Game ${G(a.g).n} is ${a.n}-a-side.`)}
+      else{toast(`Game ${G(a.g).n} is ${a.n}-a-side.`);document.querySelector('[data-act=kick]')?.click()}
+      break}
+    case'gsizereset':mut(id,g=>{delete g.size});break;
+    case'sizeno':S.askSize=null;render();break;
     case'pickgk':mut(id,g=>{g.gk=p;g.starters=[p,...g.starters.filter(x=>x!==p)]});S.askGk=null;
       mut(id,g=>{g.clock.running=true;g.clock.startedAt=Date.now();g.done=false});toast(`${nameOf(p)} is in goal. Kicked off.`);break;
     case'gkcancel':S.askGk=null;render();break;
@@ -781,7 +807,9 @@ document.addEventListener('click',e=>{
     case'reopen':mut(id,g=>{g.done=false});break;
     case'role':{const r=b.dataset.r,g=G(id);
       const startersAfter=g.starters.filter(x=>x!==p).length;
-      if((r==='start'||r==='gk')&&!g.starters.includes(p)&&startersAfter>=S.cfg.size){toast(`${S.cfg.size} are already starting.`+' Move one to the bench first.');break}
+      if((r==='start'||r==='gk')&&!g.starters.includes(p)&&startersAfter>=gameSize(g)){
+        if(gameSize(g)>=11){toast('11 are already starting. Move one to the bench first.');break}
+        S.askSize={g:id,n:startersAfter+1,p,r,why:'more'};render();break}
       mut(id,g=>{g.starters=g.starters.filter(x=>x!==p);g.bench=g.bench.filter(x=>x!==p);if(g.gk===p)g.gk=null;
         if(r==='gk'){g.gk=p;g.starters.unshift(p)}if(r==='start')g.starters.push(p);if(r==='bench')g.bench.push(p)});break}
     case'tap':{const side=b.dataset.side;
@@ -887,6 +915,7 @@ document.addEventListener('change',e=>{
   const t=e.target;
   if(t.id==='myname'){lsSet('matchday-name',t.value.trim().slice(0,40));myTeams().forEach(x=>touchMember(x,true));toast('Name saved.');return}
   if(t.id==='restorefile'&&t.files&&t.files[0]){readBackup(t.files[0]);t.value='';return}
+  if(t.dataset.gsize&&S.game){const v=Math.min(11,Math.max(3,parseInt(t.value)||tourSize()));mut(S.game,g=>{if(v===tourSize())delete g.size;else g.size=v});return}
   if(t.dataset.goalp&&S.game){const i=+t.dataset.goalp,v=t.value||null;mut(S.game,g=>{if(g.goals?.[i])g.goals[i].p=v});return}
   if(t.dataset.subat&&S.game){const i=+t.dataset.subat,v=parseT(t.value);if(v==null){toast('Type the time like 4:30.');render();return}
     if(!tryFix(S.game,g=>{g.subs[i].at=v},`Sub moved to ${fmt(v)}.`))render();return}
@@ -896,7 +925,7 @@ document.addEventListener('change',e=>{
   if(t.dataset.aw){S.aw[t.dataset.aw]=t.value;return}
   if(t.dataset.awr){if(t.dataset.awr in S.aw.picks)S.aw.picks[t.dataset.awr]=t.value;return}
   if(t.dataset.field&&S.game){const f=t.dataset.field,v=t.value.trim().slice(0,40);if(G(S.game)[f]!==v)mut(S.game,g=>{g[f]=v})}
-  if(t.dataset.tour){const k=t.dataset.tour;let v=t.value;if(k==='len')v=Math.min(60,Math.max(1,parseInt(v)||10));if(k==='count')v=Math.min(10,Math.max(1,parseInt(v)||6));
+  if(t.dataset.tour){const k=t.dataset.tour;let v=t.value;if(k==='len')v=Math.min(60,Math.max(1,parseInt(v)||10));if(k==='count')v=Math.min(10,Math.max(1,parseInt(v)||6));if(k==='size')v=Math.min(11,Math.max(3,parseInt(v)||5));
     S.tour={...S.tour,[k]:v};saveTour();if(k==='len'||k==='count')render()}
 });
 document.addEventListener('focusout',()=>setTimeout(()=>{if(pending)render()},0));

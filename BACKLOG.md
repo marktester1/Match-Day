@@ -5,6 +5,8 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Waiting on testing
 
+- **v0.12.0 on beta, not yet live:** players a side per tournament, with a check when a game has
+  more or fewer starters.
 - **v0.11.0 live:** ☰ menu with profile and team members; halves and quarters, Home v Away,
   keeper pop-up, goal scorers.
   Beta: https://match-day-beta-17b23.web.app (Beta Test Team code `L9J-Q7H`).
@@ -33,11 +35,6 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
    without losing the games already played.
    - Question: the Games count can already be changed at the bottom of the Games list;
      is the problem with saved tournaments, or something else?
-
-5. **Players a side per match.** Change how many play on each side for a single game
-   (e.g. 5-a-side normally, 7-a-side in one fixture), without changing the team default.
-   - Today "Players a side" is one setting for the whole team (Squad → Team settings).
-   - Question: set it per game, or per tournament?
 
 ## Later
 
