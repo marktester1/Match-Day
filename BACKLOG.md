@@ -5,7 +5,8 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Waiting on testing
 
-- **v0.8.0 live:** goal scorers. Beta (https://match-day-beta-17b23.web.app) is its own Firebase project;
+- **v0.9.0 on beta, not yet live:** halves and quarters.
+- **v0.8.1 live:** goal scorers, icon fix. Beta (https://match-day-beta-17b23.web.app) is its own Firebase project;
   beta test team invite code: `L9J-Q7H`.
 - **Accounts:** Google sign-in works on live. Still to try: signing in on a second phone and
   seeing the teams come back.
@@ -24,10 +25,6 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
    - Questions: points per score (union 5 / 2 / 3?), or just count tries for younger age
      groups? Drop goals? Does "keeper" disappear for rugby?
    - Word changes: "goals" → "points", "pitch" stays, "GK" hidden.
-
-4. **Halves and quarters.** Choose 1, 2 or 4 periods per game; the clock runs per period
-   with a break between, and subs/minutes still add up.
-   - Question: should the clock stop by itself at the end of each period?
 
 5. **Edit saved tournaments.** Change results, opponents and scorers on a tournament
    already saved to the Season tab.
