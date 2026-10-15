@@ -1,7 +1,7 @@
 // Lets Match Day open with no signal at the pitch.
 // The team's data is cached separately by Firestore; this only caches the app's own files.
-const CACHE='matchday-v14';
-const SHELL=['./','index.html','firebase-config.js','manifest.webmanifest','icons/icon-192.png','icons/apple-touch-icon.png'];
+const CACHE='matchday-v15';
+const SHELL=['./','index.html','firebase-config.js','manifest.webmanifest?v=whistle','icons/icon-192.png?v=whistle','icons/apple-touch-icon.png?v=whistle'];
 
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
