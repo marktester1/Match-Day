@@ -36,6 +36,31 @@ The live version runs as a Claude artifact. It uses three Claude runtime feature
 All of this is in the `/* ---------- saving ---------- */` and `/* connect */` sections of
 `index.html`. To run it as a standalone app, swap those calls for your own backend.
 
+## Running it outside Claude with Firebase (free plan)
+
+Outside Claude the app saves to Firebase Firestore, so every coach on a team sees the same
+squad and games live, and it keeps working with no signal (changes upload when it's back).
+Each phone signs in anonymously, with no passwords. A coach creates a team and gets a 6-character
+invite code, and other coaches join with that code. Teams can't see each other's data.
+
+| File | What it is |
+|---|---|
+| `firebase-config.js` | Which Firebase project to use. Empty `apiKey` = run without syncing. |
+| `firestore.rules` | Who can read and write what. Paste into the Firebase console. |
+
+One-time setup (Spark plan, no card needed):
+
+1. Go to https://console.firebase.google.com, click **Create a project** (e.g. `match-day`).
+   Google Analytics can be turned off.
+2. **Build → Authentication → Get started → Sign-in method → Anonymous → Enable.**
+3. **Build → Firestore Database → Create database**, location **europe-west2 (London)**,
+   start in **production mode**.
+4. In Firestore, open the **Rules** tab, replace everything with `firestore.rules`, click **Publish**.
+5. **Project settings (cog) → Your apps → Web (`</>`)**, register an app (no hosting needed),
+   and copy the `firebaseConfig` values into `firebase-config.js`.
+6. Run `python3 -m http.server 8000` and open http://localhost:8000 (it must be served, not
+   opened as a file).
+
 ## Moving to a store app (plan)
 
 1. Replace `put()` / `remove()` / the `onSnapshot` listeners with Firebase Firestore

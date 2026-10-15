@@ -1,0 +1,47 @@
+rules_version = '2';
+// Match Day: each team's data lives under teams/{teamId}. Only phones that joined with
+// the team's invite code (a doc in teams/{teamId}/members) can read or change it.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function memberPath(t) { return /databases/$(database)/documents/teams/$(t)/members/$(request.auth.uid); }
+    function teamAfter(t) { return getAfter(/databases/$(database)/documents/teams/$(t)).data; }
+
+    // Invite code -> team id. Readable one code at a time, never listable.
+    match /codes/{code} {
+      allow get: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['team'])
+        && teamAfter(request.resource.data.team).code == code
+        && teamAfter(request.resource.data.team).createdBy == request.auth.uid;
+    }
+
+    match /teams/{t} {
+      allow get: if signedIn() && exists(memberPath(t));
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['code', 'createdBy', 'created'])
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.code is string
+        && request.resource.data.code.size() == 6;
+
+      // Joining: a phone adds itself, and must quote the team's invite code.
+      match /members/{uid} {
+        allow get, delete: if signedIn() && uid == request.auth.uid;
+        allow create, update: if signedIn() && uid == request.auth.uid
+          && request.resource.data.keys().hasOnly(['code', 'joined'])
+          && request.resource.data.code == teamAfter(t).code;
+      }
+
+      // The app's data: club/settings, club/squad, club/tournament, games/*, awards/*, archive/*.
+      match /{coll}/{doc} {
+        allow read: if signedIn() && coll in ['club', 'games', 'awards', 'archive'] && exists(memberPath(t));
+        allow write: if signedIn() && coll in ['club', 'games', 'awards', 'archive'] && existsAfter(memberPath(t));
+      }
+    }
+
+    // Everything else is closed.
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -172,6 +172,7 @@ h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:
 .note{font-size:13px;color:var(--muted);margin:0}
 .ro [data-act]:not([data-act="tab"]):not([data-act="open"]):not([data-act="back"]){pointer-events:none;opacity:.45}
 .ro .chip{pointer-events:none}
+.gate .trow,.gate #tabs{display:none}
 #toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;max-width:calc(100% - 32px);z-index:40}
 @media (prefers-reduced-motion:no-preference){.chip{transition:transform .12s}}
 </style>
@@ -199,6 +200,7 @@ h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:
 /*CFG*/const DEFAULT_CFG={team:'Winscombe U9 Girls',short:'Winscombe',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   imp:{open:false,busy:false,msg:'',result:null},
+  gate:false,teamId:null,invite:'',
   awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const nice=d=>{if(!d)return'';const t=new Date(d+'T12:00');return isNaN(t)?d:t.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})};
@@ -274,10 +276,12 @@ function render(){
   if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA')&&a.type!=='file'&&a.closest('#view, .top')){pending=true;syncHeader(false);return}
   pending=false;syncHeader(true);
   document.body.classList.toggle('ro',S.readOnly);
+  document.body.classList.toggle('gate',!!S.gate);
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===S.tab));
   const v=document.getElementById('view');
   const ta=document.getElementById('imptext');const keep=ta?ta.value:'';
-  document.getElementById('hteam').textContent=S.cfg.team||'';
+  document.getElementById('hteam').textContent=S.gate?'':S.cfg.team||'';
+  if(S.gate){v.innerHTML=gateView();return}
   if(S.cfgLoaded&&!S.cfg.team){v.innerHTML=setupView();return}
   v.innerHTML=S.tab==='games'&&S.fx&&!S.game?fixturesView():S.tab==='games'?(S.game?gameView(S.game):gamesList()):S.tab==='minutes'?minutesView():S.tab==='awards'?awardsView():S.tab==='season'?seasonView():squadView();
   const ta2=document.getElementById('imptext');if(ta2&&keep)ta2.value=keep;
@@ -396,13 +400,13 @@ function squadView(){
   return `<div class="sec">
   <form class="addf" id="addf"><input id="newname" placeholder="Player's first name" autocomplete="off" aria-label="New player's first name"><button class="btn go" data-act="add" type="submit">Add</button></form>
   ${S.squad.length?`<div class="rows">${S.squad.map(p=>`<div class="row"><span class="who">${esc(p.name)}</span><button class="x ${S.confirm===p.id?'sure':''}" data-act="del" data-p="${p.id}">${S.confirm===p.id?'Tap to remove':'Remove'}</button></div>`).join('')}</div>`
-  :`<div class="empty"><b>Add your squad</b>Type each player's first name above, or paste a list below. Everyone with the link sees the same squad.</div>`}
+  :`<div class="empty"><b>Add your squad</b>Type each player's first name above, or paste a list below. Every coach on the team sees the same squad.</div>`}
   <p class="note num">${S.squad.length} in the squad. First names only, please.</p>
   <div class="card"><h3>Add several at once</h3>
     <textarea id="bulknames" placeholder="Paste names, one per line or separated by commas"></textarea>
     <button class="btn" data-act="bulkadd">Add to squad</button>
     <p class="note">Surnames are dropped automatically. If two players share a first name, the app adds their surname initial.</p></div>
-  ${settingsCard(false)}</div>`;
+  ${settingsCard(false)}${teamCard()}</div>`;
 }
 function settingsCard(first){
   const c=S.cfg;
@@ -421,7 +425,7 @@ function setupView(){
     <textarea id="bulknames" placeholder="Paste or type names, one per line or separated by commas"></textarea>
     <p class="note">First names only are kept. You can add or remove players later on the Squad tab.</p></div>
   <button class="btn go" data-act="setupdone">Start using the app</button>
-  </div>`;
+  ${teamCard()}</div>`;
 }
 
 /* ---------- squad helpers ---------- */
@@ -592,7 +596,7 @@ document.addEventListener('click',e=>{
   if(suppressClick){suppressClick=false;return}
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act,id=S.game,p=b.dataset.p;
-  if(!['reset','del','impapply','finish','awdel','tdel','wipe'].includes(a))S.confirm=null;
+  if(!['reset','del','impapply','finish','awdel','tdel','wipe','leave'].includes(a))S.confirm=null;
   switch(a){
     case'tab':S.tab=b.dataset.t;S.pick=null;render();break;
     case'open':S.game=b.dataset.g;S.pick=null;S.addLate=false;render();window.scrollTo(0,0);break;
@@ -643,6 +647,8 @@ document.addEventListener('click',e=>{
       if(!c.team){toast('Add a team name first.');break}if(!c.short)c.short=c.team.split(' ')[0];
       S.cfg=c;put('club/settings',c);addNames(document.getElementById('bulknames')?.value);toast('All set.');render();break}
     case'impapply':if(S.confirm==='imp')applyImport();else{S.confirm='imp';render()}break;
+    case'mkteam':b.disabled=true;createTeam().finally(()=>{b.disabled=false});break;
+    case'leave':if(S.confirm==='leave')leaveTeam();else{S.confirm='leave';render()}break;
   }
 });
 
@@ -674,6 +680,7 @@ document.addEventListener('pointerup',e=>endDrag(e,false));
 document.addEventListener('pointercancel',e=>endDrag(e,true));
 
 document.addEventListener('submit',e=>{
+  if(e.target.id==='joinf'){e.preventDefault();joinTeam(document.getElementById('joincode').value);return}
   if(e.target.id!=='addf')return;e.preventDefault();
   const i=document.getElementById('newname'),n=i.value.trim();if(!n)return;
   if(S.squad.some(p=>p.name.toLowerCase()===n.toLowerCase())){toast(`${n} is already in the squad.`);return}
@@ -705,23 +712,116 @@ setInterval(()=>{
 
 /* connect */
 function setSync(on,txt){const s=document.getElementById('sync');s.textContent=txt;s.classList.toggle('on',on)}
+function subscribe(err){
+  db.doc('club/settings').onSnapshot(s=>{S.cfg=s.exists?{...DEFAULT_CFG,...s.data()}:{...DEFAULT_CFG};S.cfgLoaded=true;render()},err);
+  db.doc('club/squad').onSnapshot(s=>{S.squad=s.exists?[...(s.data().players||[])]:[];render()},err);
+  db.doc('club/tournament').onSnapshot(s=>{if(s.exists)S.tour={...S.tour,...s.data()};render()},err);
+  db.collection('awards').onSnapshot(s=>{S.awards=s.docs.map(d=>({id:d.id,...d.data()}));render()},err);
+  db.collection('archive').onSnapshot(s=>{S.archive=s.docs.map(d=>({id:d.id,...d.data()}));render()},err);
+  db.collection('games').onSnapshot(s=>{const o={};s.docs.forEach(d=>{o[d.id]=d.data()});S.games=o;render()},err);
+}
+
+/* firebase: used when the app runs outside Claude (web link or phone app) */
+const FB_SDK='https://www.gstatic.com/firebasejs/12.10.0/';
+const TEAM_KEY='matchday-team';
+let FB=null;
+const lsGet=k=>{try{return localStorage.getItem(k)}catch(_){return null}};
+const lsSet=(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(_){}};
+function fsAdapter(base){ // same shape as Claude's db, so put()/remove()/subscribe() work unchanged
+  const {F,fs}=FB,ref=p=>F.doc(fs,base+'/'+p);
+  const fail=e=>{if(e&&e.code==='permission-denied')toast("This phone isn't allowed to change this team. Rejoin with the invite code on the Squad tab.");else toast("Couldn't save that change.")};
+  // Don't wait for the server: writes go into the phone's offline copy at once and upload when there's signal.
+  return{
+    doc:p=>({set:b=>{F.setDoc(ref(p),b).catch(fail);return Promise.resolve()},delete:()=>{F.deleteDoc(ref(p)).catch(fail);return Promise.resolve()},
+      onSnapshot:(cb,err)=>F.onSnapshot(ref(p),s=>cb({exists:s.exists(),data:()=>s.data()}),err)}),
+    collection:c=>({onSnapshot:(cb,err)=>F.onSnapshot(F.collection(fs,base+'/'+c),s=>cb({docs:s.docs.map(d=>({id:d.id,data:()=>d.data()}))}),err)})
+  };
+}
+function liveLabel(){if(FB&&db)setSync(navigator.onLine,navigator.onLine?'Shared · live':'Offline · saved on this phone')}
+addEventListener('online',liveLabel);addEventListener('offline',liveLabel);
+async function connectFirebase(){
+  let cfg=null;try{cfg=(await import('./firebase-config.js')).default}catch(_){}
+  if(!cfg||!cfg.apiKey)return false;
+  setSync(false,'Connecting…');
+  const [{initializeApp},A,F]=await Promise.all(['app','auth','firestore'].map(m=>import(FB_SDK+'firebase-'+m+'.js')));
+  const app=initializeApp(cfg);
+  FB={A,F,auth:A.getAuth(app),fs:F.initializeFirestore(app,{ignoreUndefinedProperties:true,localCache:F.persistentLocalCache({tabManager:F.persistentMultipleTabManager()})})};
+  // Each phone gets an anonymous sign-in: no passwords. Joining a team with its invite code is what grants access.
+  await FB.auth.authStateReady();
+  if(!FB.auth.currentUser)await A.signInAnonymously(FB.auth);
+  const t=lsGet(TEAM_KEY);
+  if(t)openTeam(t);else{S.gate=true;setSync(false,'No team yet');render()}
+  return true;
+}
+function openTeam(t){
+  const {F,fs}=FB;
+  lsSet(TEAM_KEY,t);S.gate=false;S.teamId=t;db=fsAdapter('teams/'+t);liveLabel();
+  F.getDoc(F.doc(fs,'teams',t)).then(s=>{S.invite=s.data()?.code||'';render()}).catch(()=>{});
+  subscribe(e=>{if(e&&e.code==='permission-denied'){setSync(false,'Not a member');toast("This phone isn't a member of that team any more.");leaveTeam(false)}});
+  render();
+}
+const CODE_CHARS='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O or 1/I to misread
+const newCode=()=>Array.from(crypto.getRandomValues(new Uint8Array(6)),n=>CODE_CHARS[n%CODE_CHARS.length]).join('');
+const showCode=c=>c?c.slice(0,3)+'-'+c.slice(3):'';
+async function createTeam(){
+  const {F,fs,auth}=FB,uid=auth.currentUser.uid;
+  if(!navigator.onLine){toast('You need a signal to create a team.');return}
+  for(let i=0;i<3;i++){ // retry if the random code is already taken
+    const tref=F.doc(F.collection(fs,'teams')),code=newCode(),b=F.writeBatch(fs);
+    b.set(tref,{code,createdBy:uid,created:F.serverTimestamp()});
+    b.set(F.doc(fs,'teams',tref.id,'members',uid),{code,joined:F.serverTimestamp()});
+    b.set(F.doc(fs,'codes',code),{team:tref.id});
+    b.set(F.doc(fs,'teams',tref.id,'club','settings'),{...DEFAULT_CFG,team:'',short:''});
+    try{await b.commit();openTeam(tref.id);return}catch(e){if(e.code!=='permission-denied')break}
+  }
+  toast("Couldn't create the team. Check your connection and try again.");
+}
+async function joinTeam(raw){
+  const {F,fs,auth}=FB,code=String(raw||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(code.length!==6){toast('Invite codes are 6 letters and numbers, like ABC-234.');return}
+  if(!navigator.onLine){toast('You need a signal to join a team.');return}
+  try{
+    const s=await F.getDoc(F.doc(fs,'codes',code));
+    if(!s.exists()){toast("That code didn't match a team. Check it with the coach who sent it.");return}
+    const t=s.data().team;
+    await F.setDoc(F.doc(fs,'teams',t,'members',auth.currentUser.uid),{code,joined:F.serverTimestamp()});
+    openTeam(t);toast('Joined.');
+  }catch(e){toast("Couldn't join. Check your connection and try again.")}
+}
+function leaveTeam(remote=true){
+  const {F,fs,auth}=FB;
+  if(remote&&S.teamId)F.deleteDoc(F.doc(fs,'teams',S.teamId,'members',auth.currentUser.uid)).catch(()=>{});
+  lsSet(TEAM_KEY,null);location.reload();
+}
+function gateView(){
+  return `<div class="sec" style="gap:14px">
+  <div class="card"><h3>Start a new team</h3>
+    <p class="note">You'll get an invite code to give the other coaches.</p>
+    <button class="btn go" data-act="mkteam">Create a team</button></div>
+  <div class="card"><h3>Join a team</h3>
+    <p class="note">Ask a coach for the team's invite code. It's on their Squad tab.</p>
+    <form class="addf" id="joinf"><input id="joincode" placeholder="e.g. ABC-234" autocomplete="off" autocapitalize="characters" aria-label="Invite code"><button class="btn go" data-act="join" type="submit">Join</button></form></div>
+  </div>`;
+}
+function teamCard(){
+  if(!FB||!S.teamId)return'';
+  return `<div class="card"><h3>Invite other coaches</h3>
+    <p>Invite code: <b class="num" style="font-family:var(--display);font-size:26px;letter-spacing:.06em">${esc(showCode(S.invite))||'…'}</b></p>
+    <p class="note">Other coaches open the app, tap <b>Join a team</b> and enter this code. Everyone who joins can see and change this team's squad and games.</p>
+    <button class="x ${S.confirm==='leave'?'sure':''}" data-act="leave">${S.confirm==='leave'?'Tap again to leave this team on this phone':'Leave this team on this phone'}</button></div>`;
+}
+
 render();
 (async()=>{
   try{
-    if(!window.claude||!window.claude.use){setSync(false,'Not syncing');return}
+    if(!window.claude||!window.claude.use){if(!await connectFirebase())setSync(false,'Not syncing');return}
     window.claude.use('sample').then(async s=>{sample=s;if(s){const l=await s.limits().catch(()=>null);canPhoto=!!(l&&l.images)}render()});
     db=await window.claude.use('db');
     if(!db){setSync(false,'Not syncing');toast('Changes are only on this device right now.');return}
     const user=await window.claude.use('user');
     if(user){try{const c=await user.can('data.write');if(c===false)S.readOnly=true}catch(_){}}
     setSync(true,S.readOnly?'View only':'Shared · live');
-    const err=e=>{if(e&&e.code==='revoked')setSync(false,'Not syncing')};
-    db.doc('club/settings').onSnapshot(s=>{S.cfg=s.exists?{...DEFAULT_CFG,...s.data()}:{...DEFAULT_CFG};S.cfgLoaded=true;render()},err);
-    db.doc('club/squad').onSnapshot(s=>{S.squad=s.exists?[...(s.data().players||[])]:[];render()},err);
-    db.doc('club/tournament').onSnapshot(s=>{if(s.exists)S.tour={...S.tour,...s.data()};render()},err);
-    db.collection('awards').onSnapshot(s=>{S.awards=s.docs.map(d=>({id:d.id,...d.data()}));render()},err);
-    db.collection('archive').onSnapshot(s=>{S.archive=s.docs.map(d=>({id:d.id,...d.data()}));render()},err);
-    db.collection('games').onSnapshot(s=>{const o={};s.docs.forEach(d=>{o[d.id]=d.data()});S.games=o;render()},err);
+    subscribe(e=>{if(e&&e.code==='revoked')setSync(false,'Not syncing')});
   }catch(e){setSync(false,'Not syncing')}
 })();
 </script>
