@@ -238,7 +238,7 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.9.0';
+const APP_VERSION='0.9.1';
 /*CFG*/const DEFAULT_CFG={team:'Example FC U10s',short:'Example FC',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,teams:false,adding:false,acct:null,
@@ -476,7 +476,6 @@ function gameView(id){
   </section>
   ${S.scorer&&S.scorer.g===id&&g.goals?.[S.scorer.i]?scorerBar(g,S.scorer.i):''}
   <div class="cbtns">${cb}<button class="btn" data-act="fix">${S.fix===id?'Done':st?'Corrections':'Game length'}</button></div>
-  ${S.fix===id?fixPanel(id,g,st):''}
   ${hint}
   <div class="pitch"><span class="lbl">On the pitch</span><span class="cnt num">${pitch.length}/${S.cfg.size}</span>
     <div class="chips">${pitch.length?pitch.map(p=>chip(p,'pitch')).join(''):'<span style="color:#ffffffcc;font-size:14px;padding-top:24px">Pick the starters below</span>'}</div></div>
@@ -492,6 +491,7 @@ function gameView(id){
     ${g.score.us>(g.goals||[]).length?`<p class="note">${g.score.us-(g.goals||[]).length} earlier goal${g.score.us-(g.goals||[]).length>1?'s':''} without a scorer.</p>`:''}</section>`:''}
   ${g.subs.length?`<section class="sec log"><div class="ghead"><h3>Subs</h3><button class="x" data-act="undo">Undo last sub</button></div>
     <div class="rows">${subs.map(e=>`<div class="row"><span class="at num">${tAt(e.at)}</span><span class="txt"><span class="onn">▲ ${esc(nameOf(e.on))}</span> &nbsp;<span class="off">▼ ${esc(nameOf(e.off))}</span>${e.gk?' <span class="note">(in goal)</span>':''}</span></div>`).join('')}</div></section>`:''}
+  ${S.fix===id?fixPanel(id,g,st):''}
   </div>`;
 }
 function minutesView(){
@@ -751,7 +751,7 @@ document.addEventListener('click',e=>{
     case'switch':if(b.dataset.id===S.teamId){S.teams=false;render()}else switchTeam(b.dataset.id);break;
     case'addteam':S.teams=false;S.gate=true;S.adding=true;render();break;
     case'gateback':S.gate=false;S.adding=false;S.teams=true;render();break;
-    case'fix':S.fix=S.fix===id?null:id;render();break;
+    case'fix':S.fix=S.fix===id?null:id;render();if(S.fix)setTimeout(()=>document.querySelector('.fix')?.scrollIntoView({behavior:'smooth',block:'start'}),0);break;
     case'clockset':{const v=parseT(document.getElementById('clkset')?.value);if(v==null){toast('Type the time like 4:30.');break}
       tryFix(id,g=>{g.clock.acc=v;if(g.clock.running)g.clock.startedAt=Date.now();g.subs.forEach(e=>{if(e.at>v)e.at=v});(g.gkChanges||[]).forEach(c=>{if(c.at>v)c.at=v})},`Clock set to ${fmt(v)}.`);break}
     case'clock0':if(S.confirm==='clk0'){S.confirm=null;tryFix(id,g=>{g.clock.acc=0;if(g.clock.running)g.clock.startedAt=Date.now();g.subs.forEach(e=>e.at=0);(g.gkChanges||[]).forEach(c=>c.at=0)},'Clock reset to 0:00.')}else{S.confirm='clk0';render()}break;
