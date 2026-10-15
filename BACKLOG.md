@@ -5,9 +5,9 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Waiting on testing
 
-- **v0.4.2 on beta, not yet live:** multiple teams per phone, A–Z squad, optional email
-  accounts, iPhone date-box fix, generic examples. Needs Email/Password switched on in Firebase (Security → Authentication →
-  Sign-in method), then a try of create account / sign in on a second browser.
+- **Accounts (live since v0.4.2):** creating an account and signing in on a second phone
+  haven't been tried yet. Needs Email/Password switched on in Firebase (Security →
+  Authentication → Sign-in method).
 
 ## Features
 
