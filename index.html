@@ -52,7 +52,12 @@ h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:
 .trow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,150px);gap:8px}
 @media(max-width:420px){.trow{grid-template-columns:1fr 130px}}
 
-.tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;flex-direction:column;gap:8px;padding:4px 0 6px}
+.sections{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--line)}
+.sections button{border:0;background:none;padding:8px 4px 10px;font-family:var(--display);font-size:21px;font-weight:700;letter-spacing:.02em;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1px}
+.sections button.on{color:var(--ink);border-bottom-color:var(--grass)}
+.tabs{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+body.sec-season .trow{display:none}
 .tabs button{border:0;background:none;padding:9px 2px;border-radius:7px;font-family:var(--display);font-size:17px;font-weight:600;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:400px){.tabs button{font-size:15px}}
 .pickchips{display:flex;flex-wrap:wrap;gap:6px}
@@ -236,24 +241,21 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 <div class="wrap">
   <header class="top">
     <div class="brand"><h1><span id="hteam" style="color:inherit"></span> <span>Match Day</span></h1><span class="hright"><span id="sync" class="sync">Connecting…</span><button id="menubtn" class="menubtn" data-act="menu" aria-label="Menu" hidden><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button></span></div>
-    <div class="trow">
-      <input id="tname" data-tour="name" placeholder="Tournament name" aria-label="Tournament name">
-      <input id="tdate" data-tour="date" type="date" aria-label="Tournament date">
-    </div>
   </header>
-  <nav class="tabs" id="tabs">
-    <button data-act="tab" data-t="games">Games</button>
-    <button data-act="tab" data-t="minutes">Minutes</button>
-    <button data-act="tab" data-t="awards">Awards</button>
-    <button data-act="tab" data-t="season">Season</button>
-    <button data-act="tab" data-t="squad">Squad</button>
+  <nav class="nav" id="tabs" aria-label="Sections">
+    <div class="sections" id="sections"></div>
+    <div class="tabs" id="subtabs"></div>
   </nav>
+  <div class="trow">
+    <input id="tname" data-tour="name" placeholder="Tournament name" aria-label="Tournament name">
+    <input id="tdate" data-tour="date" type="date" aria-label="Tournament date">
+  </div>
   <main id="view"></main>
 </div>
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.12.1';
+const APP_VERSION='0.13.0';
 /*CFG*/const DEFAULT_CFG={team:'Example FC U10s',short:'Example FC',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,teams:false,adding:false,acct:null,
@@ -286,6 +288,10 @@ const clockSub=g=>{if(nPer()===1)return 'of '+fmt((S.tour.len||10)*60000);const 
 function fmt(ms){const s=Math.floor(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}
 function fmtM(ms){const m=ms/60000;return m<1&&ms>0?fmt(ms):Math.round(m)+'m'}
 const bySubTime=g=>[...g.subs].sort((a,b)=>a.at-b.at);
+const SECTIONS={tournament:{label:'Tournament',tabs:[['games','Games'],['minutes','Minutes']]},
+  season:{label:'Season',tabs:[['season','Results'],['awards','Awards'],['squad','Squad']]}};
+const secOf=t=>SECTIONS.season.tabs.some(([k])=>k===t)?'season':'tournament';
+const lastTab={tournament:'games',season:'season'}; // where you were in each section
 const tourSize=()=>+S.tour.size||+S.cfg.size||5;   // players a side for this tournament
 const gameSize=g=>+g.size||tourSize();                  // ...unless changed for one game
 const isAway=g=>g.side==='away';
@@ -455,7 +461,9 @@ function render(){
   document.body.classList.toggle('ro',S.readOnly);
   document.body.classList.toggle('gate',!!(S.gate||S.teams||S.menu));
   const mb=document.getElementById('menubtn');if(mb)mb.hidden=!(FB&&S.teamId&&!S.gate);
-  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===S.tab));
+  const sec=secOf(S.tab);document.body.classList.toggle('sec-season',sec==='season');
+  document.getElementById('sections').innerHTML=Object.entries(SECTIONS).map(([k,x])=>`<button class="${k===sec?'on':''}" data-act="section" data-s="${k}" aria-pressed="${k===sec}">${x.label}</button>`).join('');
+  document.getElementById('subtabs').innerHTML=SECTIONS[sec].tabs.map(([k,l])=>`<button class="${k===S.tab?'on':''}" data-act="tab" data-t="${k}">${l}</button>`).join('');
   const v=document.getElementById('view');
   const h=document.getElementById('hteam');h.textContent=S.gate?'':S.cfg.team||'';
   const sw=!!(FB&&S.teamId&&!S.gate);h.classList.toggle('teamsw',sw);if(sw)h.dataset.act='teams';else delete h.dataset.act;
@@ -791,7 +799,8 @@ document.addEventListener('click',e=>{
   const a=b.dataset.act,id=S.game,p=b.dataset.p;
   if(!['reset','del','finish','awdel','tdel','wipe','leave','clock0','subdel','signout'].includes(a))S.confirm=null;
   switch(a){
-    case'tab':S.tab=b.dataset.t;S.pick=null;render();break;
+    case'tab':S.tab=b.dataset.t;lastTab[secOf(S.tab)]=S.tab;S.pick=null;render();break;
+    case'section':S.tab=lastTab[b.dataset.s]||SECTIONS[b.dataset.s].tabs[0][0];S.pick=null;render();window.scrollTo(0,0);break;
     case'open':S.game=b.dataset.g;S.pick=null;S.addLate=false;render();window.scrollTo(0,0);break;
     case'back':S.fix=null;S.game=null;S.pick=null;render();break;
     case'reset':if(S.confirm==='reset'){S.confirm=null;gids().forEach(g=>{const o=G(g),n=blank(o.n);Object.assign(n,{opponent:o.opponent,time:o.time,pitch:o.pitch,team:o.team});S.games[g]=n;put('games/'+g,n)});toast('Scores, line-ups and subs cleared. Fixtures kept.');render()}else{S.confirm='reset';render()}break;

@@ -5,8 +5,8 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Waiting on testing
 
-- **v0.12.1 on beta, not yet live:** players a side per tournament; at kick-off the keeper check comes first, then the check when a game has
-  more or fewer starters.
+- **v0.13.0 on beta, not yet live:** Tournament / Season sections (Games, Minutes | Results, Awards,
+  Squad); players a side per tournament with a keeper-then-size check at kick-off.
 - **v0.11.0 live:** ☰ menu with profile and team members; halves and quarters, Home v Away,
   keeper pop-up, goal scorers.
   Beta: https://match-day-beta-17b23.web.app (Beta Test Team code `L9J-Q7H`).
