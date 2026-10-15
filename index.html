@@ -271,7 +271,7 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.14.0';
+const APP_VERSION='0.14.1';
 /*CFG*/const DEFAULT_CFG={team:'Example FC U10s',short:'Example FC',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,notes:[],noteFor:'',showDone:false,teams:false,adding:false,acct:null,
@@ -821,7 +821,6 @@ function seasonView(){
   const ac=awardCounts(),gl=goalTally(ts.flatMap(t=>t.games||[])),now=goalTally(gids().map(G));
   const allG={...gl};Object.entries(now).forEach(([p,n])=>{allG[p]=(allG[p]||0)+n});
   const scorers=Object.entries(allG).sort((a,b)=>b[1]-a[1]||nameOf(a[0]).localeCompare(nameOf(b[0])));
-  const rank=scorers.map(([,n],i,arr)=>arr.findIndex(([,m])=>m===n)+1); // joint places share a number
   const ppl=new Map();S.squad.forEach(p=>ppl.set(p.id,p.name));Object.keys(tot).forEach(p=>{if(!ppl.has(p))ppl.set(p,nameOf(p))});
   const rows=[...ppl].map(([id,name])=>({id,name,t:tot[id]||0,n:gp[id]||0,a:ac[id]||0})).sort((a,b)=>a.t-b.t);
   const max=Math.max(1,...rows.map(r=>r.t)),avg=rows.length?rows.reduce((s,r)=>s+r.t,0)/rows.length:0;
@@ -832,7 +831,7 @@ function seasonView(){
     <span class="bar"><i style="width:${(r.t/max*100).toFixed(1)}%"></i></span><span class="brk num">${r.n} game${r.n===1?'':'s'}${gl[r.id]?` · ${gl[r.id]} goal${gl[r.id]>1?'s':''}`:''}${r.a?` · <span class="star">★${r.a}</span> award${r.a>1?'s':''}`:''}</span></div>`}).join('')}</div>`
   :`<div class="empty"><b>Nothing saved yet</b>When a tournament ends, tap "Finish tournament and save to season" on the Games tab.</div>`}</section>
   ${scorers.length?`<section class="sec"><h3>Goal scorers</h3><p class="note">Every scorer this season, most goals first${Object.keys(now).length?', including the tournament in progress':''}.</p>
-    <div class="rows">${scorers.map(([p,n],i)=>`<div class="row"><span class="rk num">${rank[i]}</span><span class="who">${esc(nameOf(p))}${now[p]?` <span class="note">(${now[p]} today)</span>`:''}</span><b class="num">${n}</b></div>`).join('')}</div></section>`:''}
+    <div class="rows">${scorers.map(([p,n])=>`<div class="row"><span class="who">${esc(nameOf(p))}${now[p]?` <span class="note">(${now[p]} today)</span>`:''}</span><b class="num">${n}</b></div>`).join('')}</div></section>`:''}
   ${ts.length?`<section class="sec"><h3>Tournaments</h3>${ts.map(t=>{const r=record(t.games||[]),open=S.openT===t.id;
     return `<div class="tcard"><button data-act="topen" data-id="${t.id}"><span><span class="tn">${esc(t.name||'Tournament')}</span><span class="ts" style="display:block">${esc(nice(t.date))}</span></span>
       <span class="num" style="text-align:right"><b>W${r.W} D${r.D} L${r.L}</b><span class="ts" style="display:block">Goals ${r.F}–${r.A}</span></span></button>
