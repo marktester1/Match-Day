@@ -5,10 +5,8 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Waiting on testing
 
-- **v0.14.1 on beta, not yet live:** game strip, Notes tab, all goal scorers in order; Tournament / Season
-  sections; players a side per tournament with keeper-then-size check at kick-off.
-- **v0.11.0 live:** ☰ menu with profile and team members; halves and quarters, Home v Away,
-  keeper pop-up, goal scorers.
+- **v0.14.1 live:** Tournament / Season sections, game strip, Notes, goal scorers, players a side,
+  ☰ menu with team members, halves and quarters, Home v Away.
   Beta: https://match-day-beta-17b23.web.app (Beta Test Team code `L9J-Q7H`).
 - **Accounts:** Google sign-in works on live. Still to try: signing in on a second phone and
   seeing the teams come back.
