@@ -5,9 +5,8 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Waiting on testing
 
-- **v0.5.0 live:** Continue with Google (works after adding the redirect
-  addresses in Google Cloud). Still to try: signing in on a second phone and seeing the
-  teams come back; email accounts likewise.
+- **Accounts:** Google sign-in works on live and beta (v0.5.0). Still to try: signing in on a
+  second phone and seeing the teams come back.
 
 ## Features
 
