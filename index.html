@@ -232,7 +232,7 @@ input[type=date]::-webkit-date-and-time-value{text-align:left}
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.4.1';
+const APP_VERSION='0.4.2';
 /*CFG*/const DEFAULT_CFG={team:'Example FC U10s',short:'Example FC',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   imp:{open:false,busy:false,msg:'',result:null},
@@ -1018,7 +1018,7 @@ const acctVals=()=>({email:(document.getElementById('acctemail')?.value||'').tri
 async function createAccount(){
   const {A,auth}=FB,{email,pw}=acctVals();
   try{await signedIn();await A.linkWithCredential(auth.currentUser,A.EmailAuthProvider.credential(email,pw));
-    syncTeamList();S.acct=null;toast('Account created. Sign in with it on any phone to get your teams back.');render()}
+    syncTeamList();S.acct=null;toast(S.teamId?'Account created. Sign in with it on any phone to get your teams back.':'Account created. Now create or join a team: it will be saved to your account.');render()}
   catch(e){toast(authMsg(e))}
 }
 async function signInAccount(){
@@ -1071,9 +1071,9 @@ function gateView(){
   <div class="card"><h3>Join a team</h3>
     <p class="note">Ask a coach for the team's invite code. It's on their Squad tab.</p>
     <form class="addf" id="joinf"><input id="joincode" placeholder="e.g. ABC-234" autocomplete="off" autocapitalize="characters" aria-label="Invite code"><button class="btn go" data-act="join" type="submit">Join</button></form></div>
-  ${FB&&!isAccount()?`<div class="card"><h3>New phone?</h3>
-    <p class="note">If you made a Match Day account, sign in to get all your teams back.</p>
-    ${S.acct==='signin'?acctForm('signin'):'<button class="btn" data-act="acctsignin">Sign in</button>'}</div>`:''}
+  ${FB&&!isAccount()?`<div class="card"><h3>Your account</h3>
+    <p class="note">Optional. With a free account (email and password) your teams are saved to you, so you can get them all back on a new phone. Already made one? Sign in.</p>
+    ${S.acct?acctForm(S.acct):'<div class="cbtns"><button class="btn" data-act="acctsignin">Sign in</button><button class="btn" data-act="acctcreate">Create an account</button></div>'}</div>`:''}
   <p class="note num" style="text-align:center">Match Day v${APP_VERSION}</p>
   </div>`;
 }
