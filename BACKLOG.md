@@ -34,11 +34,7 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
    - Question: the Games count can already be changed at the bottom of the Games list;
      is the problem with saved tournaments, or something else?
 
-5. **Awards outside tournaments.** Awards that aren't tied to a tournament or training
-   (e.g. end of season, player of the month).
-   - Question: is that the meaning, or should the awards screen move somewhere else?
-
-6. **Players a side per match.** Change how many play on each side for a single game
+5. **Players a side per match.** Change how many play on each side for a single game
    (e.g. 5-a-side normally, 7-a-side in one fixture), without changing the team default.
    - Today "Players a side" is one setting for the whole team (Squad → Team settings).
    - Question: set it per game, or per tournament?
