@@ -234,15 +234,14 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.6.0';
+const APP_VERSION='0.7.0';
 /*CFG*/const DEFAULT_CFG={team:'Example FC U10s',short:'Example FC',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
-  imp:{open:false,busy:false,msg:'',result:null},
   gate:false,teamId:null,invite:'',restore:null,fix:null,teams:false,adding:false,acct:null,
   awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const nice=d=>{if(!d)return'';const t=new Date(d+'T12:00');return isNaN(t)?d:t.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})};
-let db=null,sample=null,canPhoto=false,pending=false,suppressClick=false;
+let db=null,pending=false,suppressClick=false;
 const queues={};
 const gids=()=>Array.from({length:Math.min(10,Math.max(1,S.tour.count||6))},(_,i)=>'g'+(i+1));
 
@@ -364,7 +363,6 @@ function render(){
   document.body.classList.toggle('gate',!!(S.gate||S.teams));
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===S.tab));
   const v=document.getElementById('view');
-  const ta=document.getElementById('imptext');const keep=ta?ta.value:'';
   const h=document.getElementById('hteam');h.textContent=S.gate?'':S.cfg.team||'';
   const sw=!!(FB&&S.teamId&&!S.gate);h.classList.toggle('teamsw',sw);if(sw)h.dataset.act='teams';else delete h.dataset.act;
   h.classList.toggle('others',sw&&myTeams().some(t=>t!==S.teamId&&teamInfo[t]?.running?.length));
@@ -372,7 +370,6 @@ function render(){
   if(S.teams){v.innerHTML=teamsView();return}
   if(S.cfgLoaded&&!S.cfg.team){v.innerHTML=setupView();return}
   v.innerHTML=S.tab==='games'&&S.fx&&!S.game?fixturesView():S.tab==='games'?(S.game?gameView(S.game):gamesList()):S.tab==='minutes'?minutesView():S.tab==='awards'?awardsView():S.tab==='season'?seasonView():squadView();
-  const ta2=document.getElementById('imptext');if(ta2&&keep)ta2.value=keep;
 }
 function syncHeader(force){
   const n=document.getElementById('tname'),d=document.getElementById('tdate');
@@ -384,24 +381,6 @@ function status(g){
   if(g.clock.running)return'<span class="pill live">Live</span>';
   if(started(g))return'<span class="pill live">Paused</span>';
   return'<span class="pill">Not started</span>';
-}
-function importCard(){
-  const I=S.imp;
-  if(!sample)return `<div class="card"><h3>New tournament schedule</h3><p class="note">Send a photo of the team sheet to Claude in chat and it can load the fixtures and line-ups here for you.</p></div>`;
-  if(!I.open)return `<button class="btn" data-act="impopen">Load a new tournament schedule</button>`;
-  const R=I.result;
-  return `<div class="card"><div class="ghead"><h3>Load a schedule</h3><button class="x" data-act="impclose">Close</button></div>
-    <p class="note">Take a photo of the team sheet, or paste the fixtures and line-ups as text. Claude reads it and fills in the games. This uses your own Claude usage.</p>
-    <div class="cbtns">${canPhoto?`<label class="btn go filebtn">${I.busy?'Reading…':'Photo of team sheet'}<input id="impfile" type="file" accept="image/*" ${I.busy?'disabled':''}></label>`:''}</div>
-    <textarea id="imptext" placeholder="e.g. 9:30 v Riverside, Pitch 2. GK Sam. Alex, Charlie, Jo, Max"></textarea>
-    <button class="btn" data-act="imptext" ${I.busy?'disabled':''}>${I.busy?'Reading…':'Read pasted text'}</button>
-    ${I.msg?`<p class="note">${esc(I.msg)}</p>`:''}
-    ${R?`<div class="preview"><div class="lbl">Check this before loading</div>
-      ${R.games.map((g,i)=>`<div class="pv"><b class="num">${esc(g.time||'G'+(i+1))}</b><span><b>v ${esc(g.opponent||'?')}</b>${g.pitch?` · Pitch ${esc(g.pitch)}`:''}<br><span class="sm">GK ${esc(g.keeper||'not set')} · ${esc((g.starters||[]).join(', '))}</span></span></div>`).join('')}
-      ${R.newPlayers.length?`<p class="note">New to the squad: ${esc(R.newPlayers.join(', '))}</p>`:''}
-      <button class="btn go" data-act="impapply">${S.confirm==='imp'?`Tap again to replace all games`:`Load ${R.games.length} games`}</button>
-      <p class="note">Loading replaces every game's scores, line-ups and subs. The squad keeps everyone already on it.</p></div>`:''}
-  </div>`;
 }
 function gamesList(){
   let W=0,D=0,L=0,F=0,A=0;const ids=gids();
@@ -418,7 +397,6 @@ function gamesList(){
   <button class="btn" data-act="fxopen">Enter opponents and kick-off times</button>
   <div class="lenrow"><label for="len">Game length (minutes)</label><input id="len" class="num" type="number" min="1" max="60" data-tour="len" value="${S.tour.len||10}">
     <label for="cnt">Games</label><input id="cnt" class="num" type="number" min="1" max="10" data-tour="count" value="${S.tour.count||6}"></div>
-  ${importCard()}
   <button class="btn go" data-act="finish">${S.confirm==='finish'?'Tap again to save and start fresh':'Finish tournament and save to season'}</button>
   <p class="note">Saves results and every player's minutes to the Season tab, then clears the games ready for the next tournament.</p>
   <button class="btn warn" data-act="reset">${S.confirm==='reset'?'Tap again to clear without saving':'Clear scores and line-ups without saving'}</button>
@@ -689,53 +667,12 @@ function seasonView(){
   </div>`;
 }
 
-/* ---------- schedule import ---------- */
-function impPrompt(extra){
-  return `You are reading a youth football tournament schedule for the ${S.cfg.team} team (they may be listed as ${S.cfg.short}). Extract ${S.cfg.short}'s fixtures in kick-off order and the planned line-up for each game.
-Known squad first names: ${S.squad.map(p=>p.name).join(', ')||'(none yet)'}.
-Reply with only JSON in this shape:
-{"name": string or null, "date": "YYYY-MM-DD" or null, "players": ["Alex", ...], "games": [{"time": "9:30", "opponent": "Riverside", "pitch": "2", "keeper": "Sam", "starters": ["Alex","Charlie"]}]}
-Rules: opponent is the other team, never ${S.cfg.short}. keeper is the goalkeeper for that game; starters are the other players starting (do not repeat the keeper). Use first names only, matching the known squad spelling where possible; if two players share a first name, add a surname initial (e.g. "Grace B"). Never include surnames otherwise. If names are crossed out with handwritten replacements, use the printed plan. players lists every ${S.cfg.short} player on the sheet. Leave a field null or empty if it is not shown.${extra?'\n\nSchedule text:\n'+extra:''}`;
-}
-async function runImport(input,images){
-  S.imp.busy=true;S.imp.msg='Reading the schedule. This can take up to a minute.';S.imp.result=null;render();
-  try{
-    const r=await sample.json(input,images?{images}:{});
-    if(!r||!Array.isArray(r.games)||!r.games.length)throw{code:'empty'};
-    const known=new Set(S.squad.map(p=>p.name.toLowerCase()));
-    const all=[...(r.players||[]),...r.games.flatMap(g=>[g.keeper,...(g.starters||[])])].filter(Boolean).map(s=>String(s).trim().slice(0,30));
-    const newPlayers=[...new Set(all.filter(n=>!known.has(n.toLowerCase())))];
-    S.imp.result={name:r.name,date:r.date,games:r.games.slice(0,10),newPlayers};
-    S.imp.msg='';
-  }catch(e){
-    S.imp.msg=e.code==='not_granted'?'Reading schedules needs permission to use Claude. You can still set up each game by hand.'
-      :e.code==='rate_limited'?'Too many requests just now. Try again in a minute.'
-      :e.code==='image_rejected'?'That photo could not be read. Try a clearer or smaller photo.'
-      :e.code==='empty'||e.code==='invalid_json'?"Couldn't find any fixtures in that. Try a clearer photo, or paste the fixtures as text."
-      :'Something went wrong reading that. Try again.';
-  }
-  S.imp.busy=false;render();
-}
-function applyImport(){
-  const R=S.imp.result;if(!R)return;
-  const squad=[...S.squad];
-  const idFor=n=>{if(!n)return null;n=String(n).trim().slice(0,30);let p=squad.find(x=>x.name.toLowerCase()===n.toLowerCase());if(!p){p={id:'p'+Math.random().toString(36).slice(2,9),name:n};squad.push(p)}return p.id};
-  R.newPlayers.forEach(idFor);
-  const games=R.games.map((x,i)=>{const g=blank(i+1);g.time=String(x.time||'');g.opponent=String(x.opponent||'');g.pitch=String(x.pitch||'');
-    g.gk=idFor(x.keeper);g.starters=[...new Set([g.gk,...(x.starters||[]).map(idFor)].filter(Boolean))].slice(0,S.cfg.size);
-    g.bench=squad.map(p=>p.id).filter(p=>!g.starters.includes(p));return g});
-  S.squad=squad;saveSquad();
-  S.tour={...S.tour,count:games.length,...(R.name?{name:String(R.name)}:{}),...(R.date&&/^\d{4}-\d\d-\d\d$/.test(R.date)?{date:R.date}:{})};saveTour();
-  games.forEach((g,i)=>{const id='g'+(i+1);S.games[id]=g;put('games/'+id,g)});
-  S.imp={open:false,busy:false,msg:'',result:null};S.confirm=null;toast(`Loaded ${games.length} games.`);render();
-}
-
 /* ---------- actions ---------- */
 document.addEventListener('click',e=>{
   if(suppressClick){suppressClick=false;return}
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act,id=S.game,p=b.dataset.p;
-  if(!['reset','del','impapply','finish','awdel','tdel','wipe','leave','clock0','subdel','signout'].includes(a))S.confirm=null;
+  if(!['reset','del','finish','awdel','tdel','wipe','leave','clock0','subdel','signout'].includes(a))S.confirm=null;
   switch(a){
     case'tab':S.tab=b.dataset.t;S.pick=null;render();break;
     case'open':S.game=b.dataset.g;S.pick=null;S.addLate=false;render();window.scrollTo(0,0);break;
@@ -778,9 +715,6 @@ document.addEventListener('click',e=>{
     case'late':S.addLate=!S.addLate;render();break;
     case'addbench':mut(id,g=>{if(!g.bench.includes(p))g.bench.push(p)});break;
     case'del':if(S.confirm===p){S.confirm=null;S.squad=S.squad.filter(x=>x.id!==p);saveSquad()}else{S.confirm=p;render()}break;
-    case'impopen':S.imp.open=true;render();break;
-    case'impclose':S.imp={open:false,busy:false,msg:'',result:null};render();break;
-    case'imptext':{const t=(document.getElementById('imptext')?.value||'').trim();if(!t){toast('Paste the fixtures first.');break}runImport(impPrompt(t.slice(0,20000)));break}
     case'finish':if(S.confirm==='finish'){S.confirm=null;finishTournament()}else{S.confirm='finish';render()}break;
     case'awtype':S.aw.type=b.dataset.v;render();break;
     case'awpick':if(p in S.aw.picks)delete S.aw.picks[p];else S.aw.picks[p]='';render();break;
@@ -804,7 +738,6 @@ document.addEventListener('click',e=>{
       const sz=document.getElementById('cfg-size');c.size=Math.min(11,Math.max(3,parseInt(sz?.value)||5));
       if(!c.team){toast('Add a team name first.');break}if(!c.short)c.short=c.team.split(' ')[0];
       S.cfg=c;put('club/settings',c);addNames(document.getElementById('bulknames')?.value);toast('All set.');render();break}
-    case'impapply':if(S.confirm==='imp')applyImport();else{S.confirm='imp';render()}break;
     case'mkteam':b.disabled=true;createTeam().finally(()=>{b.disabled=false});break;
     case'backup':saveBackup();break;
     case'restoreok':applyRestore();break;
@@ -851,7 +784,6 @@ document.addEventListener('submit',e=>{
 });
 document.addEventListener('change',e=>{
   const t=e.target;
-  if(t.id==='impfile'&&t.files&&t.files[0]){const f=t.files[0];runImport(impPrompt(''),[f]);return}
   if(t.id==='restorefile'&&t.files&&t.files[0]){readBackup(t.files[0]);t.value='';return}
   if(t.dataset.subat&&S.game){const i=+t.dataset.subat,v=parseT(t.value);if(v==null){toast('Type the time like 4:30.');render();return}
     if(!tryFix(S.game,g=>{g.subs[i].at=v},`Sub moved to ${fmt(v)}.`))render();return}
@@ -886,14 +818,14 @@ function subscribe(err){
   db.collection('games').onSnapshot(s=>{const o={};s.docs.forEach(d=>{o[d.id]=d.data()});S.games=o;render()},err);
 }
 
-/* firebase: used when the app runs outside Claude (web link or phone app) */
+/* firebase: where every team's data lives */
 const FB_SDK='https://www.gstatic.com/firebasejs/12.10.0/';
 const TEAM_KEY='matchday-team';   // the team open now
 const TEAMS_KEY='matchday-teams'; // every team this phone belongs to (a coach can have several)
 let FB=null;
 const lsGet=k=>{try{return localStorage.getItem(k)}catch(_){return null}};
 const lsSet=(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(_){}};
-function fsAdapter(base){ // same shape as Claude's db, so put()/remove()/subscribe() work unchanged
+function fsAdapter(base){ // the small storage interface put()/remove()/subscribe() use
   const {F,fs}=FB,ref=p=>F.doc(fs,base+'/'+p);
   const fail=e=>{if(e&&e.code==='permission-denied')toast("This phone isn't allowed to change this team. Rejoin with the invite code on the Squad tab.");else toast("Couldn't save that change.")};
   // Don't wait for the server: writes go into the phone's offline copy at once and upload when there's signal.
@@ -1141,16 +1073,8 @@ function teamCard(){
 render();
 (async()=>{
   try{
-    if(!window.claude||!window.claude.use){
-      if('serviceWorker' in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('sw.js').catch(()=>{});
-      if(!await connectFirebase())setSync(false,'Not syncing');return}
-    window.claude.use('sample').then(async s=>{sample=s;if(s){const l=await s.limits().catch(()=>null);canPhoto=!!(l&&l.images)}render()});
-    db=await window.claude.use('db');
-    if(!db){setSync(false,'Not syncing');toast('Changes are only on this device right now.');return}
-    const user=await window.claude.use('user');
-    if(user){try{const c=await user.can('data.write');if(c===false)S.readOnly=true}catch(_){}}
-    setSync(true,S.readOnly?'View only':'Shared · live');
-    subscribe(e=>{if(e&&e.code==='revoked')setSync(false,'Not syncing')});
+    if('serviceWorker' in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+    if(!await connectFirebase())setSync(false,'Not syncing');
   }catch(e){setSync(false,'Not syncing')}
 })();
 </script>

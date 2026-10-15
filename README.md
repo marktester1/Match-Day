@@ -9,44 +9,38 @@ youth 5-a-side tournaments of 6 games; works for any team size from 3 to 11.
 | File | What it is |
 |---|---|
 | `index.html` | The whole app: one self-contained page (HTML, CSS and JavaScript) |
-| `tools/make_copy.py` | Makes a blank copy for another team (`python3 tools/make_copy.py "Sven's Team Match Day" sven.html`) |
+| `firebase-config.js` | Live and beta Firebase settings; the app picks one from its web address |
+| `firestore.rules` | Who can read and write what (published to both projects) |
+| `sw.js`, `manifest.webmanifest`, `icons/` | Home-screen app: offline opening, name and whistle icon |
+| `tools/build_public.sh` | The list of files that get published (runs before every publish) |
+| `tools/make_icons.mjs` | Draws the icon and renders its sizes |
 
 ## Running it on your Mac
 
-Open `index.html` in a browser, or serve the folder:
+Serve the folder (it must be served, not opened as a file):
 
 ```sh
 python3 -m http.server 8000   # then open http://localhost:8000
 ```
 
-Outside Claude the header shows **Not syncing**: everything works, but changes live only in
-that browser tab and are lost on reload.
+On localhost the app uses the **beta** project, so local testing never touches live data.
 
-## How it stores data today
+## How it stores data
 
-The live version runs as a Claude artifact. It uses three Claude runtime features through
-`window.claude.use(...)`:
-
-- `db`: shared, live storage, so every coach sees the same squad, games and subs.
-  Documents: `club/settings`, `club/squad`, `club/tournament`, `games/g1..g10`,
-  `awards/<id>`, `archive/<id>`.
-- `user`: whether the viewer may edit.
-- `sample`: reading a team-sheet photo with Claude to fill in fixtures.
-
-All of this is in the `/* ---------- saving ---------- */` and `/* connect */` sections of
-`index.html`. To run it as a standalone app, swap those calls for your own backend.
-
-## Running it outside Claude with Firebase (free plan)
-
-Outside Claude the app saves to Firebase Firestore, so every coach on a team sees the same
+Match Day is a web app on Firebase (free Spark plan). Every coach on a team sees the same
 squad and games live, and it keeps working with no signal (changes upload when it's back).
-Each phone signs in anonymously, with no passwords. A coach creates a team and gets a 6-character
-invite code, and other coaches join with that code. Teams can't see each other's data.
+Each phone signs in anonymously; coaches can add Google or email sign-in so their teams
+follow them to a new phone. A coach creates a team and gets a 6-character invite code, and
+other coaches join with it. Teams can't see each other's data.
 
-| File | What it is |
-|---|---|
-| `firebase-config.js` | Which Firebase project to use. Empty `apiKey` = run without syncing. |
-| `firestore.rules` | Who can read and write what. Paste into the Firebase console. |
+Firestore layout:
+
+- `teams/{teamId}`: invite code and creator; `teams/{teamId}/members/{uid}`: who's in the team
+- `teams/{teamId}/club/settings|squad|tournament`, `games/g1..g10`, `awards/<id>`, `archive/<id>`
+- `codes/{CODE}`: invite code → team id
+- `users/{uid}`: the teams each sign-in belongs to
+
+## Setting up a Firebase project from scratch
 
 One-time setup (Spark plan, no card needed):
 
