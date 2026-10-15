@@ -5,6 +5,8 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Waiting on testing
 
+- **v0.15.0 on beta, not yet live:** save confirmation (goes to Season → Results), no empty saves,
+  edit saved tournaments.
 - **v0.14.1 live:** Tournament / Season sections, game strip, Notes, goal scorers, players a side,
   ☰ menu with team members, halves and quarters, Home v Away.
   Beta: https://match-day-beta-17b23.web.app (Beta Test Team code `L9J-Q7H`).
@@ -26,10 +28,7 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
      groups? Drop goals? Does "keeper" disappear for rugby?
    - Word changes: "goals" → "points", "pitch" stays, "GK" hidden.
 
-3. **Edit saved tournaments.** Change results, opponents and scorers on a tournament
-   already saved to the Season tab.
-
-4. **Change the number of games after it's set.** Add or remove a game mid-tournament
+3. **Change the number of games after it's set.** Add or remove a game mid-tournament
    without losing the games already played.
    - Question: the Games count can already be changed at the bottom of the Games list;
      is the problem with saved tournaments, or something else?
