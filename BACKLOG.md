@@ -5,9 +5,7 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Waiting on testing
 
-- **v0.15.0 on beta, not yet live:** save confirmation (goes to Season → Results), no empty saves,
-  edit saved tournaments.
-- **v0.14.1 live:** Tournament / Season sections, game strip, Notes, goal scorers, players a side,
+- **v0.15.0 live:** save confirmation, edit saved tournaments; Tournament / Season sections, game strip, Notes, goal scorers, players a side,
   ☰ menu with team members, halves and quarters, Home v Away.
   Beta: https://match-day-beta-17b23.web.app (Beta Test Team code `L9J-Q7H`).
 - **Accounts:** Google sign-in works on live. Still to try: signing in on a second phone and
