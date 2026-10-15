@@ -214,6 +214,7 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 .teamrow .who{flex:1 1 auto}
 .teamrow.cur .who{color:var(--grass)}
 .flag.run{color:var(--live)}
+.evl{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;min-width:64px}
 .rk{font-family:var(--display);font-size:18px;color:var(--muted);min-width:22px}
 .tedit{display:flex;flex-direction:column;gap:12px;padding-top:8px}
 .tg{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid var(--line);border-radius:10px}
@@ -276,10 +277,10 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.15.0';
+const APP_VERSION='0.16.0';
 /*CFG*/const DEFAULT_CFG={team:'Example FC U10s',short:'Example FC',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
-  gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,teams:false,adding:false,acct:null,
+  gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,teams:false,adding:false,acct:null,
   awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const nice=d=>{if(!d)return'';const t=new Date(d+'T12:00');return isNaN(t)?d:t.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})};
@@ -320,13 +321,19 @@ const usName=()=>S.cfg.short||S.cfg.team||'Us';
 const homeName=g=>isAway(g)?(g.opponent||'Home team'):usName(g);
 const awayName=g=>isAway(g)?usName(g):(g.opponent||'Away team');
 const scoreHA=g=>isAway(g)?g.score.them+'–'+g.score.us:g.score.us+'–'+g.score.them;
+const isRugby=()=>S.cfg.sport==='rugby';
+const triesOnly=()=>isRugby()&&S.cfg.rscore==='tries';
+const RTYPES={try:{n:'Try',p:5},con:{n:'Conversion',p:2},pen:{n:'Penalty',p:3},drop:{n:'Drop goal',p:3}};
+const ptsOf=x=>!isRugby()?1:triesOnly()?(x.type==='try'?1:0):(RTYPES[x.type]?.p||0);
+const Words=()=>isRugby()?(triesOnly()?{goals:'Tries',goal:'try',Goal:'Try',scorers:'Try scorers'}:{goals:'Points',goal:'score',Goal:'Score',scorers:'Points scorers'}):{goals:'Goals',goal:'goal',Goal:'Goal',scorers:'Goal scorers'};
+const evLabel=x=>isRugby()?(RTYPES[x.type]?.n||'Score'):'';
 const scorerName=p=>p==='og'?'Own goal':p?nameOf(p):'Scorer not set';
-function goalTally(games){const c={};games.forEach(g=>(g.goals||[]).forEach(x=>{if(x.p&&x.p!=='og')c[x.p]=(c[x.p]||0)+1}));return c}
+function goalTally(games){const c={};games.forEach(g=>(g.goals||[]).forEach(x=>{if(x.p&&x.p!=='og')c[x.p]=(c[x.p]||0)+ptsOf(x)}));return c}
 const alpha=l=>[...l].sort((a,b)=>a.name.localeCompare(b.name,'en',{sensitivity:'base'}));
 const byName=ids=>[...ids].sort((a,b)=>nameOf(a).localeCompare(nameOf(b),'en',{sensitivity:'base'}));
 
 function onPitch(g){const s=new Set(g.starters);for(const e of bySubTime(g)){s.delete(e.off);if(e.on)s.add(e.on)}return s}
-function keeper(g){const ev=[...bySubTime(g).filter(e=>e.gk).map(e=>({at:e.at,p:e.on})),...(g.gkChanges||[])].sort((a,b)=>a.at-b.at);let k=g.gk;ev.forEach(e=>k=e.p);return k}
+function keeper(g){if(isRugby())return null;const ev=[...bySubTime(g).filter(e=>e.gk).map(e=>({at:e.at,p:e.on})),...(g.gkChanges||[])].sort((a,b)=>a.at-b.at);let k=g.gk;ev.forEach(e=>k=e.p);return k}
 function inGame(g){return [...new Set([...g.starters,...g.bench,...g.subs.flatMap(e=>[e.off,e.on])])].filter(Boolean)}
 function benchNow(g){const p=onPitch(g);return inGame(g).filter(x=>!p.has(x))}
 function mins(g){
@@ -359,6 +366,7 @@ let tt;function toast(m){const t=document.getElementById('toast');t.textContent=
 function swap(id,a,aSide,b,bSide){
   const g=G(id);
   if(aSide==='pitch'&&bSide==='pitch'){ // change keeper between two players on the pitch
+    if(isRugby())return;
     const k=keeper(g);if(a!==k&&b!==k){toast('Drag the keeper onto a player to swap the gloves.');return}
     const nk=a===k?b:a;
     if(!started(g))mut(id,g=>{g.gk=nk});
@@ -418,7 +426,7 @@ function gameStrip(cur){
 function tryKick(id,o={}){
   const g=G(id);
   if(!started(g)){
-    if(!g.gk&&!o.nokeeper){S.askGk=id;S.askSize=null;render();return}
+    if(!isRugby()&&!g.gk&&!o.nokeeper){S.askGk=id;S.askSize=null;render();return}
     const n=g.starters.length;
     if(!o.sizeOk&&n&&n!==gameSize(g)){S.askGk=null;S.askSize={g:id,n,why:n<gameSize(g)?'fewer':'kickmore'};render();return}
   }
@@ -448,12 +456,32 @@ function keeperAsk(g){
   </div></div>`;
 }
 
+/* ---------- rugby scoring: what was scored, then (for us) who ---------- */
+function addScore(id,k,type){
+  let i=-1;
+  mut(id,g=>{const x={at:el(g),type};
+    if(k==='us'){x.p=null;g.goals=[...(g.goals||[]),x];i=g.goals.length-1;g.score.us+=ptsOf(x)}
+    else{g.opp=[...(g.opp||[]),x];g.score.them+=ptsOf(x)}});
+  if(k==='us')S.scorer={g:id,i};render();
+}
+function removeScore(id,k){
+  mut(id,g=>{if(k==='us'){const gs=g.goals||[];if(!gs.length)return;const x=gs[gs.length-1];g.goals=gs.slice(0,-1);g.score.us=Math.max(0,g.score.us-ptsOf(x))}
+    else{const os=g.opp||[];if(!os.length)return;const x=os[os.length-1];g.opp=os.slice(0,-1);g.score.them=Math.max(0,g.score.them-ptsOf(x))}});
+  S.scorer=null;render();
+}
+function rugbyBar(g,k){
+  return `<div class="hint scorer"><b>${k==='us'?'What did we score?':'What did '+esc(g.opponent||'they')+' score?'}</b>
+    <div class="pickchips">${Object.entries(RTYPES).map(([t,x])=>`<button class="pc" data-act="rtype" data-type="${t}">${x.n} +${x.p}</button>`).join('')}
+      <button class="pc" data-act="rcancel">Cancel</button></div></div>`;
+}
+
 /* ---------- goal scorers ---------- */
 function scorerBar(g,i){
   const on=byName([...onPitchAt(g,g.goals[i].at)]);
-  return `<div class="hint scorer"><b>Who scored?</b>
+  const x=g.goals[i];
+  return `<div class="hint scorer"><b>Who scored${isRugby()?' the '+evLabel(x).toLowerCase():''}?</b>
     <div class="pickchips">${on.map(p=>`<button class="pc" data-act="scorer" data-p="${p}">${esc(nameOf(p))}</button>`).join('')}
-      <button class="pc" data-act="scorer" data-p="og">Own goal</button><button class="pc" data-act="scorerskip">Skip</button></div></div>`;
+      ${isRugby()?'':'<button class="pc" data-act="scorer" data-p="og">Own goal</button>'}<button class="pc" data-act="scorerskip">Skip</button></div></div>`;
 }
 
 /* ---------- corrections: game length, clock, subs after the fact ---------- */
@@ -544,7 +572,7 @@ function gamesList(){
   let W=0,D=0,L=0,F=0,A=0;const ids=gids();
   ids.forEach(id=>{const g=G(id);if(g.done){F+=g.score.us;A+=g.score.them;g.score.us>g.score.them?W++:g.score.us<g.score.them?L++:D++}});
   return `<div class="sec">
-  <div class="summary num"><span>Played <b>${W+D+L}</b> of ${ids.length}</span><span>W <b>${W}</b> · D <b>${D}</b> · L <b>${L}</b></span><span>Goals <b>${F}–${A}</b></span></div>
+  <div class="summary num"><span>Played <b>${W+D+L}</b> of ${ids.length}</span><span>W <b>${W}</b> · D <b>${D}</b> · L <b>${L}</b></span><span>${Words().goals} <b>${F}–${A}</b></span></div>
   <div class="glist">${ids.map(id=>{const g=G(id);const n=inGame(g).length;
     return `<button class="gcard" data-act="open" data-g="${id}">
       <span class="gn"><small>GAME</small>${g.n}</span>
@@ -580,12 +608,12 @@ function gameView(id){
   const selection=!st?`<section class="sec"><h3>Who's playing</h3>
     ${S.squad.length?`<div class="rows">${S.squad.map(p=>{const r=g.gk===p.id?'gk':g.starters.includes(p.id)?'start':g.bench.includes(p.id)?'bench':'out';
       return `<div class="row"><span class="who">${esc(p.name)}</span><span class="seg">
-      <button class="${r==='gk'?'on k':''}" data-act="role" data-p="${p.id}" data-r="gk">GK</button>
+      ${isRugby()?'':`<button class="${r==='gk'?'on k':''}" data-act="role" data-p="${p.id}" data-r="gk">GK</button>`}
       <button class="${r==='start'?'on':''}" data-act="role" data-p="${p.id}" data-r="start">Start</button>
       <button class="${r==='bench'?'on b':''}" data-act="role" data-p="${p.id}" data-r="bench">Bench</button>
       <button class="${r==='out'?'on':''}" data-act="role" data-p="${p.id}" data-r="out">Out</button></span></div>`}).join('')}</div>`
       :`<div class="empty"><b>No squad yet</b>Add the players on the Squad tab first.</div>`}
-    <p class="note">Pick a keeper and ${gameSize(g)-1} more to start${gameSize(g)!==tourSize()?` (${gameSize(g)}-a-side this game)`:''}. Anyone marked Out isn't in this game.</p></section>`:'';
+    <p class="note">${isRugby()?`Pick ${gameSize(g)} to start`:`Pick a keeper and ${gameSize(g)-1} more to start`}${gameSize(g)!==tourSize()?` (${gameSize(g)}-a-side this game)`:''}. Anyone marked Out isn't in this game.</p></section>`:'';
   const others=S.squad.filter(p=>!inGame(g).includes(p.id));
   const late=st&&!g.done&&others.length?`<section class="sec"><button class="btn small" data-act="late" style="align-self:flex-start">${S.addLate?'Hide':'Add a player to the bench'}</button>
     ${S.addLate?`<div class="rows">${others.map(p=>`<div class="row"><span class="who">${esc(p.name)}</span><button class="x" data-act="addbench" data-p="${p.id}">+ Bench</button></div>`).join('')}</div>`:''}</section>`:'';
@@ -606,6 +634,7 @@ function gameView(id){
     <div class="clock"><span class="t num" data-clock="${id}">${clockText(g)}</span><button class="lenbtn num" data-act="fix" data-clocksub="${id}" aria-label="Change game length or fix the clock">${clockSub(g)}</button></div>
     ${scoreSide(g,isAway(g)?'us':'them')}
   </section>
+  ${S.rpick&&S.rpick.g===id?rugbyBar(g,S.rpick.k):''}
   ${S.scorer&&S.scorer.g===id&&g.goals?.[S.scorer.i]?scorerBar(g,S.scorer.i):''}
   ${S.askGk===id?keeperAsk(g):''}
   ${S.askSize&&S.askSize.g===id?sizeAsk(g,S.askSize):''}
@@ -615,13 +644,13 @@ function gameView(id){
     <div class="chips">${pitch.length?pitch.map(p=>chip(p,'pitch')).join(''):'<span style="color:#ffffffcc;font-size:14px;padding-top:24px">Pick the starters below</span>'}</div></div>
   <div class="benchbox"><div class="lbl" style="margin-bottom:8px">Bench</div>
     <div class="chips">${bench.length?bench.map(p=>chip(p,'bench')).join(''):'<span class="note">Nobody on the bench</span>'}</div></div>
-  ${(g.goals||[]).length?`<section class="sec log"><h3>Our goals</h3>
-    <div class="rows">${(g.goals||[]).map((x,i)=>({x,i})).sort((a,b)=>b.x.at-a.x.at).map(({x,i})=>`<div class="row"><span class="at num">${tAt(x.at)}</span>
+  ${(g.goals||[]).length?`<section class="sec log"><h3>Our ${Words().goals.toLowerCase()}</h3>
+    <div class="rows">${(g.goals||[]).map((x,i)=>({x,i})).sort((a,b)=>b.x.at-a.x.at).map(({x,i})=>`<div class="row"><span class="at num">${tAt(x.at)}</span>${isRugby()?`<span class="evl">${evLabel(x)}</span>`:''}
       <select class="scsel ${x.p?'':'unset'}" data-goalp="${i}" aria-label="Who scored this goal">
         <option value="" ${x.p?'':'selected'}>Scorer not set</option>
         ${byName(inGame(g).length?inGame(g):S.squad.map(p=>p.id)).map(p=>`<option value="${p}" ${x.p===p?'selected':''}>${esc(nameOf(p))}</option>`).join('')}
-        <option value="og" ${x.p==='og'?'selected':''}>Own goal</option></select></div>`).join('')}</div>
-    ${g.score.us>(g.goals||[]).length?`<p class="note">${g.score.us-(g.goals||[]).length} earlier goal${g.score.us-(g.goals||[]).length>1?'s':''} without a scorer.</p>`:''}</section>`:''}
+        ${isRugby()?'':`<option value="og" ${x.p==='og'?'selected':''}>Own goal</option>`}</select></div>`).join('')}</div>
+    ${!isRugby()&&g.score.us>(g.goals||[]).length?`<p class="note">${g.score.us-(g.goals||[]).length} earlier goal${g.score.us-(g.goals||[]).length>1?'s':''} without a scorer.</p>`:''}</section>`:''}
   ${g.subs.length?`<section class="sec log"><div class="ghead"><h3>Subs</h3><button class="x" data-act="undo">Undo last sub</button></div>
     <div class="rows">${subs.map(e=>`<div class="row"><span class="at num">${tAt(e.at)}</span><span class="txt"><span class="onn">▲ ${esc(nameOf(e.on))}</span> &nbsp;<span class="off">▼ ${esc(nameOf(e.off))}</span>${e.gk?' <span class="note">(in goal)</span>':''}</span></div>`).join('')}</div></section>`:''}
   ${selection}${late}
@@ -636,7 +665,7 @@ function minutesView(){
   return `<div class="sec"><p class="note">Least time first, so you can see who needs more minutes. Average so far: <b class="num">${fmtM(avg)}</b>.</p>
   <div class="rows">${rows.map(r=>{const low=avg>0&&r.t<avg*0.8;return `<div class="mrow ${low?'low':''}"><span class="who">${esc(r.p.name)}${low?'<span class="flag">Needs time</span>':''}</span><span class="tot num">${fmtM(r.t)}</span>
     <span class="bar"><i style="width:${(r.t/max*100).toFixed(1)}%"></i></span>
-    <span class="brk num">${r.n?r.n+(r.n>1?' games':' game')+(r.gk?` · starts in goal ${r.gk}×`:'')+(gl[r.p.id]?` · ⚽ ${gl[r.p.id]}`:'')+' · '+r.brk.join(' · '):'Not picked yet'}</span></div>`}).join('')}</div></div>`;
+    <span class="brk num">${r.n?r.n+(r.n>1?' games':' game')+(r.gk&&!isRugby()?` · starts in goal ${r.gk}×`:'')+(gl[r.p.id]?` · ${isRugby()?'🏉':'⚽'} ${gl[r.p.id]}${isRugby()&&!triesOnly()?' pts':''}`:'')+' · '+r.brk.join(' · '):'Not picked yet'}</span></div>`}).join('')}</div></div>`;
 }
 function squadView(){
   return `<div class="sec">
@@ -660,6 +689,9 @@ function settingsCard(first){
       <label><span class="lbl">Name on the scoreboard</span><input id="cfg-short" data-cfg="short" value="${esc(c.short)}" placeholder="e.g. Example FC"></label>
       <label><span class="lbl">Players a side</span><input id="cfg-size" class="num" type="number" min="3" max="11" data-cfg="size" value="${c.size||5}"></label>
     </div>
+    <div class="weare"><span class="lbl">Sport</span><span class="seg fill">${[['football','Football'],['rugby','Rugby']].map(([v,l])=>`<button type="button" class="${(c.sport||'football')===v?'on':''}" data-act="sport" data-v="${v}">${l}</button>`).join('')}</span></div>
+    ${c.sport==='rugby'?`<div class="weare"><span class="lbl">Rugby scoring</span><span class="seg fill">${[['points','Points'],['tries','Tries only']].map(([v,l])=>`<button type="button" class="${(c.rscore||'points')===v?'on':''}" data-act="rscore" data-v="${v}">${l}</button>`).join('')}</span>
+      <p class="note">${c.rscore==='tries'?'Each try counts 1. No keeper.':'Try 5, conversion 2, penalty 3, drop goal 3. No keeper.'}</p></div>`:''}
     ${first?'':'<p class="note">Changes apply straight away for every coach.</p>'}</div>`;
 }
 function setupView(){
@@ -812,7 +844,7 @@ function awardsView(){
 function finishTournament(){
   const ids=gids();
   if(!ids.some(id=>started(G(id)))){toast('No games have been played yet, so there is nothing to save.');render();return}
-  const games=ids.map(id=>{const g=G(id);return{n:g.n,opponent:g.opponent,team:usName(),side:isAway(g)?'away':'home',size:gameSize(g),time:g.time,pitch:g.pitch,score:g.score,done:g.done,played:started(g),gk:keeper(g)||g.gk||null,mins:mins(g),goals:(g.goals||[]).map(x=>({at:x.at,p:x.p||null}))}});
+  const games=ids.map(id=>{const g=G(id);return{n:g.n,opponent:g.opponent,team:usName(),side:isAway(g)?'away':'home',size:gameSize(g),time:g.time,pitch:g.pitch,score:g.score,done:g.done,played:started(g),gk:keeper(g)||g.gk||null,mins:mins(g),goals:(g.goals||[]).map(x=>({at:x.at,p:x.p||null,...(x.type?{type:x.type}:{})})),opp:(g.opp||[]).map(x=>({at:x.at,type:x.type}))}});
   const doc={name:S.tour.name||'',date:S.tour.date||today(),savedAt:Date.now(),games,players:S.squad.map(p=>({id:p.id,name:p.name}))};
   const tid='t'+Date.now();
   put('archive/'+tid,doc);S.archive=[{id:tid,...doc},...S.archive.filter(t=>t.id!==tid)];
@@ -833,9 +865,9 @@ function tEdit(t){
         <label class="chk"><input type="checkbox" data-ed="played|${i}" ${g.played||g.done?'checked':''}> Played</label></div>
       <div class="meta"><label><span class="lbl">Opponent</span><input data-ed="opponent|${i}" value="${esc(g.opponent)}" placeholder="e.g. Riverside"></label>
         <label><span class="lbl">We were</span><select data-ed="side|${i}"><option value="home" ${isAway(g)?'':'selected'}>Home</option><option value="away" ${isAway(g)?'selected':''}>Away</option></select></label></div>
-      <div class="meta"><label><span class="lbl">Our goals</span><input type="number" min="0" max="99" data-ed="us|${i}" value="${g.score.us}"></label>
-        <label><span class="lbl">Their goals</span><input type="number" min="0" max="99" data-ed="them|${i}" value="${g.score.them}"></label></div>
-      ${(g.goals||[]).map((x,k)=>`<label class="scl"><span class="lbl">Goal ${k+1}</span><select data-ed="goal|${i}|${k}">${opt(x.p)}</select></label>`).join('')}
+      <div class="meta"><label><span class="lbl">Our ${Words().goals.toLowerCase()}</span><input type="number" min="0" max="199" data-ed="us|${i}" value="${g.score.us}"></label>
+        <label><span class="lbl">Their ${Words().goals.toLowerCase()}</span><input type="number" min="0" max="199" data-ed="them|${i}" value="${g.score.them}"></label></div>
+      ${(g.goals||[]).map((x,k)=>`<label class="scl"><span class="lbl">${isRugby()?evLabel(x):'Goal '+(k+1)}</span><select data-ed="goal|${i}|${k}">${opt(x.p)}</select></label>`).join('')}
     </div>`).join('')}
     <div class="cbtns"><button class="btn go" data-act="tsave">Save changes</button><button class="btn" data-act="tcancel">Cancel</button></div>
   </div>`;
@@ -848,7 +880,7 @@ function editField(key,val){ // one change to the draft; scorers follow our goal
   else if(f==='side')g.side=val==='away'?'away':'home';
   else if(f==='played'){g.played=val;if(!val)g.done=false}
   else if(f==='us'||f==='them'){const n=Math.max(0,Math.min(99,parseInt(val)||0));g.score={...g.score,[f]:n};if(n>0)g.played=true;
-    if(f==='us'){const gs=g.goals||[];g.goals=n>gs.length?[...gs,...Array.from({length:n-gs.length},()=>({at:0,p:null}))]:gs.slice(0,n)}}
+    if(f==='us'&&!isRugby()){const gs=g.goals||[];g.goals=n>gs.length?[...gs,...Array.from({length:n-gs.length},()=>({at:0,p:null}))]:gs.slice(0,n)}}
   else if(f==='goal')g.goals[+k]={...g.goals[+k],p:val||null};
   render();
 }
@@ -856,7 +888,7 @@ function savedPop(){
   const x=S.saved;
   return `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="svq"><div class="box">
     <h3 id="svq">Tournament saved ✓</h3>
-    <p><b>${esc(x.name||'Tournament')}</b> · ${esc(nice(x.date))}<br><span class="num">W${x.r.W} D${x.r.D} L${x.r.L} · Goals ${x.r.F}–${x.r.A}</span></p>
+    <p><b>${esc(x.name||'Tournament')}</b> · ${esc(nice(x.date))}<br><span class="num">W${x.r.W} D${x.r.D} L${x.r.L} · ${Words().goals} ${x.r.F}–${x.r.A}</span></p>
     <p class="note">Here it is in <b>Season → Results</b>. Tap it any time to check it, or Edit to correct it. The games are cleared, ready for the next tournament.</p>
     <div class="cbtns"><button class="btn go" data-act="savedok">OK</button><button class="btn" data-act="backtogames">Back to games</button></div>
   </div></div>`;
@@ -868,22 +900,22 @@ function seasonView(){
   const tot={},gp={};ts.forEach(t=>(t.games||[]).forEach(g=>Object.entries(g.mins||{}).forEach(([p,ms])=>{tot[p]=(tot[p]||0)+ms;gp[p]=(gp[p]||0)+1})));
   const ac=awardCounts(),gl=goalTally(ts.flatMap(t=>t.games||[])),now=goalTally(gids().map(G));
   const allG={...gl};Object.entries(now).forEach(([p,n])=>{allG[p]=(allG[p]||0)+n});
-  const scorers=Object.entries(allG).sort((a,b)=>b[1]-a[1]||nameOf(a[0]).localeCompare(nameOf(b[0])));
+  const scorers=Object.entries(allG).filter(([,n])=>n>0).sort((a,b)=>b[1]-a[1]||nameOf(a[0]).localeCompare(nameOf(b[0])));
   const ppl=new Map();S.squad.forEach(p=>ppl.set(p.id,p.name));Object.keys(tot).forEach(p=>{if(!ppl.has(p))ppl.set(p,nameOf(p))});
   const rows=[...ppl].map(([id,name])=>({id,name,t:tot[id]||0,n:gp[id]||0,a:ac[id]||0})).sort((a,b)=>a.t-b.t);
   const max=Math.max(1,...rows.map(r=>r.t)),avg=rows.length?rows.reduce((s,r)=>s+r.t,0)/rows.length:0;
   return `<div class="sec" style="gap:14px">
-  ${ts.length?`<div class="summary num"><span>Tournaments <b>${ts.length}</b></span><span>W <b>${all.W}</b> · D <b>${all.D}</b> · L <b>${all.L}</b></span><span>Goals <b>${all.F}–${all.A}</b></span><span>Awards <b>${S.awards.length}</b> sessions</span></div>`:''}
+  ${ts.length?`<div class="summary num"><span>Tournaments <b>${ts.length}</b></span><span>W <b>${all.W}</b> · D <b>${all.D}</b> · L <b>${all.L}</b></span><span>${Words().goals}s <b>${all.F}–${all.A}</b></span><span>Awards <b>${S.awards.length}</b> sessions</span></div>`:''}
   <section class="sec"><h3>Season minutes</h3>
   ${ts.length&&rows.length?`<p class="note">Saved tournaments only, least time first.</p><div class="rows">${rows.map(r=>{const low=avg>0&&r.t<avg*0.8;return `<div class="mrow ${low?'low':''}"><span class="who">${esc(r.name)}${low?'<span class="flag">Needs time</span>':''}</span><span class="tot num">${fmtM(r.t)}</span>
     <span class="bar"><i style="width:${(r.t/max*100).toFixed(1)}%"></i></span><span class="brk num">${r.n} game${r.n===1?'':'s'}${gl[r.id]?` · ${gl[r.id]} goal${gl[r.id]>1?'s':''}`:''}${r.a?` · <span class="star">★${r.a}</span> award${r.a>1?'s':''}`:''}</span></div>`}).join('')}</div>`
   :`<div class="empty"><b>Nothing saved yet</b>When a tournament ends, tap "Finish tournament and save to Results" on the Games tab.</div>`}</section>
-  ${scorers.length?`<section class="sec"><h3>Goal scorers</h3><p class="note">Every scorer this season, most goals first${Object.keys(now).length?', including the tournament in progress':''}.</p>
+  ${scorers.length?`<section class="sec"><h3>${Words().scorers}</h3><p class="note">Every scorer this season, most ${Words().goals.toLowerCase()} first${Object.keys(now).length?', including the tournament in progress':''}.</p>
     <div class="rows">${scorers.map(([p,n])=>`<div class="row"><span class="who">${esc(nameOf(p))}${now[p]?` <span class="note">(${now[p]} today)</span>`:''}</span><b class="num">${n}</b></div>`).join('')}</div></section>`:''}
   ${ts.length?`<section class="sec"><h3>Tournaments</h3>${ts.map(t=>{const r=record(t.games||[]),open=S.openT===t.id;
     return `<div class="tcard"><button data-act="topen" data-id="${t.id}"><span><span class="tn">${esc(t.name||'Tournament')}</span><span class="ts" style="display:block">${esc(nice(t.date))}</span></span>
-      <span class="num" style="text-align:right"><b>W${r.W} D${r.D} L${r.L}</b><span class="ts" style="display:block">Goals ${r.F}–${r.A}</span></span></button>
-      ${open?`<div class="tb">${(t.games||[]).map(g=>`<div class="gl"><span>${esc(g.time||'G'+g.n)} ${esc(isAway(g)?(g.opponent||'?'):(g.team||t.short||S.cfg.short||'Us'))} v ${esc(isAway(g)?(g.team||t.short||S.cfg.short||'Us'):(g.opponent||'?'))}</span><b class="num">${g.played||g.done?scoreHA(g):'not played'}</b></div>${(g.goals||[]).length?`<div class="gls">⚽ ${(g.goals||[]).map(x=>esc(scorerName(x.p))).join(', ')}</div>`:''}`).join('')}
+      <span class="num" style="text-align:right"><b>W${r.W} D${r.D} L${r.L}</b><span class="ts" style="display:block">${Words().goals} ${r.F}–${r.A}</span></span></button>
+      ${open?`<div class="tb">${(t.games||[]).map(g=>`<div class="gl"><span>${esc(g.time||'G'+g.n)} ${esc(isAway(g)?(g.opponent||'?'):(g.team||t.short||S.cfg.short||'Us'))} v ${esc(isAway(g)?(g.team||t.short||S.cfg.short||'Us'):(g.opponent||'?'))}</span><b class="num">${g.played||g.done?scoreHA(g):'not played'}</b></div>${(g.goals||[]).length?`<div class="gls">${isRugby()?'🏉':'⚽'} ${(g.goals||[]).map(x=>esc(scorerName(x.p))+(isRugby()?' ('+evLabel(x).toLowerCase()+')':'')).join(', ')}</div>`:''}`).join('')}
         ${S.editT===t.id?tEdit(t):`<div class="cbtns"><button class="btn small" data-act="tedit" data-id="${t.id}">Edit</button>
         <button class="x ${S.confirm==='t-'+t.id?'sure':''}" data-act="tdel" data-id="${t.id}">${S.confirm==='t-'+t.id?'Tap to delete this tournament':'Delete this tournament'}</button></div>`}</div>`:''}</div>`}).join('')}</section>`:''}
   ${ts.length||S.awards.length?`<div class="danger"><button class="btn warn" data-act="wipe">${S.confirm==='wipe'?'Tap again to delete all season data':'Delete all season data'}</button>
@@ -905,6 +937,7 @@ document.addEventListener('click',e=>{
     case'back':S.fix=null;S.game=null;S.pick=null;render();break;
     case'reset':if(S.confirm==='reset'){S.confirm=null;gids().forEach(g=>{const o=G(g),n=blank(o.n);Object.assign(n,{opponent:o.opponent,time:o.time,pitch:o.pitch,team:o.team});S.games[g]=n;put('games/'+g,n)});toast('Scores, line-ups and subs cleared. Fixtures kept.');render()}else{S.confirm='reset';render()}break;
     case'score':{const k=b.dataset.k,d=+b.dataset.d;
+      if(isRugby()){if(d>0){if(triesOnly())addScore(id,k,'try');else{S.rpick={g:id,k};S.scorer=null;render()}}else removeScore(id,k);break}
       if(k==='us'&&d>0){let i=0;mut(id,g=>{g.goals=[...(g.goals||[]),{at:el(g),p:null}];i=g.goals.length-1;g.score.us++});S.scorer={g:id,i};render();break}
       if(k==='us'&&d<0){mut(id,g=>{if(g.score.us<=0)return;g.score.us--;const gs=g.goals||[];if(gs.length>g.score.us)g.goals=gs.slice(0,g.score.us)});S.scorer=null;render();break}
       mut(id,g=>{g.score[k]=Math.max(0,g.score[k]+d)});break}
@@ -947,6 +980,9 @@ document.addEventListener('click',e=>{
     case'notedone':S.notes=S.notes.map(n=>n.id===b.dataset.id?{...n,done:!n.done}:n);saveNotes();break;
     case'notedel':{const k='nd-'+b.dataset.id;if(S.confirm===k){S.confirm=null;S.notes=S.notes.filter(n=>n.id!==b.dataset.id);saveNotes()}else{S.confirm=k;render()}break}
     case'notesdone':S.showDone=!S.showDone;render();break;
+    case'sport':case'rscore':{const k=a==='sport'?'sport':'rscore';S.cfg={...S.cfg,[k]:b.dataset.v};if(S.cfgLoaded&&S.cfg.team)put('club/settings',S.cfg);render();break}
+    case'rtype':{const r=S.rpick;S.rpick=null;if(r)addScore(r.g,r.k,b.dataset.type);break}
+    case'rcancel':S.rpick=null;render();break;
     case'periods':S.tour={...S.tour,periods:+b.dataset.v};saveTour();render();break;
     case'menu':S.menu=true;S.teams=false;S.game=null;S.fix=null;render();window.scrollTo(0,0);break;
     case'menuclose':S.menu=false;S.acct=null;render();break;
