@@ -5,11 +5,9 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Waiting on testing
 
-- **Accounts (email live since v0.4.2; Google on beta in v0.5.0):** not yet tried on a real
-  phone. Google needs the app's addresses added as redirect URIs on the Web client in
-  Google Cloud → APIs & Services → Credentials:
-  `https://match-day-17b23.web.app/__/auth/handler` and
-  `https://match-day-17b23--beta-dmbeugk1.web.app/__/auth/handler`.
+- **v0.5.0 on beta, not yet live:** Continue with Google (works after adding the redirect
+  addresses in Google Cloud). Still to try: signing in on a second phone and seeing the
+  teams come back; email accounts likewise.
 
 ## Features
 
