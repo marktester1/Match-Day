@@ -202,6 +202,9 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 .teamrow .who{flex:1 1 auto}
 .teamrow.cur .who{color:var(--grass)}
 .flag.run{color:var(--live)}
+.lbl .us{font-size:10px;letter-spacing:.06em;color:var(--grass);border:1px solid currentColor;border-radius:5px;padding:0 4px;margin-left:4px}
+.weare{grid-column:1/-1;display:flex;flex-direction:column;gap:4px}
+.board .nm small{display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .hint.scorer{display:flex;flex-direction:column;gap:8px}
 .modal{position:fixed;inset:0;z-index:50;background:#0009;display:flex;align-items:center;justify-content:center;padding:16px}
 .modal .box{background:var(--surface);color:var(--ink);border-radius:16px;padding:18px 16px;width:100%;max-width:480px;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 40px #0006}
@@ -241,7 +244,7 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.9.4';
+const APP_VERSION='0.10.0';
 /*CFG*/const DEFAULT_CFG={team:'Example FC U10s',short:'Example FC',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,teams:false,adding:false,acct:null,
@@ -274,6 +277,11 @@ const clockSub=g=>{if(nPer()===1)return 'of '+fmt((S.tour.len||10)*60000);const 
 function fmt(ms){const s=Math.floor(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}
 function fmtM(ms){const m=ms/60000;return m<1&&ms>0?fmt(ms):Math.round(m)+'m'}
 const bySubTime=g=>[...g.subs].sort((a,b)=>a.at-b.at);
+const isAway=g=>g.side==='away';
+const usName=g=>g.team||S.cfg.short||'Us';
+const homeName=g=>isAway(g)?(g.opponent||'Home team'):usName(g);
+const awayName=g=>isAway(g)?usName(g):(g.opponent||'Away team');
+const scoreHA=g=>isAway(g)?g.score.them+'–'+g.score.us:g.score.us+'–'+g.score.them;
 const scorerName=p=>p==='og'?'Own goal':p?nameOf(p):'Scorer not set';
 function goalTally(games){const c={};games.forEach(g=>(g.goals||[]).forEach(x=>{if(x.p&&x.p!=='og')c[x.p]=(c[x.p]||0)+1}));return c}
 const alpha=l=>[...l].sort((a,b)=>a.name.localeCompare(b.name,'en',{sensitivity:'base'}));
@@ -329,6 +337,12 @@ function swap(id,a,aSide,b,bSide){
   const wasK=keeper(g)===off;
   mut(id,g=>{g.subs.push({at:el(g),off,on,...(wasK?{gk:true}:{})})});
   toast(`${nameOf(on)} on, ${nameOf(off)} off at ${fmt(el(G(id)))}${wasK?' (now in goal)':''}`);
+}
+
+/* ---------- scoreboard side (home on the left, away on the right) ---------- */
+function scoreSide(g,k){
+  const nm=k==='us'?usName(g):(g.opponent||'Opponent'),who=k==='us'?'our':'their';
+  return `<div class="side"><span class="nm">${esc(nm)}<small>${(k==='us')===!isAway(g)?'Home':'Away'}</small></span><div class="sc"><button data-act="score" data-k="${k}" data-d="-1" aria-label="Remove ${who} goal">−</button><b class="num">${g.score[k]}</b><button class="plus" data-act="score" data-k="${k}" data-d="1" aria-label="Add ${who} goal">+</button></div></div>`;
 }
 
 /* ---------- keeper check before kick-off ---------- */
@@ -433,9 +447,9 @@ function gamesList(){
   <div class="glist">${ids.map(id=>{const g=G(id);const n=inGame(g).length;
     return `<button class="gcard" data-act="open" data-g="${id}">
       <span class="gn"><small>GAME</small>${g.n}</span>
-      <span style="min-width:0"><span class="opp">${g.opponent?'v '+esc(g.opponent):'Opponent not set'}</span>
+      <span style="min-width:0"><span class="opp">${g.opponent?esc(homeName(g))+' v '+esc(awayName(g)):'Opponent not set'}</span>
       <span class="sub" style="display:block">${[g.time&&esc(g.time),g.pitch&&'Pitch '+esc(g.pitch),g.gk&&'GK '+esc(nameOf(g.gk)),!n&&'No players picked'].filter(Boolean).join(' · ')}</span></span>
-      <span class="res">${started(g)?`<span class="scr num">${g.score.us}–${g.score.them}</span>`:''}${status(g)}${started(g)&&!g.done?`<span class="sub num" data-clock="${id}">${nPer()>1?perShort(perOf(el(g)))+' ':''}${clockText(g)}</span>`:''}</span>
+      <span class="res">${started(g)?`<span class="scr num">${scoreHA(g)}</span>`:''}${status(g)}${started(g)&&!g.done?`<span class="sub num" data-clock="${id}">${nPer()>1?perShort(perOf(el(g)))+' ':''}${clockText(g)}</span>`:''}</span>
     </button>`}).join('')}</div>
   <button class="btn" data-act="fxopen">Enter opponents and kick-off times</button>
   <div class="lenrow"><label for="len">Game length (minutes)</label><input id="len" class="num" type="number" min="1" max="60" data-tour="len" value="${S.tour.len||10}">
@@ -477,15 +491,16 @@ function gameView(id){
   <button class="back" data-act="back">← All games</button>
   <div class="ghead"><h2>Game ${g.n}</h2>${status(g)}</div>
   <div class="meta">
-    <label><span class="lbl">Opponent</span><input id="opp-${id}" data-field="opponent" value="${esc(g.opponent)}" placeholder="e.g. Riverside"></label>
-    <label><span class="lbl">Our team</span><input id="team-${id}" data-field="team" value="${esc(g.team)}" placeholder="${esc(S.cfg.short)}"></label>
+    ${['home','away'].map(sd=>{const ours=(sd==='away')===isAway(g),f=ours?'team':'opponent';
+      return `<label><span class="lbl">${sd==='home'?'Home':'Away'}${ours?' <span class="us">us</span>':''}</span><input id="${f}-${id}" data-field="${f}" value="${esc(g[f])}" placeholder="${ours?esc(S.cfg.short||'Our team'):'e.g. Riverside'}"></label>`}).join('')}
+    <div class="weare"><span class="lbl">We are</span><span class="seg fill"><button class="${isAway(g)?'':'on'}" data-act="side" data-v="home">Home</button><button class="${isAway(g)?'on':''}" data-act="side" data-v="away">Away</button></span></div>
     <label><span class="lbl">Kick-off</span><input id="time-${id}" data-field="time" value="${esc(g.time)}" placeholder="9:30"></label>
     <label><span class="lbl">Pitch</span><input id="pitch-${id}" data-field="pitch" value="${esc(g.pitch)}" placeholder="2"></label>
   </div>
   <section class="board" aria-label="Score">
-    <div class="side"><span class="nm">${esc(g.team||S.cfg.short||'Us')}</span><div class="sc"><button data-act="score" data-k="us" data-d="-1" aria-label="Remove our goal">−</button><b class="num">${g.score.us}</b><button class="plus" data-act="score" data-k="us" data-d="1" aria-label="Add our goal">+</button></div></div>
+    ${scoreSide(g,isAway(g)?'them':'us')}
     <div class="clock"><span class="t num" data-clock="${id}">${clockText(g)}</span><button class="lenbtn num" data-act="fix" data-clocksub="${id}" aria-label="Change game length or fix the clock">${clockSub(g)}</button></div>
-    <div class="side"><span class="nm">${esc(g.opponent||'Opponent')}</span><div class="sc"><button data-act="score" data-k="them" data-d="-1" aria-label="Remove their goal">−</button><b class="num">${g.score.them}</b><button class="plus" data-act="score" data-k="them" data-d="1" aria-label="Add their goal">+</button></div></div>
+    ${scoreSide(g,isAway(g)?'us':'them')}
   </section>
   ${S.scorer&&S.scorer.g===id&&g.goals?.[S.scorer.i]?scorerBar(g,S.scorer.i):''}
   ${S.askGk===id?keeperAsk(g):''}
@@ -627,6 +642,7 @@ function fixturesView(){
     <input id="fx-t-${id}" data-fx="${id}|time" value="${esc(g.time)}" placeholder="9:30" style="width:76px" aria-label="Game ${g.n} kick-off">
     <input id="fx-o-${id}" data-fx="${id}|opponent" value="${esc(g.opponent)}" placeholder="Opponent" list="opps" style="flex:1;min-width:120px" aria-label="Game ${g.n} opponent">
     <input id="fx-p-${id}" data-fx="${id}|pitch" value="${esc(g.pitch)}" placeholder="Pitch" style="width:64px" aria-label="Game ${g.n} pitch">
+    <button class="x" data-act="fxside" data-g="${id}" aria-label="Game ${g.n}: we are ${isAway(g)?'away':'home'}. Tap to change.">${isAway(g)?'Away':'Home'}</button>
   </div>`}).join('')}</div>
   <div class="cbtns"><button class="btn small" data-act="fxadd" ${ids.length>=10?'disabled':''}>+ Add a game</button>
     <button class="btn small warn" data-act="fxdrop" ${ids.length<=1?'disabled':''}>Remove last game</button></div>
@@ -649,9 +665,10 @@ function parseFixtures(text){
     rest=rest.replace(/[()\[\]|]/g,' ');
     let parts=rest.split(/\s+(?:vs\.?|v\.?|versus|-|–)\s+/i).map(x=>x.trim()).filter(Boolean);
     let opp=parts.length>1?(parts.find(x=>!short||!x.toLowerCase().includes(short))||parts[1]):(parts[0]||'');
+    const side=parts.length>1&&short&&!parts[0].toLowerCase().includes(short)&&parts.slice(1).some(x=>x.toLowerCase().includes(short))?'away':'home';
     if(short)opp=opp.replace(new RegExp(short.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'ig'),' ');
     opp=opp.replace(/^\s*(?:v|vs)\s+/i,'').replace(/\s+/g,' ').trim().slice(0,40);
-    return{time,pitch,opponent:opp};
+    return{time,pitch,opponent:opp,side};
   }).filter(f=>f.opponent||f.time).slice(0,10);
 }
 
@@ -688,7 +705,7 @@ function awardsView(){
 /* ---------- season ---------- */
 function finishTournament(){
   const ids=gids();
-  const games=ids.map(id=>{const g=G(id);return{n:g.n,opponent:g.opponent,time:g.time,pitch:g.pitch,score:g.score,done:g.done,played:started(g),gk:keeper(g)||g.gk||null,mins:mins(g),goals:(g.goals||[]).map(x=>({at:x.at,p:x.p||null}))}});
+  const games=ids.map(id=>{const g=G(id);return{n:g.n,opponent:g.opponent,team:g.team||'',side:isAway(g)?'away':'home',time:g.time,pitch:g.pitch,score:g.score,done:g.done,played:started(g),gk:keeper(g)||g.gk||null,mins:mins(g),goals:(g.goals||[]).map(x=>({at:x.at,p:x.p||null}))}});
   const doc={name:S.tour.name||'',date:S.tour.date||today(),savedAt:Date.now(),games,players:S.squad.map(p=>({id:p.id,name:p.name}))};
   const tid='t'+Date.now();
   put('archive/'+tid,doc);S.archive=[{id:tid,...doc},...S.archive.filter(t=>t.id!==tid)];
@@ -716,7 +733,7 @@ function seasonView(){
   ${ts.length?`<section class="sec"><h3>Tournaments</h3>${ts.map(t=>{const r=record(t.games||[]),open=S.openT===t.id;
     return `<div class="tcard"><button data-act="topen" data-id="${t.id}"><span><span class="tn">${esc(t.name||'Tournament')}</span><span class="ts" style="display:block">${esc(nice(t.date))}</span></span>
       <span class="num" style="text-align:right"><b>W${r.W} D${r.D} L${r.L}</b><span class="ts" style="display:block">Goals ${r.F}–${r.A}</span></span></button>
-      ${open?`<div class="tb">${(t.games||[]).map(g=>`<div class="gl"><span>${esc(g.time||'G'+g.n)} v ${esc(g.opponent||'?')}</span><b class="num">${g.played||g.done?g.score.us+'–'+g.score.them:'not played'}</b></div>${(g.goals||[]).length?`<div class="gls">⚽ ${(g.goals||[]).map(x=>esc(scorerName(x.p))).join(', ')}</div>`:''}`).join('')}
+      ${open?`<div class="tb">${(t.games||[]).map(g=>`<div class="gl"><span>${esc(g.time||'G'+g.n)} ${esc(isAway(g)?(g.opponent||'?'):(g.team||t.short||S.cfg.short||'Us'))} v ${esc(isAway(g)?(g.team||t.short||S.cfg.short||'Us'):(g.opponent||'?'))}</span><b class="num">${g.played||g.done?scoreHA(g):'not played'}</b></div>${(g.goals||[]).length?`<div class="gls">⚽ ${(g.goals||[]).map(x=>esc(scorerName(x.p))).join(', ')}</div>`:''}`).join('')}
         <button class="x ${S.confirm==='t-'+t.id?'sure':''}" data-act="tdel" data-id="${t.id}" style="align-self:flex-start">${S.confirm==='t-'+t.id?'Tap to delete this tournament':'Delete this tournament'}</button></div>`:''}</div>`}).join('')}</section>`:''}
   ${ts.length||S.awards.length?`<div class="danger"><button class="btn warn" data-act="wipe">${S.confirm==='wipe'?'Tap again to delete all season data':'Delete all season data'}</button>
     <p class="note">For the end of the season: removes every saved tournament and award. The squad stays until you remove the players on the Squad tab.</p></div>`:''}
@@ -764,6 +781,8 @@ document.addEventListener('click',e=>{
     case'acctforgot':resetPassword();break;
     case'google':b.disabled=true;googleSignIn().finally(()=>{b.disabled=false});break;
     case'signout':if(S.confirm==='signout')signOutAccount();else{S.confirm='signout';render()}break;
+    case'side':mut(id,g=>{g.side=b.dataset.v==='away'?'away':'home'});break;
+    case'fxside':mut(b.dataset.g,g=>{g.side=isAway(g)?'home':'away'});break;
     case'periods':S.tour={...S.tour,periods:+b.dataset.v};saveTour();render();break;
     case'teams':S.teams=true;S.game=null;S.fix=null;render();window.scrollTo(0,0);break;
     case'teamsclose':S.teams=false;render();break;
@@ -798,7 +817,7 @@ document.addEventListener('click',e=>{
     case'fxdrop':S.tour={...S.tour,count:Math.max(1,(S.tour.count||6)-1)};saveTour();render();break;
     case'fxparse':{const f=parseFixtures(document.getElementById('fxpaste')?.value);if(!f.length){toast('No fixtures found. Put one game per line with the opponent in it.');break}
       S.tour={...S.tour,count:f.length};saveTour();
-      f.forEach((x,i)=>{const id='g'+(i+1),g=structuredClone(G(id));Object.assign(g,{time:x.time,opponent:x.opponent,pitch:x.pitch});S.games[id]=g;put('games/'+id,g)});
+      f.forEach((x,i)=>{const id='g'+(i+1),g=structuredClone(G(id));Object.assign(g,{time:x.time,opponent:x.opponent,pitch:x.pitch,side:x.side});S.games[id]=g;put('games/'+id,g)});
       document.getElementById('fxpaste').value='';toast(`${f.length} fixtures filled in. Check them above.`);render();break}
     case'bulkadd':{const t=document.getElementById('bulknames');const n=addNames(t?.value);if(t)t.value='';toast(n?`${n} added to the squad.`:'Nobody new to add.');render();break}
     case'setupdone':{const c={...S.cfg};['team','short'].forEach(k=>{const i=document.getElementById('cfg-'+k);if(i)c[k]=i.value.trim().slice(0,40)});
