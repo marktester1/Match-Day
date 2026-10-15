@@ -187,6 +187,7 @@ h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:
 .addf{display:flex;gap:8px}
 .addf .btn{flex:0 0 auto}
 .teamsw{cursor:pointer;white-space:nowrap}
+.acctf{display:flex;flex-direction:column;gap:8px}
 .teamsw::after{content:" ▾";font-size:.6em;color:var(--muted)}
 .teamsw.others::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--live);margin-right:6px;vertical-align:middle}
 .teamrow{width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);color:inherit;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -225,11 +226,11 @@ h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.3.1';
+const APP_VERSION='0.4.0';
 /*CFG*/const DEFAULT_CFG={team:'Example FC U10s',short:'Example FC',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   imp:{open:false,busy:false,msg:'',result:null},
-  gate:false,teamId:null,invite:'',restore:null,fix:null,teams:false,adding:false,
+  gate:false,teamId:null,invite:'',restore:null,fix:null,teams:false,adding:false,acct:null,
   awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const nice=d=>{if(!d)return'';const t=new Date(d+'T12:00');return isNaN(t)?d:t.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})};
@@ -487,7 +488,7 @@ function squadView(){
     <textarea id="bulknames" placeholder="Paste names, one per line or separated by commas"></textarea>
     <button class="btn" data-act="bulkadd">Add to squad</button>
     <p class="note">Surnames are dropped automatically. If two players share a first name, the app adds their surname initial.</p></div>
-  ${settingsCard(false)}${teamCard()}${backupCard()}
+  ${settingsCard(false)}${teamCard()}${accountCard()}${backupCard()}
   <p class="note num" style="text-align:center">Match Day v${APP_VERSION}</p></div>`;
 }
 function settingsCard(first){
@@ -726,7 +727,7 @@ document.addEventListener('click',e=>{
   if(suppressClick){suppressClick=false;return}
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act,id=S.game,p=b.dataset.p;
-  if(!['reset','del','impapply','finish','awdel','tdel','wipe','leave','clock0','subdel'].includes(a))S.confirm=null;
+  if(!['reset','del','impapply','finish','awdel','tdel','wipe','leave','clock0','subdel','signout'].includes(a))S.confirm=null;
   switch(a){
     case'tab':S.tab=b.dataset.t;S.pick=null;render();break;
     case'open':S.game=b.dataset.g;S.pick=null;S.addLate=false;render();window.scrollTo(0,0);break;
@@ -746,6 +747,11 @@ document.addEventListener('click',e=>{
       if(S.pick&&S.pick.g===id&&S.pick.p!==p&&(S.pick.side!==side||side==='pitch')){const pk=S.pick;S.pick=null;swap(id,pk.p,pk.side,p,side);if(!S.pick)render()}
       else{S.pick=S.pick&&S.pick.p===p?null:{g:id,p,side};render()}break}
     case'cancel':S.pick=null;render();break;
+    case'acctcreate':S.acct='create';render();setTimeout(()=>document.getElementById('acctemail')?.focus(),0);break;
+    case'acctsignin':S.acct='signin';render();setTimeout(()=>document.getElementById('acctemail')?.focus(),0);break;
+    case'acctcancel':S.acct=null;render();break;
+    case'acctforgot':resetPassword();break;
+    case'signout':if(S.confirm==='signout')signOutAccount();else{S.confirm='signout';render()}break;
     case'teams':S.teams=true;S.game=null;S.fix=null;render();window.scrollTo(0,0);break;
     case'teamsclose':S.teams=false;render();break;
     case'switch':if(b.dataset.id===S.teamId){S.teams=false;render()}else switchTeam(b.dataset.id);break;
@@ -827,6 +833,7 @@ document.addEventListener('pointercancel',e=>endDrag(e,true));
 
 document.addEventListener('submit',e=>{
   if(e.target.id==='joinf'){e.preventDefault();joinTeam(document.getElementById('joincode').value);return}
+  if(e.target.id==='acctf'){e.preventDefault();document.activeElement?.blur();(e.target.dataset.mode==='create'?createAccount:signInAccount)();return}
   if(e.target.id!=='addf')return;e.preventDefault();
   const i=document.getElementById('newname'),n=i.value.trim();if(!n)return;
   if(S.squad.some(p=>p.name.toLowerCase()===n.toLowerCase())){toast(`${n} is already in the squad.`);return}
@@ -921,6 +928,7 @@ async function connectFirebase(){
   // Each phone gets an anonymous sign-in: no passwords. Joining a team with its invite code is what grants access.
   await FB.auth.authStateReady();
   await signedIn().catch(()=>{});
+  await loadAccountTeams();
   const t=lsGet(TEAM_KEY)||myTeams()[0];
   if(t)openTeam(t);else{S.gate=true;setSync(false,'No team yet');render()}
   return true;
@@ -928,7 +936,7 @@ async function connectFirebase(){
 function openTeam(t){
   const {F,fs}=FB;
   if(S.teamId&&S.teamId!==t){switchTeam(t);return} // adding a second team: reload into it
-  saveTeams([...myTeams(),t]);
+  saveTeams([...myTeams(),t]);syncTeamList();
   lsSet(TEAM_KEY,t);S.gate=false;S.adding=false;S.teamId=t;db=fsAdapter('teams/'+t);liveLabel();watchTeams();
   F.getDoc(F.doc(fs,'teams',t)).then(s=>{S.invite=s.data()?.code||'';render()}).catch(()=>{});
   subscribe(e=>{if(e&&e.code==='permission-denied'){setSync(false,'Not a member');toast("This phone isn't a member of that team any more.");leaveTeam(false)}});
@@ -970,8 +978,83 @@ async function joinTeam(raw){
 }
 async function leaveTeam(remote=true){
   const {F,fs,auth}=FB,t=S.teamId;
-  if(remote&&t)await Promise.race([F.deleteDoc(F.doc(fs,'teams',t,'members',auth.currentUser.uid)).catch(()=>{}),new Promise(r=>setTimeout(r,2500))]);
+  if(remote&&t)await Promise.race([Promise.all([
+    F.deleteDoc(F.doc(fs,'teams',t,'members',auth.currentUser.uid)).catch(()=>{}),
+    F.updateDoc(F.doc(fs,'users',auth.currentUser.uid),{['teams.'+t]:F.deleteField()}).catch(()=>{})]),new Promise(r=>setTimeout(r,2500))]);
   const rest=myTeams().filter(x=>x!==t);saveTeams(rest);lsSet(TEAM_KEY,rest[0]||null);location.reload();
+}
+/* accounts: optional email + password, so a coach's teams follow them to a new phone.
+   Creating an account upgrades this phone's sign-in in place, so team access carries over. */
+const isAccount=()=>!!FB?.auth?.currentUser?.email;
+const within=(p,ms)=>Promise.race([p,new Promise(r=>setTimeout(()=>r(null),ms))]);
+async function loadAccountTeams(){
+  const {F,fs,auth}=FB,u=auth.currentUser;if(!u)return;
+  const s=await within(F.getDoc(F.doc(fs,'users',u.uid)).catch(()=>null),3000);
+  const theirs=Object.keys(s?.data?.()?.teams||{});
+  if(theirs.length)saveTeams([...myTeams(),...theirs]);
+}
+function syncTeamList(){
+  const {F,fs,auth}=FB,u=auth.currentUser;if(!u)return;
+  F.setDoc(F.doc(fs,'users',u.uid),{teams:Object.fromEntries(myTeams().map(t=>[t,true]))},{merge:true}).catch(()=>{});
+}
+function authMsg(e){
+  const c=String(e?.code||'').replace('auth/','');
+  return({'email-already-in-use':'There\'s already an account for that email. Tap "I have an account" to sign in.',
+    'credential-already-in-use':'There\'s already an account for that email. Tap "I have an account" to sign in.',
+    'invalid-credential':"That email and password don't match.",'wrong-password':"That email and password don't match.",'user-not-found':"That email and password don't match.",
+    'invalid-email':"That doesn't look like an email address.",'missing-email':'Type your email address first.',
+    'weak-password':'Use a password of at least 6 characters.','missing-password':'Type a password.',
+    'too-many-requests':'Too many tries. Wait a few minutes and try again.',
+    'network-request-failed':'You need a signal for this.',
+    'operation-not-allowed':"Email sign-in isn't switched on for this app yet."})[c]||`That didn't work (${c||errCode(e)}).`;
+}
+const acctVals=()=>({email:(document.getElementById('acctemail')?.value||'').trim(),pw:document.getElementById('acctpw')?.value||''});
+async function createAccount(){
+  const {A,auth}=FB,{email,pw}=acctVals();
+  try{await signedIn();await A.linkWithCredential(auth.currentUser,A.EmailAuthProvider.credential(email,pw));
+    syncTeamList();S.acct=null;toast('Account created. Sign in with it on any phone to get your teams back.');render()}
+  catch(e){toast(authMsg(e))}
+}
+async function signInAccount(){
+  const {A,F,fs,auth}=FB,{email,pw}=acctVals();
+  if(!email||!pw){toast('Type your email and password.');return}
+  // Teams already on this phone move onto the account: note their invite codes before switching sign-in.
+  const codes={};
+  for(const t of myTeams()){const s=await within(F.getDoc(F.doc(fs,'teams',t)).catch(()=>null),3000);if(s?.exists())codes[t]=s.data().code}
+  try{await A.signInWithEmailAndPassword(auth,email,pw)}catch(e){toast(authMsg(e));return}
+  const uid=auth.currentUser.uid;
+  await Promise.all(Object.entries(codes).map(([t,code])=>F.setDoc(F.doc(fs,'teams',t,'members',uid),{code,joined:F.serverTimestamp()}).catch(()=>{})));
+  await loadAccountTeams();syncTeamList();
+  if(!lsGet(TEAM_KEY))lsSet(TEAM_KEY,myTeams()[0]||null);
+  location.reload();
+}
+async function resetPassword(){
+  const {A,auth}=FB,{email}=acctVals();
+  if(!email){toast('Type your email address, then tap Forgot password.');return}
+  try{await A.sendPasswordResetEmail(auth,email);toast("If there's an account for that email, a reset link is on its way. Check spam too.")}
+  catch(e){toast(authMsg(e))}
+}
+async function signOutAccount(){
+  await FB.A.signOut(FB.auth);saveTeams([]);lsSet(TEAM_KEY,null);location.reload();
+}
+function acctForm(mode){
+  return `<form class="acctf" id="acctf" data-mode="${mode}">
+    <input id="acctemail" type="email" autocomplete="username" placeholder="Email address" aria-label="Email address">
+    <input id="acctpw" type="password" autocomplete="${mode==='create'?'new-password':'current-password'}" placeholder="${mode==='create'?'Choose a password (6+ characters)':'Password'}" aria-label="Password">
+    <div class="cbtns"><button class="btn go" type="submit">${mode==='create'?'Create account':'Sign in'}</button>
+    ${mode==='signin'?'<button class="btn" type="button" data-act="acctforgot">Forgot password</button>':''}
+    <button class="btn" type="button" data-act="acctcancel">Cancel</button></div></form>`;
+}
+function accountCard(){
+  if(!FB)return'';
+  const u=FB.auth.currentUser;
+  if(isAccount())return `<div class="card"><h3>Your account</h3>
+    <p>Signed in as <b>${esc(u.email)}</b>.</p>
+    <p class="note">Your teams are saved to this account. On a new phone, open the app and tap <b>Sign in</b> to get them all back.</p>
+    <button class="x ${S.confirm==='signout'?'sure':''}" data-act="signout">${S.confirm==='signout'?'Tap again to sign out on this phone':'Sign out on this phone'}</button></div>`;
+  return `<div class="card"><h3>Keep your teams safe</h3>
+    <p class="note">Right now your teams are only on this phone. Create a free account with your email, and you can get all your teams back on a new phone. Optional.</p>
+    ${S.acct?acctForm(S.acct):`<div class="cbtns"><button class="btn go" data-act="acctcreate">Create an account</button><button class="btn" data-act="acctsignin">I have an account</button></div>`}</div>`;
 }
 function gateView(){
   return `<div class="sec" style="gap:14px">
@@ -982,6 +1065,9 @@ function gateView(){
   <div class="card"><h3>Join a team</h3>
     <p class="note">Ask a coach for the team's invite code. It's on their Squad tab.</p>
     <form class="addf" id="joinf"><input id="joincode" placeholder="e.g. ABC-234" autocomplete="off" autocapitalize="characters" aria-label="Invite code"><button class="btn go" data-act="join" type="submit">Join</button></form></div>
+  ${FB&&!isAccount()?`<div class="card"><h3>New phone?</h3>
+    <p class="note">If you made a Match Day account, sign in to get all your teams back.</p>
+    ${S.acct==='signin'?acctForm('signin'):'<button class="btn" data-act="acctsignin">Sign in</button>'}</div>`:''}
   <p class="note num" style="text-align:center">Match Day v${APP_VERSION}</p>
   </div>`;
 }

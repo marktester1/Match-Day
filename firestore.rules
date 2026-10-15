@@ -39,6 +39,16 @@ service cloud.firestore {
       }
     }
 
+    // Each sign-in's own list of teams, so a coach with an account gets them back on a new phone.
+    // Only that sign-in can see or change it. It grants no access by itself: the team's
+    // members doc does that.
+    match /users/{uid} {
+      allow read, delete: if signedIn() && uid == request.auth.uid;
+      allow create, update: if signedIn() && uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['teams'])
+        && request.resource.data.teams is map;
+    }
+
     // Everything else is closed.
     match /{path=**} {
       allow read, write: if false;
