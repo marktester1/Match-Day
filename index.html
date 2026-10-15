@@ -203,6 +203,9 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 .teamrow.cur .who{color:var(--grass)}
 .flag.run{color:var(--live)}
 .hint.scorer{display:flex;flex-direction:column;gap:8px}
+.modal{position:fixed;inset:0;z-index:50;background:#0008;display:flex;align-items:flex-end;justify-content:center;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+.modal .box{background:var(--surface);color:var(--ink);border-radius:16px;padding:18px 16px;width:100%;max-width:480px;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 40px #0006}
+.modal h3{margin:0}
 .scsel{flex:1 1 auto;width:auto}
 .scsel.unset{color:var(--muted)}
 .gls{font-size:13px;color:var(--muted);padding:0 0 6px}
@@ -238,10 +241,10 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.9.2';
+const APP_VERSION='0.9.3';
 /*CFG*/const DEFAULT_CFG={team:'Example FC U10s',short:'Example FC',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
-  gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,teams:false,adding:false,acct:null,
+  gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,teams:false,adding:false,acct:null,
   awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const nice=d=>{if(!d)return'';const t=new Date(d+'T12:00');return isNaN(t)?d:t.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})};
@@ -326,6 +329,16 @@ function swap(id,a,aSide,b,bSide){
   const wasK=keeper(g)===off;
   mut(id,g=>{g.subs.push({at:el(g),off,on,...(wasK?{gk:true}:{})})});
   toast(`${nameOf(on)} on, ${nameOf(off)} off at ${fmt(el(G(id)))}${wasK?' (now in goal)':''}`);
+}
+
+/* ---------- keeper check before kick-off ---------- */
+function keeperAsk(g){
+  return `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="gkq"><div class="box">
+    <h3 id="gkq">Who's in goal?</h3>
+    <p class="note">No keeper is picked for this game. Choose one of the starters and the game kicks off.</p>
+    <div class="pickchips">${byName(g.starters).map(p=>`<button class="pc" data-act="pickgk" data-p="${p}">${esc(nameOf(p))}</button>`).join('')}</div>
+    <div class="cbtns"><button class="btn" data-act="kick" data-nokeeper="1">Kick off without a keeper</button><button class="btn" data-act="gkcancel">Cancel</button></div>
+  </div></div>`;
 }
 
 /* ---------- goal scorers ---------- */
@@ -475,6 +488,7 @@ function gameView(id){
     <div class="side"><span class="nm">${esc(g.opponent||'Opponent')}</span><div class="sc"><button data-act="score" data-k="them" data-d="-1" aria-label="Remove their goal">−</button><b class="num">${g.score.them}</b><button class="plus" data-act="score" data-k="them" data-d="1" aria-label="Add their goal">+</button></div></div>
   </section>
   ${S.scorer&&S.scorer.g===id&&g.goals?.[S.scorer.i]?scorerBar(g,S.scorer.i):''}
+  ${S.askGk===id?keeperAsk(g):''}
   <div class="cbtns">${cb}<button class="btn" data-act="fix">${S.fix===id?'Done':st?'Corrections':'Game length'}</button></div>
   ${hint}
   <div class="pitch"><span class="lbl">On the pitch</span><span class="cnt num">${pitch.length}/${S.cfg.size}</span>
@@ -726,7 +740,12 @@ document.addEventListener('click',e=>{
       mut(id,g=>{g.score[k]=Math.max(0,g.score[k]+d)});break}
     case'scorer':{const sc=S.scorer;if(sc)mut(sc.g,g=>{if(g.goals&&g.goals[sc.i])g.goals[sc.i].p=b.dataset.p});S.scorer=null;render();break}
     case'scorerskip':S.scorer=null;render();break;
-    case'kick':mut(id,g=>{g.clock.running=true;g.clock.startedAt=Date.now();g.done=false});break;
+    case'kick':{const g0=G(id);
+      if(!started(g0)&&!g0.gk&&!b.dataset.nokeeper){S.askGk=id;render();break}
+      S.askGk=null;mut(id,g=>{g.clock.running=true;g.clock.startedAt=Date.now();g.done=false});break}
+    case'pickgk':mut(id,g=>{g.gk=p;g.starters=[p,...g.starters.filter(x=>x!==p)]});S.askGk=null;
+      mut(id,g=>{g.clock.running=true;g.clock.startedAt=Date.now();g.done=false});toast(`${nameOf(p)} is in goal. Kicked off.`);break;
+    case'gkcancel':S.askGk=null;render();break;
     case'pause':mut(id,g=>{g.clock.acc=el(g);g.clock.running=false});break;
     case'ft':S.pick=null;mut(id,g=>{g.clock.acc=el(g);g.clock.running=false;g.done=true});break;
     case'reopen':mut(id,g=>{g.done=false});break;
