@@ -20,11 +20,6 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
      groups? Drop goals? Does "keeper" disappear for rugby?
    - Word changes: "goals" → "points", "pitch" stays, "GK" hidden.
 
-2. **Change the number of games after it's set.** Add or remove a game mid-tournament
-   without losing the games already played.
-   - Question: the Games count can already be changed at the bottom of the Games list;
-     is the problem with saved tournaments, or something else?
-
 ## Later
 
 - Combined fixtures view across all of a coach's teams.
