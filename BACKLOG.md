@@ -5,9 +5,8 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Waiting on testing
 
-- **v0.7.0 on beta (https://match-day-beta-17b23.web.app), not yet live:** beta is now its own
-  Firebase project; whistle icon; web-app only (photo schedule import and Claude version
-  removed). Beta test team invite code: `L9J-Q7H`.
+- **v0.7.0 live.** Beta (https://match-day-beta-17b23.web.app) is its own Firebase project;
+  beta test team invite code: `L9J-Q7H`.
 - **Accounts:** Google sign-in works on live. Still to try: signing in on a second phone and
   seeing the teams come back.
 
