@@ -202,6 +202,10 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 .teamrow .who{flex:1 1 auto}
 .teamrow.cur .who{color:var(--grass)}
 .flag.run{color:var(--live)}
+.hint.scorer{display:flex;flex-direction:column;gap:8px}
+.scsel{flex:1 1 auto;width:auto}
+.scsel.unset{color:var(--muted)}
+.gls{font-size:13px;color:var(--muted);padding:0 0 6px}
 .x{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:6px 10px;font-size:13px;font-weight:700;color:var(--muted)}
 .x.sure{color:var(--chalk);background:var(--bad);border-color:var(--bad)}
 .empty{text-align:center;padding:26px 16px;color:var(--muted);background:var(--surface);border:1px dashed var(--line);border-radius:12px}
@@ -234,10 +238,10 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.7.0';
+const APP_VERSION='0.8.0';
 /*CFG*/const DEFAULT_CFG={team:'Example FC U10s',short:'Example FC',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
-  gate:false,teamId:null,invite:'',restore:null,fix:null,teams:false,adding:false,acct:null,
+  gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,teams:false,adding:false,acct:null,
   awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const nice=d=>{if(!d)return'';const t=new Date(d+'T12:00');return isNaN(t)?d:t.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})};
@@ -245,7 +249,7 @@ let db=null,pending=false,suppressClick=false;
 const queues={};
 const gids=()=>Array.from({length:Math.min(10,Math.max(1,S.tour.count||6))},(_,i)=>'g'+(i+1));
 
-function blank(n){return{n,opponent:'',team:'',time:'',pitch:'',gk:null,starters:[],bench:[],subs:[],gkChanges:[],clock:{running:false,startedAt:0,acc:0},score:{us:0,them:0},done:false}}
+function blank(n){return{n,opponent:'',team:'',time:'',pitch:'',gk:null,starters:[],bench:[],subs:[],gkChanges:[],goals:[],clock:{running:false,startedAt:0,acc:0},score:{us:0,them:0},done:false}}
 function G(id){const g=S.games[id];const b=blank(+id.slice(1));return g?{...b,...g,clock:{...b.clock,...g.clock},score:{...b.score,...g.score}}:b}
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function nameOf(id){const p=S.squad.find(p=>p.id===id);if(p)return p.name;for(const t of S.archive){const q=(t.players||[]).find(p=>p.id===id);if(q)return q.name}return'Removed player'}
@@ -254,6 +258,8 @@ const started=g=>g.clock.running||g.clock.acc>0;
 function fmt(ms){const s=Math.floor(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}
 function fmtM(ms){const m=ms/60000;return m<1&&ms>0?fmt(ms):Math.round(m)+'m'}
 const bySubTime=g=>[...g.subs].sort((a,b)=>a.at-b.at);
+const scorerName=p=>p==='og'?'Own goal':p?nameOf(p):'Scorer not set';
+function goalTally(games){const c={};games.forEach(g=>(g.goals||[]).forEach(x=>{if(x.p&&x.p!=='og')c[x.p]=(c[x.p]||0)+1}));return c}
 const alpha=l=>[...l].sort((a,b)=>a.name.localeCompare(b.name,'en',{sensitivity:'base'}));
 const byName=ids=>[...ids].sort((a,b)=>nameOf(a).localeCompare(nameOf(b),'en',{sensitivity:'base'}));
 
@@ -307,6 +313,14 @@ function swap(id,a,aSide,b,bSide){
   const wasK=keeper(g)===off;
   mut(id,g=>{g.subs.push({at:el(g),off,on,...(wasK?{gk:true}:{})})});
   toast(`${nameOf(on)} on, ${nameOf(off)} off at ${fmt(el(G(id)))}${wasK?' (now in goal)':''}`);
+}
+
+/* ---------- goal scorers ---------- */
+function scorerBar(g,i){
+  const on=byName([...onPitchAt(g,g.goals[i].at)]);
+  return `<div class="hint scorer"><b>Who scored?</b>
+    <div class="pickchips">${on.map(p=>`<button class="pc" data-act="scorer" data-p="${p}">${esc(nameOf(p))}</button>`).join('')}
+      <button class="pc" data-act="scorer" data-p="og">Own goal</button><button class="pc" data-act="scorerskip">Skip</button></div></div>`;
 }
 
 /* ---------- corrections: game length, clock, subs after the fact ---------- */
@@ -442,6 +456,7 @@ function gameView(id){
     <div class="clock"><span class="t num" data-clock="${id}">${fmt(el(g))}</span><button class="lenbtn num" data-act="fix" aria-label="Change game length or fix the clock">of ${fmt(len)}</button></div>
     <div class="side"><span class="nm">${esc(g.opponent||'Opponent')}</span><div class="sc"><button data-act="score" data-k="them" data-d="-1" aria-label="Remove their goal">−</button><b class="num">${g.score.them}</b><button class="plus" data-act="score" data-k="them" data-d="1" aria-label="Add their goal">+</button></div></div>
   </section>
+  ${S.scorer&&S.scorer.g===id&&g.goals?.[S.scorer.i]?scorerBar(g,S.scorer.i):''}
   <div class="cbtns">${cb}<button class="btn" data-act="fix">${S.fix===id?'Done':st?'Corrections':'Game length'}</button></div>
   ${S.fix===id?fixPanel(id,g,st):''}
   ${hint}
@@ -450,19 +465,26 @@ function gameView(id){
   <div class="benchbox"><div class="lbl" style="margin-bottom:8px">Bench</div>
     <div class="chips">${bench.length?bench.map(p=>chip(p,'bench')).join(''):'<span class="note">Nobody on the bench</span>'}</div></div>
   ${selection}${late}
+  ${(g.goals||[]).length?`<section class="sec log"><h3>Our goals</h3>
+    <div class="rows">${(g.goals||[]).map((x,i)=>({x,i})).sort((a,b)=>b.x.at-a.x.at).map(({x,i})=>`<div class="row"><span class="at num">${fmt(x.at)}</span>
+      <select class="scsel ${x.p?'':'unset'}" data-goalp="${i}" aria-label="Who scored this goal">
+        <option value="" ${x.p?'':'selected'}>Scorer not set</option>
+        ${byName(inGame(g).length?inGame(g):S.squad.map(p=>p.id)).map(p=>`<option value="${p}" ${x.p===p?'selected':''}>${esc(nameOf(p))}</option>`).join('')}
+        <option value="og" ${x.p==='og'?'selected':''}>Own goal</option></select></div>`).join('')}</div>
+    ${g.score.us>(g.goals||[]).length?`<p class="note">${g.score.us-(g.goals||[]).length} earlier goal${g.score.us-(g.goals||[]).length>1?'s':''} without a scorer.</p>`:''}</section>`:''}
   ${g.subs.length?`<section class="sec log"><div class="ghead"><h3>Subs</h3><button class="x" data-act="undo">Undo last sub</button></div>
     <div class="rows">${subs.map(e=>`<div class="row"><span class="at num">${fmt(e.at)}</span><span class="txt"><span class="onn">▲ ${esc(nameOf(e.on))}</span> &nbsp;<span class="off">▼ ${esc(nameOf(e.off))}</span>${e.gk?' <span class="note">(in goal)</span>':''}</span></div>`).join('')}</div></section>`:''}
   </div>`;
 }
 function minutesView(){
   if(!S.squad.length)return `<div class="empty"><b>No squad yet</b>Add the players on the Squad tab and their playing time will add up here.</div>`;
-  const per=gids().map(id=>({g:G(id),m:mins(G(id)),k:G(id)}));
+  const per=gids().map(id=>({g:G(id),m:mins(G(id)),k:G(id)})),gl=goalTally(per.map(x=>x.g));
   const rows=S.squad.map(p=>{let t=0,n=0,gk=0,brk=[];per.forEach(({g,m})=>{if(p.id in m){t+=m[p.id];n++;brk.push(`G${g.n} ${fmt(m[p.id])}`)}if(g.gk===p.id)gk++});return{p,t,n,gk,brk}}).sort((a,b)=>a.t-b.t);
   const max=Math.max(1,...rows.map(r=>r.t)),avg=rows.reduce((s,r)=>s+r.t,0)/rows.length;
   return `<div class="sec"><p class="note">Least time first, so you can see who needs more minutes. Average so far: <b class="num">${fmtM(avg)}</b>.</p>
   <div class="rows">${rows.map(r=>{const low=avg>0&&r.t<avg*0.8;return `<div class="mrow ${low?'low':''}"><span class="who">${esc(r.p.name)}${low?'<span class="flag">Needs time</span>':''}</span><span class="tot num">${fmtM(r.t)}</span>
     <span class="bar"><i style="width:${(r.t/max*100).toFixed(1)}%"></i></span>
-    <span class="brk num">${r.n?r.n+(r.n>1?' games':' game')+(r.gk?` · starts in goal ${r.gk}×`:'')+' · '+r.brk.join(' · '):'Not picked yet'}</span></div>`}).join('')}</div></div>`;
+    <span class="brk num">${r.n?r.n+(r.n>1?' games':' game')+(r.gk?` · starts in goal ${r.gk}×`:'')+(gl[r.p.id]?` · ⚽ ${gl[r.p.id]}`:'')+' · '+r.brk.join(' · '):'Not picked yet'}</span></div>`}).join('')}</div></div>`;
 }
 function squadView(){
   return `<div class="sec">
@@ -634,7 +656,7 @@ function awardsView(){
 /* ---------- season ---------- */
 function finishTournament(){
   const ids=gids();
-  const games=ids.map(id=>{const g=G(id);return{n:g.n,opponent:g.opponent,time:g.time,pitch:g.pitch,score:g.score,done:g.done,played:started(g),gk:keeper(g)||g.gk||null,mins:mins(g)}});
+  const games=ids.map(id=>{const g=G(id);return{n:g.n,opponent:g.opponent,time:g.time,pitch:g.pitch,score:g.score,done:g.done,played:started(g),gk:keeper(g)||g.gk||null,mins:mins(g),goals:(g.goals||[]).map(x=>({at:x.at,p:x.p||null}))}});
   const doc={name:S.tour.name||'',date:S.tour.date||today(),savedAt:Date.now(),games,players:S.squad.map(p=>({id:p.id,name:p.name}))};
   const tid='t'+Date.now();
   put('archive/'+tid,doc);S.archive=[{id:tid,...doc},...S.archive.filter(t=>t.id!==tid)];
@@ -647,7 +669,8 @@ function seasonView(){
   const ts=[...S.archive].sort((a,b)=>(b.date||'').localeCompare(a.date||'')||b.savedAt-a.savedAt);
   const all=record(ts.flatMap(t=>t.games||[]));
   const tot={},gp={};ts.forEach(t=>(t.games||[]).forEach(g=>Object.entries(g.mins||{}).forEach(([p,ms])=>{tot[p]=(tot[p]||0)+ms;gp[p]=(gp[p]||0)+1})));
-  const ac=awardCounts();
+  const ac=awardCounts(),gl=goalTally(ts.flatMap(t=>t.games||[]));
+  const scorers=Object.entries(gl).sort((a,b)=>b[1]-a[1]||nameOf(a[0]).localeCompare(nameOf(b[0])));
   const ppl=new Map();S.squad.forEach(p=>ppl.set(p.id,p.name));Object.keys(tot).forEach(p=>{if(!ppl.has(p))ppl.set(p,nameOf(p))});
   const rows=[...ppl].map(([id,name])=>({id,name,t:tot[id]||0,n:gp[id]||0,a:ac[id]||0})).sort((a,b)=>a.t-b.t);
   const max=Math.max(1,...rows.map(r=>r.t)),avg=rows.length?rows.reduce((s,r)=>s+r.t,0)/rows.length:0;
@@ -655,12 +678,13 @@ function seasonView(){
   ${ts.length?`<div class="summary num"><span>Tournaments <b>${ts.length}</b></span><span>W <b>${all.W}</b> · D <b>${all.D}</b> · L <b>${all.L}</b></span><span>Goals <b>${all.F}–${all.A}</b></span><span>Awards <b>${S.awards.length}</b> sessions</span></div>`:''}
   <section class="sec"><h3>Season minutes</h3>
   ${ts.length&&rows.length?`<p class="note">Saved tournaments only, least time first.</p><div class="rows">${rows.map(r=>{const low=avg>0&&r.t<avg*0.8;return `<div class="mrow ${low?'low':''}"><span class="who">${esc(r.name)}${low?'<span class="flag">Needs time</span>':''}</span><span class="tot num">${fmtM(r.t)}</span>
-    <span class="bar"><i style="width:${(r.t/max*100).toFixed(1)}%"></i></span><span class="brk num">${r.n} game${r.n===1?'':'s'}${r.a?` · <span class="star">★${r.a}</span> award${r.a>1?'s':''}`:''}</span></div>`}).join('')}</div>`
+    <span class="bar"><i style="width:${(r.t/max*100).toFixed(1)}%"></i></span><span class="brk num">${r.n} game${r.n===1?'':'s'}${gl[r.id]?` · ${gl[r.id]} goal${gl[r.id]>1?'s':''}`:''}${r.a?` · <span class="star">★${r.a}</span> award${r.a>1?'s':''}`:''}</span></div>`}).join('')}</div>`
   :`<div class="empty"><b>Nothing saved yet</b>When a tournament ends, tap "Finish tournament and save to season" on the Games tab.</div>`}</section>
+  ${scorers.length?`<section class="sec"><h3>Top scorers</h3><div class="rows">${scorers.map(([p,n])=>`<div class="row"><span class="who">${esc(nameOf(p))}</span><b class="num">${n}</b></div>`).join('')}</div></section>`:''}
   ${ts.length?`<section class="sec"><h3>Tournaments</h3>${ts.map(t=>{const r=record(t.games||[]),open=S.openT===t.id;
     return `<div class="tcard"><button data-act="topen" data-id="${t.id}"><span><span class="tn">${esc(t.name||'Tournament')}</span><span class="ts" style="display:block">${esc(nice(t.date))}</span></span>
       <span class="num" style="text-align:right"><b>W${r.W} D${r.D} L${r.L}</b><span class="ts" style="display:block">Goals ${r.F}–${r.A}</span></span></button>
-      ${open?`<div class="tb">${(t.games||[]).map(g=>`<div class="gl"><span>${esc(g.time||'G'+g.n)} v ${esc(g.opponent||'?')}</span><b class="num">${g.played||g.done?g.score.us+'–'+g.score.them:'not played'}</b></div>`).join('')}
+      ${open?`<div class="tb">${(t.games||[]).map(g=>`<div class="gl"><span>${esc(g.time||'G'+g.n)} v ${esc(g.opponent||'?')}</span><b class="num">${g.played||g.done?g.score.us+'–'+g.score.them:'not played'}</b></div>${(g.goals||[]).length?`<div class="gls">⚽ ${(g.goals||[]).map(x=>esc(scorerName(x.p))).join(', ')}</div>`:''}`).join('')}
         <button class="x ${S.confirm==='t-'+t.id?'sure':''}" data-act="tdel" data-id="${t.id}" style="align-self:flex-start">${S.confirm==='t-'+t.id?'Tap to delete this tournament':'Delete this tournament'}</button></div>`:''}</div>`}).join('')}</section>`:''}
   ${ts.length||S.awards.length?`<div class="danger"><button class="btn warn" data-act="wipe">${S.confirm==='wipe'?'Tap again to delete all season data':'Delete all season data'}</button>
     <p class="note">For the end of the season: removes every saved tournament and award. The squad stays until you remove the players on the Squad tab.</p></div>`:''}
@@ -678,7 +702,12 @@ document.addEventListener('click',e=>{
     case'open':S.game=b.dataset.g;S.pick=null;S.addLate=false;render();window.scrollTo(0,0);break;
     case'back':S.fix=null;S.game=null;S.pick=null;render();break;
     case'reset':if(S.confirm==='reset'){S.confirm=null;gids().forEach(g=>{const o=G(g),n=blank(o.n);Object.assign(n,{opponent:o.opponent,time:o.time,pitch:o.pitch,team:o.team});S.games[g]=n;put('games/'+g,n)});toast('Scores, line-ups and subs cleared. Fixtures kept.');render()}else{S.confirm='reset';render()}break;
-    case'score':mut(id,g=>{g.score[b.dataset.k]=Math.max(0,g.score[b.dataset.k]+ +b.dataset.d)});break;
+    case'score':{const k=b.dataset.k,d=+b.dataset.d;
+      if(k==='us'&&d>0){let i=0;mut(id,g=>{g.goals=[...(g.goals||[]),{at:el(g),p:null}];i=g.goals.length-1;g.score.us++});S.scorer={g:id,i};render();break}
+      if(k==='us'&&d<0){mut(id,g=>{if(g.score.us<=0)return;g.score.us--;const gs=g.goals||[];if(gs.length>g.score.us)g.goals=gs.slice(0,g.score.us)});S.scorer=null;render();break}
+      mut(id,g=>{g.score[k]=Math.max(0,g.score[k]+d)});break}
+    case'scorer':{const sc=S.scorer;if(sc)mut(sc.g,g=>{if(g.goals&&g.goals[sc.i])g.goals[sc.i].p=b.dataset.p});S.scorer=null;render();break}
+    case'scorerskip':S.scorer=null;render();break;
     case'kick':mut(id,g=>{g.clock.running=true;g.clock.startedAt=Date.now();g.done=false});break;
     case'pause':mut(id,g=>{g.clock.acc=el(g);g.clock.running=false});break;
     case'ft':S.pick=null;mut(id,g=>{g.clock.acc=el(g);g.clock.running=false;g.done=true});break;
@@ -785,6 +814,7 @@ document.addEventListener('submit',e=>{
 document.addEventListener('change',e=>{
   const t=e.target;
   if(t.id==='restorefile'&&t.files&&t.files[0]){readBackup(t.files[0]);t.value='';return}
+  if(t.dataset.goalp&&S.game){const i=+t.dataset.goalp,v=t.value||null;mut(S.game,g=>{if(g.goals?.[i])g.goals[i].p=v});return}
   if(t.dataset.subat&&S.game){const i=+t.dataset.subat,v=parseT(t.value);if(v==null){toast('Type the time like 4:30.');render();return}
     if(!tryFix(S.game,g=>{g.subs[i].at=v},`Sub moved to ${fmt(v)}.`))render();return}
   if(t.dataset.cfg&&S.cfgLoaded&&S.cfg.team){const k=t.dataset.cfg;let v=t.value.trim().slice(0,40);if(k==='size')v=Math.min(11,Math.max(3,parseInt(v)||5));if(k==='team'&&!v)return;

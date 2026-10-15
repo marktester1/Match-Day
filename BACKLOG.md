@@ -5,6 +5,7 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Waiting on testing
 
+- **v0.8.0 on beta, not yet live:** goal scorers (who-scored bar, corrections, top scorers).
 - **v0.7.0 live.** Beta (https://match-day-beta-17b23.web.app) is its own Firebase project;
   beta test team invite code: `L9J-Q7H`.
 - **Accounts:** Google sign-in works on live. Still to try: signing in on a second phone and
@@ -17,9 +18,6 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
    - The squad and saved tournaments already hold most of this; it needs a per-player
      season view.
    - Question: should players removed from the squad keep their season stats?
-
-2. **Record who scores.** Tapping + for our team asks who scored (or "own goal / not
-   sure"). Goals then show per game and in season stats.
 
 3. **Sport per team, chosen when the team is set up (football or rugby).** A choice on the
    team set-up screen; each team keeps its own sport, and words, scoring and the keeper change with it.
