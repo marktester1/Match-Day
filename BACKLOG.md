@@ -5,7 +5,7 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Waiting on testing
 
-- **v0.9.1 on beta, not yet live:** halves and quarters; pitch straight under the game buttons.
+- **v0.9.2 on beta, not yet live:** halves and quarters; game screen order (pitch, bench, goals, subs, then corrections).
 - **v0.8.1 live:** goal scorers, icon fix. Beta (https://match-day-beta-17b23.web.app) is its own Firebase project;
   beta test team invite code: `L9J-Q7H`.
 - **Accounts:** Google sign-in works on live. Still to try: signing in on a second phone and

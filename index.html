@@ -238,7 +238,7 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.9.1';
+const APP_VERSION='0.9.2';
 /*CFG*/const DEFAULT_CFG={team:'Example FC U10s',short:'Example FC',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,teams:false,adding:false,acct:null,
@@ -481,7 +481,6 @@ function gameView(id){
     <div class="chips">${pitch.length?pitch.map(p=>chip(p,'pitch')).join(''):'<span style="color:#ffffffcc;font-size:14px;padding-top:24px">Pick the starters below</span>'}</div></div>
   <div class="benchbox"><div class="lbl" style="margin-bottom:8px">Bench</div>
     <div class="chips">${bench.length?bench.map(p=>chip(p,'bench')).join(''):'<span class="note">Nobody on the bench</span>'}</div></div>
-  ${selection}${late}
   ${(g.goals||[]).length?`<section class="sec log"><h3>Our goals</h3>
     <div class="rows">${(g.goals||[]).map((x,i)=>({x,i})).sort((a,b)=>b.x.at-a.x.at).map(({x,i})=>`<div class="row"><span class="at num">${tAt(x.at)}</span>
       <select class="scsel ${x.p?'':'unset'}" data-goalp="${i}" aria-label="Who scored this goal">
@@ -491,6 +490,7 @@ function gameView(id){
     ${g.score.us>(g.goals||[]).length?`<p class="note">${g.score.us-(g.goals||[]).length} earlier goal${g.score.us-(g.goals||[]).length>1?'s':''} without a scorer.</p>`:''}</section>`:''}
   ${g.subs.length?`<section class="sec log"><div class="ghead"><h3>Subs</h3><button class="x" data-act="undo">Undo last sub</button></div>
     <div class="rows">${subs.map(e=>`<div class="row"><span class="at num">${tAt(e.at)}</span><span class="txt"><span class="onn">▲ ${esc(nameOf(e.on))}</span> &nbsp;<span class="off">▼ ${esc(nameOf(e.off))}</span>${e.gk?' <span class="note">(in goal)</span>':''}</span></div>`).join('')}</div></section>`:''}
+  ${selection}${late}
   ${S.fix===id?fixPanel(id,g,st):''}
   </div>`;
 }
