@@ -202,6 +202,15 @@ Today a phone can use the app with no account (anonymous sign-in); Google or ema
   done in the app; when it's closed it needs web push plus a small scheduled server function
   (Firebase Blaze plan, pennies at this size) and notification permission on each phone.
   Shares the push set-up with the parent view.
+- **Push notifications for followers**, even with the app closed: game about to start / kick-off,
+  goals (for either team, with the score), cards, half time and full time. Each follower chooses which
+  ones they want. No players' names: e.g. "Goal! Example Team 2–1 Riverside", "Yellow card for
+  Example Team (12')". Today followers only get alerts while the page is open.
+  - Needs: Firebase Cloud Messaging, a small server function that sends a push when the feed changes,
+    and the Blaze plan (pennies at this size). Followers allow notifications once; on iPhone they must
+    add the follower page to the home screen first (Apple's rule for web push).
+  - Cards: add a name-free card count to the follower feed (rules + tests), since followers can't see
+    cards at the moment.
 
 ## Make it clear it works for tournaments and single matches
 - The app reads as tournament-first. Make it obvious it's just as good for a **single match** (e.g. a
@@ -230,7 +239,7 @@ Today a phone can use the app with no account (anonymous sign-in); Google or ema
 - **Red card** = sent off for the rest of the game; the team plays one short (no replacement).
 - **Football**: decide how grassroots sin bins (temporary dismissals for dissent) work for the age
   groups using the app, and whether a yellow alone needs anything beyond a record.
-- Followers see nothing about cards (no players' names).
+- Followers see nothing about cards today (no players' names); name-free card alerts are planned under Notifications.
 
 ## Business and branding
 - **Company name and address on the pages?** Privacy and terms currently say Mark Miles Consultancy
