@@ -181,6 +181,22 @@ Today a phone can use the app with no account (anonymous sign-in); Google or ema
 - Immediate feedback for goals, subs, clock changes and saves (undo bar and save pill cover most;
   consider a short vibration on phones).
 
+## Season history and PDF export (requested)
+
+- **More than one season.** Today the Season tab is one running list of saved tournaments and
+  awards, and the only way to start afresh is "delete season data". Instead: a season label
+  (e.g. 2026/27) on each saved tournament and award, a "Start a new season" step that files the
+  current one away (nothing deleted), and a season picker on the Season tab to look back.
+  Data: add a `season` field (adding fields only); older records without one count as the
+  first season; backups and restore keep loading old files. Ties in with the parent link,
+  which is already one per team per season.
+- **Export a season as PDF.** A printable season summary: results (W/D/L, goals), playing time
+  per player, awards, and optionally each tournament's games. Built in the app (print-friendly
+  page and the phone's Save as PDF / share sheet), so no server is needed. Holds children's
+  first names, so the same privacy warning as backups.
+- Questions: does a season follow the school year (September to July) or does the coach name
+  it? Should the PDF include playing time (some clubs prefer not to share it with parents)?
+
 ## Notifications
 - Match starting soon: reminder before a game's kick-off time. While the app is open this can be
   done in the app; when it's closed it needs web push plus a small scheduled server function
