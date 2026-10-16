@@ -203,6 +203,14 @@ Today a phone can use the app with no account (anonymous sign-in); Google or ema
   (Firebase Blaze plan, pennies at this size) and notification permission on each phone.
   Shares the push set-up with the parent view.
 
+## Make it clear it works for tournaments and single matches
+- The app reads as tournament-first. Make it obvious it's just as good for a **single match** (e.g. a
+  Saturday league game) as for a **one-day tournament** of several games.
+- Ideas: at set-up ask "What's today: one match or a tournament?" (one match sets 1 game and skips
+  tournament wording); call the section "Match day" rather than "Tournament" when there's one game;
+  "Save the match" instead of "Finish tournament"; results and summaries say "match" for single games.
+- Update the blurb, the empty screens and the set-up help to mention both.
+
 ## Followers: follow several teams
 - A follower (e.g. a grandparent with two grandchildren in different teams, or a club official) can
   follow more than one team in the app. Each follower link opened on the phone is remembered; the
