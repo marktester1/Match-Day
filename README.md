@@ -98,7 +98,7 @@ Security rules publish separately: `firebase deploy --only firestore:rules`.
   code; the data is safe. Email sign-in before real customers would remove that risk.
 
 Only the files listed in `tools/build_public.sh` go online: Firebase runs it before every
-publish and uploads just the `public/` folder it makes (8 files today). A new app file must be
+publish and uploads just the `public/` folder it makes (11 files today). A new app file must be
 added to that list; anything else (team exports, notes, git history) can't be published.
 
 ## Moving to a store app (plan)

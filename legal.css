@@ -1,0 +1,13 @@
+/* Shared look for the privacy and terms pages (matches the app) */
+:root{--bg:#f2f5f0;--surface:#fff;--ink:#16211a;--muted:#5b6a60;--line:#d7dfd6;--grass:#1e6a3a}
+@media (prefers-color-scheme:dark){:root{--bg:#0e1511;--surface:#16201a;--ink:#e4ece6;--muted:#97a99d;--line:#2a372f;--grass:#5cc183;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;padding:20px 16px 60px}
+main{max-width:680px;margin:0 auto}
+h1,h2{font-family:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;line-height:1.15}
+h1{font-size:34px;margin:8px 0 4px}h2{font-size:24px;margin:28px 0 6px;color:var(--grass)}
+a{color:var(--grass)}
+.meta{color:var(--muted);font-size:14px}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin:14px 0}
+table{border-collapse:collapse;width:100%;font-size:15px}td,th{border-top:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:top}th{color:var(--muted);font-weight:700}
+.back{display:inline-block;margin-bottom:8px}

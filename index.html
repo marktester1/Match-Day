@@ -545,6 +545,7 @@ function parentView(){
   ${'Notification' in window&&Notification.permission==='granted'?`<p class="note">Alerts are on while this page is open.</p>`:''}
   ${pGamesList(f)}
   <p class="note">The score updates live from the coaches' phones. Keep this page open to get alerts.</p>
+  <p class="note" style="text-align:center"><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p>
   </div>${S.pbanner?`<div class="pbanner" role="alert">${esc(S.pbanner.t)}<small>${esc(S.pbanner.s)}</small></div>`:''}`;
 }
 function pGamesList(f){
@@ -1016,7 +1017,7 @@ function squadView(){
     <p class="note">Surnames are dropped automatically. If two players share a first name, the app adds their surname initial.</p></div>
   ${settingsCard(false)}
   ${FB?'<p class="note">Invite code, team members, your account and backups are in the ☰ menu (top right).</p>':''}
-  <p class="note num" style="text-align:center">Match Day v${APP_VERSION}</p></div>`;
+  <p class="note num" style="text-align:center">Match Day v${APP_VERSION}</p><p class="note" style="text-align:center"><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p></div>`;
 }
 // The scoreboard name: the team name without an age group at the end ("Example Team U10s" -> "Example Team").
 const shortName=t=>{const x=String(t||'').trim().replace(/[\s(-]*\b(u|under)[\s-]?\d{1,2}'?s?\)?$/i,'').trim();return(x||String(t||'').trim()).slice(0,40)};
@@ -2190,7 +2191,7 @@ function gateView(){
   ${FB&&!isAccount()?`<div class="card"><h3>Your account</h3>
     <p class="note">Optional. Sign in with Google or a free email account and your teams are saved to you, so you can get them all back on a new phone.</p>
     ${S.acct?acctForm(S.acct):`${googleBtn()}<div class="cbtns"><button class="btn" data-act="acctsignin">Sign in with email</button><button class="btn" data-act="acctcreate">Create an account</button></div>`}</div>`:''}
-  <p class="note num" style="text-align:center">Match Day v${APP_VERSION}</p>
+  <p class="note num" style="text-align:center">Match Day v${APP_VERSION}</p><p class="note" style="text-align:center"><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p>
   </div>`;
 }
 function teamsView(){
@@ -2303,7 +2304,7 @@ function menuView(){
   ${parentCard()}
   ${backupCard()}
   ${S.owner?'<button class="btn" data-act="admin">Admin: all teams</button>':''}
-  <p class="note num" style="text-align:center">Match Day v${APP_VERSION}</p>
+  <p class="note num" style="text-align:center">Match Day v${APP_VERSION}</p><p class="note" style="text-align:center"><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p>
   </div>`;
 }
 // Invite by WhatsApp (or the phone's share sheet): a message with a link that opens the app with
