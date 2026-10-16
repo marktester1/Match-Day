@@ -851,11 +851,11 @@ function render(){
   const sw=!!(FB&&S.teamId&&!S.gate&&S.cfg.team);h.classList.toggle('teamsw',sw);if(sw)h.dataset.act='teams';else delete h.dataset.act;
   h.classList.toggle('others',sw&&myTeams().some(t=>t!==S.teamId&&teamInfo[t]?.running?.length));
   if(S.closed){v.innerHTML=`<div class="card"><h3>This window has closed the team</h3><p>${esc(S.closed)}</p><button class="btn go" data-act="reload" style="align-self:flex-start">Reload</button></div>`;return}
-  if(S.gate){v.innerHTML=gateView();if(S.syncOpen)v.insertAdjacentHTML('afterbegin',syncPanel());return}
+  if(S.gate){keepSetup(()=>{v.innerHTML=gateView()});if(S.syncOpen)v.insertAdjacentHTML('afterbegin',syncPanel());return}
   if(S.teams){v.innerHTML=teamsView();return}
   if(S.adminOpen){v.innerHTML=adminView();return}
   if(S.menu){v.innerHTML=menuView();if(S.syncOpen)v.insertAdjacentHTML('afterbegin',syncPanel());return}
-  if(S.cfgLoaded&&!S.cfg.team){v.innerHTML=setupView();return}
+  if(S.cfgLoaded&&!S.cfg.team){keepSetup(()=>{v.innerHTML=setupView()});return} // updates arriving mid-typing mustn't wipe it
   v.innerHTML=S.tab==='games'&&S.fx&&!S.game?fixturesView():S.tab==='games'?(S.game?gameView(S.game):gamesList()):S.tab==='minutes'?minutesView():S.tab==='notes'?notesView():S.tab==='awards'?awardsView():S.tab==='season'?seasonView():squadView();
   if(S.saved)v.insertAdjacentHTML('beforeend',savedPop());
   if(S.requests.length&&!v.querySelector('.reqs'))v.insertAdjacentHTML('afterbegin',`<button class="reqnote" data-act="menu">${esc(S.requests.map(r=>r.name||'Someone').join(', '))} ${S.requests.length>1?'want':'wants'} to join the team. Tap to see who and accept or decline.</button>`);
@@ -1028,7 +1028,9 @@ function settingsCard(first){
     ${c.sport==='rugby'?`<div class="weare"><span class="lbl">Rugby scoring</span><span class="seg fill">${[['points','Points'],['tries','Tries only']].map(([v,l])=>`<button type="button" class="${(c.rscore||'points')===v?'on':''}" data-act="rscore" data-v="${v}">${l}</button>`).join('')}</span>
       <p class="note">${c.rscore==='tries'?'Each try counts 1.':'Try 5, conversion 2, penalty 3, drop goal 3.'}</p></div>`:''}
     <label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">Team name</span><input id="cfg-team" data-cfg="team" value="${esc(c.team)}" placeholder="e.g. Example Team U10s"></label>
-    ${first?'<p class="note">Include the age group if you like, e.g. U10s. On the scoreboard the team is shown without it; you can change that in Team settings.</p>'
+    ${first?`<p class="note">Include the age group if you like, e.g. U10s. On the scoreboard the team is shown without it; you can change that in Team settings.</p>
+      <label style="display:flex;flex-direction:column;gap:4px;max-width:200px"><span class="lbl">Usual players a side</span><input id="cfg-size" class="num" type="number" min="3" max="11" data-cfg="size" value="${c.size||5}" inputmode="numeric"></label>
+      <p class="note">e.g. 5 for 5-a-side. You can change it for each tournament or game.</p>`
     :`<div class="meta">
       <label><span class="lbl">Name on the scoreboard</span><input id="cfg-short" data-cfg="short" value="${esc(c.short)}" placeholder="${esc(shortName(c.team)||'e.g. Example Team')}"></label>
       <label><span class="lbl">Usual players a side</span><input id="cfg-size" class="num" type="number" min="3" max="11" data-cfg="size" value="${c.size||5}"></label>
@@ -1391,7 +1393,7 @@ function seasonView(){
 
 /* ---------- actions ---------- */
 function keepSetup(fn){ // re-draw the set-up screen without losing what's been typed into it
-  const keep={};['cfg-team','cfg-short','cfg-size','bulknames'].forEach(x=>{const e=document.getElementById(x);if(e)keep[x]=e.value});
+  const keep={};['cfg-team','cfg-short','cfg-size','bulknames','joinname','joincode'].forEach(x=>{const e=document.getElementById(x);if(e)keep[x]=e.value});
   fn();Object.entries(keep).forEach(([x,v])=>{const e=document.getElementById(x);if(e)e.value=v});
 }
 document.addEventListener('click',e=>{
@@ -1529,8 +1531,8 @@ document.addEventListener('click',e=>{
       S.tour={...S.tour,count:f.length};saveTour();
       f.forEach((x,i)=>{const id='g'+(i+1),g=structuredClone(G(id));Object.assign(g,{time:x.time,opponent:x.opponent,pitch:x.pitch,side:x.side});S.games[id]=g;put('games/'+id,g)});
       document.getElementById('fxpaste').value='';toast(`${f.length} fixtures filled in. Check them above.`);render();break}
-    case'bulkadd':{const t=document.getElementById('bulknames');const n=addNames(t?.value);if(t)t.value='';toast(n?`${n} added to the squad.`:'Nobody new to add.');render();break}
-    case'setupdone':{const c={...S.cfg};['team','short'].forEach(k=>{const i=document.getElementById('cfg-'+k);if(i)c[k]=i.value.trim().slice(0,40)});
+    case'bulkadd':{document.activeElement?.blur();const t=document.getElementById('bulknames');const n=addNames(t?.value);if(t)t.value='';toast(n?`${n} added to the squad.`:'Nobody new to add.');render();break}
+    case'setupdone':{document.activeElement?.blur();const c={...S.cfg};['team','short'].forEach(k=>{const i=document.getElementById('cfg-'+k);if(i)c[k]=i.value.trim().slice(0,40)});
       const sz=document.getElementById('cfg-size');c.size=Math.min(11,Math.max(3,parseInt(sz?.value)||c.size||5));
       if(!c.team){toast('Add a team name first.');break}if(!c.short)c.short=shortName(c.team);
       S.cfg=c;put('club/settings',c);addNames(document.getElementById('bulknames')?.value);toast('All set.');render();break}
@@ -1578,6 +1580,7 @@ document.addEventListener('pointerup',e=>endDrag(e,false));
 document.addEventListener('pointercancel',e=>endDrag(e,true));
 
 document.addEventListener('submit',e=>{
+  document.activeElement?.blur(); // iPhones keep typing focus on submit; the app waits for it to leave before redrawing
   if(e.target.id==='notef'){e.preventDefault();const p=document.getElementById('notep').value,t=document.getElementById('notet').value.trim().slice(0,300);
     if(!p){toast('Choose a player first.');return}if(!t){toast('Write the note first.');return}
     S.notes=[...S.notes,{id:'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),p,text:t,at:Date.now(),done:false,by:FB?myName():''}];S.noteFor=p;
