@@ -246,6 +246,7 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 .rstate{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-radius:10px;font-size:14px;background:var(--live-bg)}
 .rstate.done{background:var(--grass-2)}
 .rstate.failed{border:2px solid var(--bad);background:none}
+.wa{text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
 .reqs{display:flex;flex-direction:column;gap:8px}
 .req{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;border:2px solid var(--live);background:var(--live-bg)}
 .checks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:14px}
@@ -1310,6 +1311,8 @@ document.addEventListener('click',e=>{
     case'reqno':b.disabled=true;declineRequest(b.dataset.id);break;
     case'reqcancel':cancelRequest(b.dataset.id);break;
     case'reqagain':b.disabled=true;askAgain(b.dataset.id);break;
+    case'invshare':navigator.share({text:inviteText()}).catch(()=>{});break;
+    case'invcopy':navigator.clipboard?.writeText(inviteText()).then(()=>toast('Invite copied. Paste it into a message.'),()=>toast("Couldn't copy it."));break;
     case'newcode':if(S.confirm==='newcode'){S.confirm=null;newInviteCode()}else{S.confirm='newcode';render()}break;
     case'mkmgr':{const k='mg-'+b.dataset.id;if(S.confirm===k){S.confirm=null;handOver(b.dataset.id)}else{S.confirm=k;render()}break}
     case'rmcoach':{const k='rm-'+b.dataset.id;if(S.confirm===k){S.confirm=null;removeCoach(b.dataset.id)}else{S.confirm=k;render()}break}
@@ -1585,7 +1588,10 @@ async function connectFirebase(){
   await within(finishLeaves(),8000);addEventListener('online',finishLeaves);
   const t=lsGet(TEAM_KEY)||myTeams()[0];
   watchPending();
+  const inv=new URLSearchParams(location.search).get('join');
+  if(inv){S.joinCode=showCode(inv.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8));history.replaceState(null,'',location.pathname)}
   if(t)openTeam(t);else{S.gate=true;setSync(false,'No team yet');render()}
+  if(inv&&t){S.gate=true;S.adding=true;render()} // already in a team: show Add a team with the code ready
   return true;
 }
 function openTeam(t){
@@ -2117,6 +2123,7 @@ function menuView(){
   ${pendingCard()}
   <div class="card"><h3>${esc(S.cfg.team||'This team')}</h3>
     <p>Invite code: <b class="num" style="font-family:var(--display);font-size:26px;letter-spacing:.06em">${esc(showCode(S.invite))||'…'}</b></p>
+    ${inviteShare()}
     <p class="note">Other coaches open the app, tap <b>Join a team</b> and enter this code. The code only sends a request: someone in the team has to accept each person.</p>
     ${S.createdBy===FB.auth.currentUser?.uid?`<button class="x ${S.confirm==='newcode'?'sure':''}" data-act="newcode" style="align-self:flex-start">${S.confirm==='newcode'?'Tap again: the old code stops working at once':'Make a new invite code'}</button>
       <p class="note">${S.invite&&S.invite.length<8?'Your code is the older, shorter kind: a new one is 8 characters and much harder to guess. ':''}Use this if the code has been shared too widely. Coaches already in the team stay in.</p>`:''}
@@ -2129,10 +2136,22 @@ function menuView(){
   <p class="note num" style="text-align:center">Match Day v${APP_VERSION}</p>
   </div>`;
 }
+// Invite by WhatsApp (or the phone's share sheet): a message with a link that opens the app with
+// the code filled in. The link is safe to pass around: it only lets someone ask, and a coach accepts.
+function inviteText(){
+  const link=location.origin+location.pathname+'?join='+encodeURIComponent(S.invite);
+  return `Join ${S.cfg.team||'our team'} on Match Day, the app we use on match days. Open ${link} and tap "Ask to join" (the invite code ${showCode(S.invite)} is filled in). One of us will then accept you.`;
+}
+function inviteShare(){
+  if(!S.invite)return'';
+  return `<div class="cbtns"><a class="btn go wa" href="https://wa.me/?text=${encodeURIComponent(inviteText())}" target="_blank" rel="noopener">Invite on WhatsApp</a>
+    ${navigator.share?'<button class="btn" data-act="invshare">Share another way</button>':'<button class="btn" data-act="invcopy">Copy invite</button>'}</div>`;
+}
 function teamCard(){
   if(!FB||!S.teamId)return'';
   return `<div class="card"><h3>Invite other coaches</h3>
     <p>Invite code: <b class="num" style="font-family:var(--display);font-size:26px;letter-spacing:.06em">${esc(showCode(S.invite))||'…'}</b></p>
+    ${inviteShare()}
     <p class="note">Other coaches open the app, tap <b>Join a team</b> and enter this code. That sends a request, and someone in the team accepts it in the ☰ menu: the code alone doesn't let anyone in. Everyone accepted can see and change this team's squad and games.</p>
     ${leaveBtn()}</div>`;
 }
