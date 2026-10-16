@@ -214,6 +214,7 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 .teamrow .who{flex:1 1 auto}
 .teamrow.cur .who{color:var(--grass)}
 .flag.run{color:var(--live)}
+.setup{display:flex;flex-direction:column;gap:8px;padding-bottom:12px;border-bottom:1px solid var(--line)}
 .evl{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;min-width:64px}
 .rk{font-family:var(--display);font-size:18px;color:var(--muted);min-width:22px}
 .tedit{display:flex;flex-direction:column;gap:12px;padding-top:8px}
@@ -277,7 +278,7 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.16.3';
+const APP_VERSION='0.16.4';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,teams:false,adding:false,acct:null,
@@ -572,6 +573,14 @@ function gamesList(){
   let W=0,D=0,L=0,F=0,A=0;const ids=gids();
   ids.forEach(id=>{const g=G(id);if(g.done){F+=g.score.us;A+=g.score.them;g.score.us>g.score.them?W++:g.score.us<g.score.them?L++:D++}});
   return `<div class="sec">
+  <div class="setup">
+  <div class="meta three">
+    <label><span class="lbl">Minutes</span><input id="len" class="num" type="number" min="1" max="60" data-tour="len" value="${S.tour.len||10}"></label>
+    <label><span class="lbl">Games</span><input id="cnt" class="num" type="number" min="1" max="10" data-tour="count" value="${S.tour.count||6}"></label>
+    <label><span class="lbl">A side</span><input id="tsize" class="num" type="number" min="3" max="11" data-tour="size" value="${tourSize()}"></label></div>
+  <span class="seg fill" role="group" aria-label="Periods">${[[1,'One period'],[2,'Halves'],[4,'Quarters']].map(([v,l])=>`<button class="${nPer()===v?'on':''}" data-act="periods" data-v="${v}">${l}</button>`).join('')}</span>
+  ${nPer()>1?`<p class="note">${nPer()===2?'Two halves':'Four quarters'} of ${fmt(perLen())}. The clock pauses by itself at each break.</p>`:''}
+  </div>
   <div class="summary num"><span>Played <b>${W+D+L}</b> of ${ids.length}</span><span>W <b>${W}</b> · D <b>${D}</b> · L <b>${L}</b></span><span>${Words().goals} <b>${F}–${A}</b></span></div>
   <div class="glist">${ids.map(id=>{const g=G(id);const n=inGame(g).length;
     return `<button class="gcard" data-act="open" data-g="${id}">
@@ -581,12 +590,6 @@ function gamesList(){
       <span class="res">${started(g)?`<span class="scr num">${scoreHA(g)}</span>`:''}${status(g)}${started(g)&&!g.done?`<span class="sub num" data-clock="${id}">${nPer()>1?perShort(perOf(el(g)))+' ':''}${clockText(g)}</span>`:''}</span>
     </button>`}).join('')}</div>
   <button class="btn" data-act="fxopen">Enter opponents and kick-off times</button>
-  <div class="meta three">
-    <label><span class="lbl">Minutes</span><input id="len" class="num" type="number" min="1" max="60" data-tour="len" value="${S.tour.len||10}"></label>
-    <label><span class="lbl">Games</span><input id="cnt" class="num" type="number" min="1" max="10" data-tour="count" value="${S.tour.count||6}"></label>
-    <label><span class="lbl">A side</span><input id="tsize" class="num" type="number" min="3" max="11" data-tour="size" value="${tourSize()}"></label></div>
-  <span class="seg fill" role="group" aria-label="Periods">${[[1,'One period'],[2,'Halves'],[4,'Quarters']].map(([v,l])=>`<button class="${nPer()===v?'on':''}" data-act="periods" data-v="${v}">${l}</button>`).join('')}</span>
-  ${nPer()>1?`<p class="note">${nPer()===2?'Two halves':'Four quarters'} of ${fmt(perLen())}. The clock pauses by itself at each break.</p>`:''}
   <button class="btn go" data-act="finish">${S.confirm==='finish'?'Tap again to save and start fresh':'Finish tournament and save to Results'}</button>
   <p class="note">Saves results and every player's minutes to Season → Results, then clears the games ready for the next tournament.</p>
   <button class="btn warn" data-act="reset">${S.confirm==='reset'?'Tap again to clear without saving':'Clear scores and line-ups without saving'}</button>
