@@ -11,7 +11,29 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 - **Accounts:** Google sign-in works on live. Still to try: signing in on a second phone and
   seeing the teams come back.
 
-## Features
+## From the code review (do these before more features)
+
+**Step 1: Data safety: done on beta (v0.20.0); rules on beta only, live needs the go-ahead.**
+Restore checks every field, previews the change, keeps an undo copy and writes all-or-nothing;
+save-status pill (Saving… / Waiting for signal / Some changes not saved / Shared · live);
+validated rules with 13 emulator tests (cd tests && npm test); sign-out and leave wipe the
+phone's copy (finishing at next start if another window blocks it); backup privacy warning.
+Also from scenario testing: subs checked against the live line-up (no duplicate players);
+one-tap Undo bar for subs, keeper changes, goals and clock actions; Full time asks first and
+shows the final score; the app opens on a live or about-to-start game.
+
+**Step 2: Invite codes**
+- Firebase App Check against scripted guessing; 8-character codes; manager can make a new code
+  (old one stops working) and remove a coach. Real rate limiting needs Cloud Functions (paid
+  Blaze plan); revisit then. Optional: approval to join.
+
+**Step 3: Tests and structure**
+- Account recovery tests (anonymous → account, lost phone). Automated tests for subs, minutes,
+  score correction, completion and restore. Schema version on stored data and backups with
+  explicit migrations. Stop swallowing errors that affect access or data. Split index.html into
+  modules (match logic, storage, auth, UI). Review listener lifecycles and re-renders.
+
+
 
 1. **Parent view: live score only.** Parents follow a game's score from their own phone, with
    notifications for goals, half time and full time. No children's names, line-ups, minutes,
@@ -68,6 +90,22 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
      alongside Google, store listing (screenshots, privacy label, privacy policy link, age
      rating), full Xcode on the Mac. Risk: Apple may reject thin web wrappers; offline use, live
      sync and push notifications help.
+
+## Usability on the touchline (from review)
+- Large tap targets with good spacing (check every button against ~44px).
+- High contrast in bright sunlight; works in the dark.
+- Don't rely on colour alone for match status (Live / Paused / Full time already have words;
+  check the game strip dots and pills).
+- Keep the essential controls (score, subs, clock) within thumb reach.
+- Short labels, familiar football words, clear icons.
+- Immediate feedback for goals, subs, clock changes and saves (undo bar and save pill cover most;
+  consider a short vibration on phones).
+
+## Notifications
+- Match starting soon: reminder before a game's kick-off time. While the app is open this can be
+  done in the app; when it's closed it needs web push plus a small scheduled server function
+  (Firebase Blaze plan, pennies at this size) and notification permission on each phone.
+  Shares the push set-up with the parent view.
 
 ## Later
 

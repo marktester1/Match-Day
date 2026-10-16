@@ -6,6 +6,56 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     function memberPath(t) { return /databases/$(database)/documents/teams/$(t)/members/$(request.auth.uid); }
     function teamAfter(t) { return getAfter(/databases/$(database)/documents/teams/$(t)).data; }
+    function member(t) { return signedIn() && exists(memberPath(t)); }
+    function memberAfter(t) { return signedIn() && existsAfter(memberPath(t)); }
+
+    // Field checks: each passes when the field is absent, so older documents still save.
+    function fStr(d, k, max) { return !(k in d) || (d[k] is string && d[k].size() <= max); }
+    function fInt(d, k, lo, hi) { return !(k in d) || (d[k] is int && d[k] >= lo && d[k] <= hi); }
+    function fNum(d, k, lo, hi) { return !(k in d) || (d[k] is number && d[k] >= lo && d[k] <= hi); }
+    function fList(d, k, max) { return !(k in d) || (d[k] is list && d[k].size() <= max); }
+    function fBool(d, k) { return !(k in d) || d[k] is bool; }
+    function fOneOf(d, k, vals) { return !(k in d) || d[k] in vals; }
+    function fStrOrNull(d, k, max) { return !(k in d) || d[k] == null || (d[k] is string && d[k].size() <= max); }
+    function validId(id) { return id.matches('^[A-Za-z0-9_-]{1,40}$'); }
+
+    function validSettings(d) {
+      return d.keys().hasOnly(['team', 'short', 'size', 'sport', 'rscore'])
+        && fStr(d, 'team', 40) && fStr(d, 'short', 40) && fInt(d, 'size', 3, 11)
+        && fOneOf(d, 'sport', ['football', 'rugby']) && fOneOf(d, 'rscore', ['points', 'tries']);
+    }
+    function validSquad(d) { return d.keys().hasOnly(['players']) && fList(d, 'players', 80); }
+    function validNotes(d) { return d.keys().hasOnly(['items']) && fList(d, 'items', 300); }
+    function validTournament(d) {
+      return d.keys().hasOnly(['name', 'date', 'len', 'count', 'periods', 'size', 'ready'])
+        && fStr(d, 'name', 60) && fStr(d, 'date', 10) && fInt(d, 'len', 1, 60) && fInt(d, 'count', 1, 10)
+        && fOneOf(d, 'periods', [1, 2, 4]) && fInt(d, 'size', 3, 11) && fBool(d, 'ready');
+    }
+    function validScore(d) {
+      return !('score' in d) || (d.score is map && d.score.keys().hasOnly(['us', 'them'])
+        && fInt(d.score, 'us', 0, 999) && fInt(d.score, 'them', 0, 999));
+    }
+    function validClock(d) {
+      return !('clock' in d) || (d.clock is map && d.clock.keys().hasOnly(['running', 'startedAt', 'acc'])
+        && fBool(d.clock, 'running') && fNum(d.clock, 'startedAt', 0, 9000000000000000) && fNum(d.clock, 'acc', 0, 36000000));
+    }
+    function validGame(d) {
+      return d.keys().hasOnly(['n', 'opponent', 'team', 'time', 'pitch', 'gk', 'starters', 'bench', 'subs',
+          'gkChanges', 'goals', 'opp', 'clock', 'score', 'done', 'side', 'size'])
+        && fInt(d, 'n', 1, 10) && fStr(d, 'opponent', 40) && fStr(d, 'team', 40) && fStr(d, 'time', 10) && fStr(d, 'pitch', 10)
+        && fStrOrNull(d, 'gk', 40) && fList(d, 'starters', 15) && fList(d, 'bench', 80) && fList(d, 'subs', 300)
+        && fList(d, 'gkChanges', 100) && fList(d, 'goals', 200) && fList(d, 'opp', 200)
+        && validClock(d) && validScore(d) && fBool(d, 'done') && fOneOf(d, 'side', ['home', 'away']) && fInt(d, 'size', 3, 11);
+    }
+    function validAward(d) {
+      return d.keys().hasOnly(['date', 'type', 'label', 'winners', 'createdAt'])
+        && fStr(d, 'date', 10) && fStr(d, 'type', 20) && fStr(d, 'label', 60) && fList(d, 'winners', 30) && fNum(d, 'createdAt', 0, 9000000000000000);
+    }
+    function validArchive(d) {
+      return d.keys().hasOnly(['name', 'date', 'savedAt', 'games', 'players'])
+        && fStr(d, 'name', 60) && fStr(d, 'date', 10) && fNum(d, 'savedAt', 0, 9000000000000000)
+        && fList(d, 'games', 10) && fList(d, 'players', 80);
+    }
     // The app's owner (signed in with this Google account) can see team-level facts for the
     // Admin page: the team record, its settings (name, sport) and its coach list. Never squads,
     // games, notes or results.
@@ -48,10 +98,31 @@ service cloud.firestore {
           && (!('via' in request.resource.data) || request.resource.data.via in ['google', 'email', 'phone']);
       }
 
-      // The app's data: club/settings, club/squad, club/tournament, games/*, awards/*, archive/*.
-      match /{coll}/{doc} {
-        allow read: if signedIn() && coll in ['club', 'games', 'awards', 'archive'] && exists(memberPath(t));
-        allow write: if signedIn() && coll in ['club', 'games', 'awards', 'archive'] && existsAfter(memberPath(t));
+      // The app's data. Members can read it; writes must have the right shape: only known
+      // fields, the right types, and sensible sizes, so a faulty or tampered app can't store junk.
+      match /club/{doc} {
+        allow read: if member(t);
+        allow delete: if memberAfter(t);
+        allow create, update: if memberAfter(t) && (
+             (doc == 'settings'   && validSettings(request.resource.data))
+          || (doc == 'squad'      && validSquad(request.resource.data))
+          || (doc == 'tournament' && validTournament(request.resource.data))
+          || (doc == 'notes'      && validNotes(request.resource.data)));
+      }
+      match /games/{g} {
+        allow read: if member(t);
+        allow delete: if memberAfter(t);
+        allow create, update: if memberAfter(t) && g.matches('^g([1-9]|10)$') && validGame(request.resource.data);
+      }
+      match /awards/{id} {
+        allow read: if member(t);
+        allow delete: if memberAfter(t);
+        allow create, update: if memberAfter(t) && validId(id) && validAward(request.resource.data);
+      }
+      match /archive/{id} {
+        allow read: if member(t);
+        allow delete: if memberAfter(t);
+        allow create, update: if memberAfter(t) && validId(id) && validArchive(request.resource.data);
       }
     }
 

@@ -8,3 +8,5 @@ exports/
 .claude/
 node_modules/
 public/
+tests/node_modules/
+*-debug.log
