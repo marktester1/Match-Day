@@ -107,7 +107,9 @@ async function main() {
   catch (e) { out('WARN', 'dependency audit (test tools)', 'high-severity advisories: run npm audit in tests/'); }
   const sdk = (html.match(/firebasejs\/([\d.]+)\//) || [])[1];
   out('INFO', 'app libraries', `Firebase JS SDK ${sdk} from gstatic (pinned version)`);
-  out('INFO', 'usage limits', 'both projects are on the free Spark plan: Firebase stops at the free quota rather than charging. Check usage in the console before wider release.');
+  const bill = new Client({urlPrefix: 'https://cloudbilling.googleapis.com', auth: true}), plan = {};
+  for (const env of ['beta', 'live']) plan[env] = await bill.get(`/v1/projects/${P[env]}/billingInfo`).then(r => r.body.billingEnabled ? 'Blaze (pay-as-you-go)' : 'Spark (free)').catch(() => 'unknown');
+  out('INFO', 'usage and billing', `live: ${plan.live}, beta: ${plan.beta}. On Blaze, keep a budget alert set (Google Cloud → Billing → Budgets & alerts).`);
 }
 
 main().catch(e => out('FAIL', 'release check crashed', e.message)).finally(() => {
