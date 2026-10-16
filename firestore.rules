@@ -69,6 +69,17 @@ service cloud.firestore {
         && fStr(d, 'team', 40) && fStr(d, 'short', 40) && fInt(d, 'size', 3, 11)
         && fOneOf(d, 'sport', ['football', 'rugby']) && fOneOf(d, 'rscore', ['points', 'tries']);
     }
+    function validFeedRef(d) {
+      return d.keys().hasOnly(['id', 'season']) && d.id is string && d.id.matches('^[A-Za-z0-9]{24}$') && fStr(d, 'season', 10);
+    }
+    // The parents' live score: team names, score, clock and status only. Never players.
+    function validFeed(d) {
+      return d.keys().hasOnly(['team', 'home', 'away', 'us', 'score', 'status', 'clock', 'periods', 'len', 'gameN', 'sport', 'updatedAt'])
+        && d.team is string && fStr(d, 'home', 40) && fStr(d, 'away', 40) && fOneOf(d, 'us', ['home', 'away'])
+        && validScore(d) && fOneOf(d, 'status', ['none', 'pre', 'live', 'paused', 'break', 'ft'])
+        && validClock(d) && fOneOf(d, 'periods', [1, 2, 4]) && fInt(d, 'len', 1, 60) && fInt(d, 'gameN', 1, 10)
+        && fOneOf(d, 'sport', ['football', 'rugby']) && fNum(d, 'updatedAt', 0, 9000000000000000);
+    }
     function validSquad(d) { return d.keys().hasOnly(['players']) && fList(d, 'players', 80) && (!('players' in d) || playersOk(d.players)); }
     function validNotes(d) { return d.keys().hasOnly(['items']) && fList(d, 'items', 300) && (!('items' in d) || notesOk(d.items)); }
     function validTournament(d) {
@@ -217,7 +228,8 @@ service cloud.firestore {
              (doc == 'settings'   && validSettings(request.resource.data))
           || (doc == 'squad'      && validSquad(request.resource.data))
           || (doc == 'tournament' && validTournament(request.resource.data))
-          || (doc == 'notes'      && validNotes(request.resource.data)));
+          || (doc == 'notes'      && validNotes(request.resource.data))
+          || (doc == 'feed'       && validFeedRef(request.resource.data)));
       }
       match /games/{g} {
         allow read: if member(t);
@@ -244,6 +256,16 @@ service cloud.firestore {
       allow create, update: if signedIn() && uid == request.auth.uid
         && request.resource.data.keys().hasOnly(['teams'])
         && request.resource.data.teams is map;
+    }
+
+    // Parents follow a team's live score through a long, secret link: feeds/{id}. Anyone signed in
+    // can read one feed if they know its ID (never list them); only the team's coaches can write it.
+    match /feeds/{f} {
+      allow get: if signedIn();
+      allow create, update: if f.matches('^[A-Za-z0-9]{24}$') && validFeed(request.resource.data)
+        && signedIn() && exists(/databases/$(database)/documents/teams/$(request.resource.data.team)/members/$(request.auth.uid))
+        && (resource == null || resource.data.team == request.resource.data.team);
+      allow delete: if signedIn() && exists(/databases/$(database)/documents/teams/$(resource.data.team)/members/$(request.auth.uid));
     }
 
     // Everything else is closed.

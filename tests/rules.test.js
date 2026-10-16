@@ -182,6 +182,29 @@ test('owner access needs a verified email', async () => {
   await assertFails(getDocs(collection(owner(false), 'teams')));
 });
 
+// ---- the parents' live score ----
+const FEED = 'Abcdefghijklmnopqrstuvwx';
+const feed = {team: T, home: 'Example Team', away: 'Riverside', us: 'home', score: {us: 2, them: 1}, status: 'live',
+  clock: {running: true, startedAt: 1792000000000, acc: 0}, periods: 2, len: 20, gameN: 3, sport: 'football', updatedAt: 1792000000000};
+test('a coach can publish the parent feed; it holds no player data', async () => {
+  const f = alice();
+  await assertSucceeds(setDoc(d(f, 'club', 'feed'), {id: FEED, season: '2026'}));
+  await assertSucceeds(setDoc(doc(f, 'feeds', FEED), feed));
+  await assertFails(setDoc(doc(f, 'feeds', FEED), {...feed, scorers: ['Sam']}));          // no names
+  await assertFails(setDoc(doc(f, 'feeds', FEED), {...feed, status: 'whatever'}));
+  await assertFails(setDoc(doc(f, 'feeds', 'short'), feed));                               // IDs must be long and random
+  await assertFails(setDoc(doc(mallory(), 'feeds', 'Zbcdefghijklmnopqrstuvwx'), feed));   // not a coach in that team
+});
+test('a parent can read a feed by its link, but not list feeds or see the team', async () => {
+  await env.withSecurityRulesDisabled(async ctx => { await setDoc(doc(ctx.firestore(), 'feeds', FEED), feed); });
+  const parent = db('parent1');
+  await assertSucceeds(getDoc(doc(parent, 'feeds', FEED)));
+  await assertFails(getDocs(collection(parent, 'feeds')));
+  await assertFails(setDoc(doc(parent, 'feeds', FEED), {...feed, score: {us: 9, them: 0}}));
+  await assertFails(getDoc(d(parent, 'club', 'squad')));
+  await assertFails(getDoc(doc(db(null), 'feeds', FEED)));                                 // must be signed in (the app does this)
+});
+
 // ---- each sign-in's own team list ----
 test('a team list is private to its sign-in', async () => {
   await assertSucceeds(setDoc(doc(alice(), 'users', 'alice'), {teams: {[T]: true}}));

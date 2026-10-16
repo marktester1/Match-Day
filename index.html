@@ -315,6 +315,21 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 .ro [data-act]:not([data-act="tab"]):not([data-act="open"]):not([data-act="back"]){pointer-events:none;opacity:.45}
 .ro .chip{pointer-events:none}
 .gate .trow,.gate #tabs{display:none}
+/* Parent view: the live score only, big enough to read across a pitch */
+body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
+.pboard{background:var(--grass);color:var(--chalk);border-radius:18px;padding:22px 16px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.pboard .teams{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;width:100%}
+.pboard .tn{font-weight:700;font-size:17px;overflow-wrap:anywhere}
+.pboard .tn small{display:block;font-weight:400;font-size:12px;opacity:.8}
+.pboard .big{font-family:var(--display);font-weight:700;font-size:72px;line-height:1;letter-spacing:.02em}
+.pboard .pclock{font-family:var(--display);font-size:34px;font-weight:600}
+.pboard .pst{font-weight:700;text-transform:uppercase;letter-spacing:.08em;font-size:13px;background:#0003;border-radius:999px;padding:4px 12px}
+.pboard .pst.live{background:var(--live);color:var(--live-bg)}
+.pbanner{position:fixed;left:16px;right:16px;top:20px;max-width:608px;margin:0 auto;background:var(--gold);color:var(--gold-ink);border-radius:16px;padding:18px;text-align:center;font-family:var(--display);font-size:40px;font-weight:700;z-index:50;box-shadow:0 8px 30px #0005;animation:pop .3s ease-out}
+.pbanner small{display:block;font-family:var(--body);font-size:16px}
+@keyframes pop{from{transform:scale(.8);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.pbanner{animation:none}}
+.plink{font-size:13px;overflow-wrap:anywhere;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;user-select:all}
 #toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;max-width:calc(100% - 32px);z-index:40}
 @media (prefers-reduced-motion:no-preference){.chip{transition:transform .12s}}
 </style>
@@ -336,7 +351,7 @@ const APP_VERSION='0.23.0';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
-  awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
+  feed:null,pfeed:undefined,pbanner:null,awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const nice=d=>{if(!d)return'';const t=new Date(d+'T12:00');return isNaN(t)?d:t.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})};
 let db=null,pending=false,suppressClick=false;
@@ -431,6 +446,119 @@ function undoAction(){
 }
 function saveSquad(){S.squad=alpha(S.squad);put('club/squad',{players:S.squad});render()}
 function saveTour(){put('club/tournament',S.tour)}
+
+/* ---------- parent link: a live score for parents, with no players' names ---------- */
+// The team's feeds/{id} record holds team names, score, clock and status only. Coaches' phones
+// update it whenever a game changes; parents read it through ?follow=<id>. One link per season.
+const FOLLOW=(()=>{const f=new URLSearchParams(location.search).get('follow');return f&&/^[A-Za-z0-9]{24}$/.test(f)?f:null})();
+const seasonNow=()=>{const d=new Date(),y=d.getMonth()>=6?d.getFullYear():d.getFullYear()-1;return y+'/'+String(y+1).slice(2)}; // seasons start in July
+const FEED_CHARS='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+const newFeedId=()=>Array.from(crypto.getRandomValues(new Uint8Array(24)),n=>FEED_CHARS[n%62]).join('');
+const feedUrl=id=>location.origin+location.pathname.replace(/index\.html$/,'')+'?follow='+id;
+const feedOn=()=>FB&&S.teamId&&S.feed&&S.feed.season===seasonNow();
+const gStatus=g=>g.done?'ft':g.clock.running?'live':atBreak(g)?'break':started(g)?'paused':'pre';
+let feedGame=null,feedLast='';
+function feedBody(id){
+  const g=id?G(id):null,us=usName().slice(0,40);
+  const b={team:S.teamId,home:us,away:'',us:'home',score:{us:0,them:0},status:'none',clock:{running:false,startedAt:0,acc:0},
+    periods:nPer(),len:Math.min(60,Math.max(1,+S.tour.len||10)),gameN:1,sport:isRugby()?'rugby':'football'};
+  if(!g)return b;
+  return{...b,home:homeName(g).slice(0,40),away:awayName(g).slice(0,40),us:isAway(g)?'away':'home',score:{us:g.score.us,them:g.score.them},
+    status:gStatus(g),clock:{running:!!g.clock.running,startedAt:g.clock.startedAt||0,acc:g.clock.acc||0},gameN:g.n};
+}
+function publishFeed(id){ // id: the game that just changed on this phone
+  if(id)feedGame=id;
+  if(!feedOn())return;
+  const run=gids().find(x=>G(x).clock.running);
+  const b=feedBody(run||feedGame),k=JSON.stringify(b);
+  if(k===feedLast)return;feedLast=k;
+  track(FB.F.setDoc(FB.F.doc(FB.fs,'feeds',S.feed.id),{...b,updatedAt:Date.now()}),()=>{feedLast=''});
+}
+function makeFeed(){
+  if(!navigator.onLine){toast('You need a signal to create the parent link.');return}
+  const old=S.feed&&S.feed.id,id=newFeedId();
+  S.feed={id,season:seasonNow()};put('club/feed',S.feed);feedLast='';publishFeed(feedGame);
+  if(old)track(FB.F.deleteDoc(FB.F.doc(FB.fs,'feeds',old)),()=>{}); // the old link stops working
+  S.confirm=null;render();toast('Parent link ready. Share it with your parents.');
+}
+async function shareFeed(copyOnly){
+  const url=feedUrl(S.feed.id),title=`${S.cfg.team||'Our team'}: live scores`;
+  if(!copyOnly&&navigator.share){try{await navigator.share({title,text:`Follow ${S.cfg.team||'our team'}'s scores live on Match Day`,url});return}catch(e){if(e.name==='AbortError')return}}
+  try{await navigator.clipboard.writeText(url);toast('Link copied.')}catch(_){toast('Press and hold the link to copy it.')}
+}
+function parentCard(){
+  if(!FB||!S.teamId)return'';
+  const cur=feedOn();
+  return `<div class="card"><h3>Parent link</h3>
+    <p class="note">Parents open the link to follow the score live: team names, score, clock, half time and full time. They never see players' names, line-ups or minutes, and they can't change anything.</p>
+    ${cur?`<div class="plink">${esc(feedUrl(S.feed.id))}</div>
+      <div class="cbtns"><button class="btn go" data-act="pshare">Share link</button><button class="btn" data-act="pcopy">Copy</button></div>
+      <p class="note">This link works for the ${esc(S.feed.season)} season.</p>
+      <button class="x ${S.confirm==='pnew'?'sure':''}" data-act="pnew">${S.confirm==='pnew'?'Tap again: the old link stops working':'Make a new link'}</button>`
+    :`${S.feed?`<p class="note">Last season's link (${esc(S.feed.season)}) has stopped updating.</p>`:''}
+      <button class="btn go" data-act="pmake">Create a parent link for ${seasonNow()}</button>`}</div>`;
+}
+
+/* ---------- the parent's screen ---------- */
+const pel=c=>(c.acc||0)+(c.running?Math.max(0,Date.now()-(c.startedAt||0)):0);
+function pClock(f){
+  const e=pel(f.clock),n=f.periods||1,per=(f.len||10)*60000/n;
+  if(n===1)return fmt(Math.min(e,f.len*60000));
+  const i=Math.min(n-1,Math.floor(e/per+1e-9));return fmt(Math.min(per,e-i*per));
+}
+function pStatus(f){
+  const n=f.periods||1,per=(f.len||10)*60000/n,e=pel(f.clock),i=Math.min(n-1,Math.floor(e/per+1e-9));
+  const pname=n===2?['1st half','2nd half'][i]:n===4?'Quarter '+(i+1):'Live';
+  return{none:'No game yet',pre:'Kick-off soon',live:pname,paused:'Clock paused',break:n===2?'Half time':'End of quarter '+Math.round(e/per),ft:'Full time'}[f.status]||'';
+}
+const pScore=(f,side)=>(f.us===side)?f.score.us:f.score.them;
+function parentView(){
+  const f=S.pfeed;
+  if(f===undefined)return `<div class="empty"><b>Loading the score…</b></div>`;
+  if(f===null)return `<div class="empty"><b>This link isn't working</b>It may be from last season. Ask the coach for the new parent link.</div>`;
+  const st=f.status==='none'?'':`<span class="pst ${f.status==='live'?'live':''}">${esc(pStatus(f))}</span>`;
+  return `<div class="sec" style="gap:14px">
+  <div class="pboard" aria-live="polite">
+    ${f.status==='none'?`<div class="tn">${esc(f.home)}</div><p>No game yet. The score shows here when a game starts.</p>`:`
+    <span class="note" style="color:inherit;opacity:.85">Game ${f.gameN}</span>
+    <div class="teams"><div class="tn">${esc(f.home)}<small>Home</small></div>
+      <div class="big num" aria-label="Score ${pScore(f,'home')} ${pScore(f,'away')}">${pScore(f,'home')}–${pScore(f,'away')}</div>
+      <div class="tn">${esc(f.away)}<small>Away</small></div></div>
+    ${f.status==='pre'||f.status==='ft'?'':`<div class="pclock num" data-pclock>${pClock(f)}</div>`}${st}`}
+  </div>
+  ${'Notification' in window&&Notification.permission==='default'?`<button class="btn" data-act="palerts">Alert me for ${f.sport==='rugby'?'scores':'goals'}, half time and full time</button>`:''}
+  ${'Notification' in window&&Notification.permission==='granted'?`<p class="note">Alerts are on while this page is open.</p>`:''}
+  <p class="note">The score updates live from the coaches' phones. Keep this page open to get alerts.</p>
+  </div>${S.pbanner?`<div class="pbanner" role="alert">${esc(S.pbanner.t)}<small>${esc(S.pbanner.s)}</small></div>`:''}`;
+}
+let pbTimer;
+function pAlert(t,sub){
+  S.pbanner={t,s:sub};clearTimeout(pbTimer);pbTimer=setTimeout(()=>{S.pbanner=null;render()},6000);
+  try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(_){}
+  if('Notification' in window&&Notification.permission==='granted'&&navigator.serviceWorker)
+    navigator.serviceWorker.ready.then(r=>r.showNotification(t,{body:sub,icon:'icons/icon-192.png?v=whistle',tag:'matchday-score'})).catch(()=>{});
+}
+function onFeed(f){
+  const p=S.pfeed;S.pfeed=f;
+  if(p&&f&&p.gameN===f.gameN){ // what changed since the last update
+    const score=`${f.home} ${pScore(f,'home')}–${pScore(f,'away')} ${f.away}`,w=f.sport==='rugby'?'Score!':'Goal!';
+    const up=side=>pScore(f,side)>pScore(p,side);
+    if(up('home')||up('away'))pAlert(w+' '+(up('home')?f.home:f.away),score);
+    else if(f.status!==p.status){
+      if(f.status==='live'&&(p.status==='pre'||p.status==='none'))pAlert('Kick-off',score);
+      else if(f.status==='break')pAlert(pStatus(f),score);
+      else if(f.status==='ft')pAlert('Full time',score);
+    }
+  }else if(p&&f&&f.status==='live'&&p.gameN!==f.gameN)pAlert('Kick-off',`Game ${f.gameN}: ${f.home} v ${f.away}`);
+  render();
+}
+async function followFeed(){
+  document.body.classList.add('parent');
+  await signedIn();
+  FB.F.onSnapshot(FB.F.doc(FB.fs,'feeds',FOLLOW),s=>{setSync(true,'Live');onFeed(s.exists()?s.data():null)},
+    e=>{setSync('bad',e&&e.code==='permission-denied'?'Not available':'No signal');if(S.pfeed===undefined)S.pfeed=null;render()});
+  setInterval(()=>{const f=S.pfeed;if(f&&f.clock.running)document.querySelectorAll('[data-pclock]').forEach(n=>n.textContent=pClock(f))},1000);
+}
 
 let tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,3500)}
 
@@ -675,7 +803,9 @@ function fixPanel(id,g,st){
 function render(){
   const a=document.activeElement;
   if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA')&&a.type!=='file'&&a.closest('#view, .top')){pending=true;syncHeader(false);return}
-  pending=false;syncHeader(true);
+  pending=false;
+  if(FOLLOW){document.getElementById('hteam').textContent='';document.getElementById('view').innerHTML=parentView();return}
+  syncHeader(true);
   document.body.classList.toggle('ro',S.readOnly);
   document.body.classList.toggle('gate',!!(S.gate||S.teams||S.menu||S.adminOpen||(S.cfgLoaded&&!S.cfg.team))); // set-up screen stands alone
   const mb=document.getElementById('menubtn');if(mb){mb.hidden=!(FB&&S.teamId&&!S.gate);mb.classList.toggle('dot',S.requests.length>0);mb.setAttribute('aria-label',S.requests.length?`Menu, ${S.requests.length} join request${S.requests.length>1?'s':''}`:'Menu')}
@@ -1306,6 +1436,11 @@ document.addEventListener('click',e=>{
     case'adminload':loadAdmin();break;
     case'adminclose':S.adminOpen=false;render();break;
     case'menu':checkOwner();S.menu=true;S.teams=false;S.game=null;S.fix=null;render();window.scrollTo(0,0);break;
+    case'pmake':makeFeed();break;
+    case'pnew':if(S.confirm==='pnew')makeFeed();else{S.confirm='pnew';render()}break;
+    case'pshare':shareFeed(false);break;
+    case'pcopy':shareFeed(true);break;
+    case'palerts':Notification.requestPermission().then(()=>render());break;
     case'menuclose':S.menu=false;S.acct=null;render();break;
     case'reqok':b.disabled=true;acceptRequest(b.dataset.id);break;
     case'reqno':b.disabled=true;declineRequest(b.dataset.id);break;
@@ -1462,6 +1597,7 @@ function setSync(on,txt){const s=document.getElementById('sync');s.textContent=t
 function subscribe(err){
   db.doc('club/settings').onSnapshot(s=>{S.cfg=s.exists?{...DEFAULT_CFG,...s.data()}:{...DEFAULT_CFG};S.cfgLoaded=true;render()},err);
   db.doc('club/squad').onSnapshot(s=>{S.squad=s.exists?alpha(s.data().players||[]):[];render()},err);
+  db.doc('club/feed').onSnapshot(s=>{S.feed=s.exists?s.data():null;render()},err);
   db.doc('club/notes').onSnapshot(s=>{S.notes=s.exists?[...(s.data().items||[])]:[];render()},err);
   db.doc('club/tournament').onSnapshot(s=>{if(s.exists)S.tour={...S.tour,...s.data()};render()},err);
   db.collection('awards').onSnapshot(s=>{S.awards=s.docs.map(d=>({id:d.id,...d.data()}));render()},err);
@@ -1582,6 +1718,7 @@ async function connectFirebase(){
   FB={A,F,AppM,cfg,auth:A.getAuth(app),fs};
   // Each phone gets an anonymous sign-in: no passwords. Joining a team with its invite code is what grants access.
   await FB.auth.authStateReady();
+  if(FOLLOW){await followFeed();return true} // a parent following the score: no teams, no team data
   if(await finishGoogle())return true; // reloading into the coach's existing account
   await signedIn().catch(()=>{});
   await loadAccountTeams();
@@ -2131,6 +2268,7 @@ function menuView(){
     <span class="lbl">Team members</span>
     ${membersList()}
     ${leaveBtn()}</div>
+  ${parentCard()}
   ${backupCard()}
   ${S.owner?'<button class="btn" data-act="admin">Admin: all teams</button>':''}
   <p class="note num" style="text-align:center">Match Day v${APP_VERSION}</p>
