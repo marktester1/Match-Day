@@ -14,7 +14,7 @@ I've built an app to take the stress out of match days and tournaments, and I'd 
 • *Football or rugby* – goals, or tries, conversions and penalties
 • *Tournaments* – set up the day's games, then save the results to your season record
 • *Season record, awards and notes* – results, scorers, player of the match, and notes to pick up with a player
-• *Parent link* – parents follow the live score and fixtures on their phone. No players' names, ever
+• *Parent link* – one link for your parents' group: the live score, match clock and a *Goal!* alert, plus the day's results and kick-off times. Parents can't change anything, and players' names are never shown
 • *Shared between coaches* – everyone on your team sees the same line-up and subs live. New coaches ask to join and you approve them
 • *Works with no signal* at the pitch, and catches up when you're back online
 
@@ -27,4 +27,22 @@ I've built an app to take the stress out of match days and tournaments, and I'd 
 4. Invite your other coaches from the ☰ menu (WhatsApp or the invite code), and share the *Parent link* with your parents' group
 
 It's an early version, so please send me any feedback, bugs or ideas. Save a backup now and then from the ☰ menu while it's in testing.
+```
+
+## Message for coaches to send to parents
+
+Coaches paste this into the parents' group with their team's link (☰ → Parent link → Share link).
+
+```
+⚽ *Follow today's games live*
+
+Tap the link below to follow our scores on your phone, with no app or sign-up needed:
+👉 [paste the parent link here]
+
+You'll see:
+• the *live score* and match clock
+• a *Goal!* alert when anyone scores (keep the page open)
+• *kick-off times and pitches* for the day's games, and the results as they finish
+
+It only shows team names and scores, never the children's names. The same link works all season.
 ```
