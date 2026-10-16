@@ -139,7 +139,14 @@ input[type=date]::-webkit-date-and-time-value{text-align:left}
 .clock small{display:block;color:var(--muted);font-size:12px}
 .lenbtn{display:block;margin:2px auto 0;border:0;background:none;color:var(--muted);font-size:12px;text-decoration:underline dotted;padding:4px 6px}
 .fix{display:flex;flex-direction:column;gap:10px}
-.fix h3{margin:6px 0 0}
+.fix h3{margin:0}
+.fixtop{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.fsec{border:1px solid var(--line);border-radius:12px}
+.fhead{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;color:var(--ink);padding:12px 14px;text-align:left}
+.fhead .ft{font-family:var(--display);font-size:19px;font-weight:700;flex:0 0 auto}
+.fhead .fsum{flex:1;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fhead .chev{font-size:22px;line-height:1;color:var(--grass);flex:0 0 auto;width:18px;text-align:center}
+.fbody{display:flex;flex-direction:column;gap:10px;padding:0 14px 14px}
 .fix .lenrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .fix .lenrow input{width:80px}
 .subadd{display:grid;grid-template-columns:80px 1fr 1fr;gap:8px}
@@ -417,7 +424,7 @@ function mut(id,fn){const g=structuredClone(G(id));fn(g);S.games[id]=g;
 function undoAction(){
   const u=S.undo;S.undo=null;S.scorer=null;S.rpick=null;
   if(!u||Date.now()-u.at>=10500){render();return}
-  if(u.after&&canon(G(u.g))!==u.after){toast(`Can't undo "${u.label}": game ${G(u.g).n} has changed since. Use Corrections to fix it.`);render();return}
+  if(u.after&&canon(G(u.g))!==u.after){toast(`Can't undo "${u.label}": game ${G(u.g).n} has changed since. Use Edit to fix it.`);render();return}
   S.games[u.g]=u.prev;put('games/'+u.g,u.prev);
   toast(`Undone: ${u.label}.${navigator.onLine?'':' Saved on this phone; it uploads when there is signal.'}`);render();
 }
@@ -626,31 +633,40 @@ function tryFix(id,fn,ok){ // apply a correction only if the subs still make sen
   const bad=subsProblem(g);if(bad){toast(bad+' Nothing was changed.');return false}
   S.games[id]=g;put('games/'+id,g);if(ok)toast(ok);render();return true;
 }
+const fixOpen=()=>{try{return JSON.parse(lsGet('matchday-fixopen')||'{}')}catch(_){return{}}};
 function fixPanel(id,g,st){
   const now=fmt(el(g)),inG=inGame(g),subs=g.subs.map((e,i)=>({e,i})).sort((a,b)=>b.e.at-a.e.at);
   const opt=(ids,ph)=>`<option value="">${ph}</option>`+ids.map(p=>`<option value="${p}">${esc(nameOf(p))}</option>`).join('');
-  return `<section class="card fix"><h3>Game length</h3>
+  // Each part opens and closes on its own (remembered on this phone), and the whole box can be
+  // minimised to its title, so the game screen stays short.
+  const open=k=>!!fixOpen()[k],sec=(k,title,sum,body)=>`<div class="fsec ${open(k)?'open':''}">
+      <button class="fhead" data-act="fixsec" data-k="${k}" aria-expanded="${open(k)}"><span class="ft">${title}</span><span class="fsum note">${open(k)?'':sum}</span><span class="chev" aria-hidden="true">${open(k)?'−':'+'}</span></button>
+      ${open(k)?`<div class="fbody">${body}</div>`:''}</div>`;
+  const min=!!fixOpen().min;
+  return `<section class="card fix ${min?'min':''}" aria-label="Editing"><div class="fixtop"><h3>Editing</h3>
+    <button class="btn small" data-act="fixmin" aria-expanded="${!min}">${min?'Show':'Minimise'}</button></div>
+  ${min?'':`${sec('len','Game length',`${S.tour.len||10} min · ${nPer()===2?'halves':nPer()===4?'quarters':'one period'} · ${gameSize(g)}-a-side`,`
     <label class="lenrow"><span>Minutes per game</span><input class="num" type="number" min="1" max="60" data-tour="len" value="${S.tour.len||10}"></label>
     <span class="seg fill" role="group" aria-label="Periods">${[[1,'One period'],[2,'Halves'],[4,'Quarters']].map(([v,l])=>`<button class="${nPer()===v?'on':''}" data-act="periods" data-v="${v}">${l}</button>`).join('')}</span>
     ${nPer()>1?`<p class="note">${nPer()===2?'Two halves':'Four quarters'} of ${fmt(perLen())}. Times below count from kick-off: ${Array.from({length:nPer()-1},(_,i)=>perName(i+1)+' starts at '+fmt((i+1)*perLen())).join(', ')}.</p>`:''}
     <p class="note">Applies to every game in this tournament.</p>
     <label class="lenrow"><span>Players a side, this game</span><input class="num" type="number" min="3" max="11" data-gsize="1" value="${gameSize(g)}"></label>
-    ${gameSize(g)!==tourSize()?`<p class="note">The tournament is ${tourSize()}-a-side. <button class="x" data-act="gsizereset">Use ${tourSize()}</button></p>`:''}
-  ${st?`<h3>Clock</h3>
+    ${gameSize(g)!==tourSize()?`<p class="note">The tournament is ${tourSize()}-a-side. <button class="x" data-act="gsizereset">Use ${tourSize()}</button></p>`:''}`)}
+  ${st?`${sec('clock','Clock',now,`
     <div class="addf"><input id="clkset" class="num" inputmode="decimal" placeholder="e.g. 4:30" value="${now}" aria-label="Set the clock to"><button class="btn" data-act="clockset">Set clock</button></div>
     <button class="btn warn" data-act="clock0">${S.confirm==='clk0'?'Tap again to reset the clock to 0:00':'Reset clock to 0:00'}</button>
-    <p class="note">Subs recorded after the new time move back to it, so playing time stays right.</p>
-  <h3>Add a sub that already happened</h3>
+    <p class="note">Subs recorded after the new time move back to it, so playing time stays right.</p>`)}
+  ${sec('add','Add a sub that already happened','',`
     <div class="subadd">
       <label><span class="lbl">Time</span><input id="psat" class="num" inputmode="decimal" value="${now}" placeholder="4:30"></label>
       <label><span class="lbl">Off</span><select id="psoff">${opt(byName(inG),'Choose')}</select></label>
       <label><span class="lbl">On</span><select id="pson">${opt(S.squad.map(p=>p.id),'Choose')}</select></label>
     </div>
-    <button class="btn go" data-act="pastsub">Add sub</button>
-  ${subs.length?`<h3>Change a sub's time</h3>
+    <button class="btn go" data-act="pastsub">Add sub</button>`)}
+  ${subs.length?sec('times',"Change a sub's time",`${subs.length} sub${subs.length>1?'s':''}`,`
     <div class="rows">${subs.map(({e,i})=>`<div class="row"><input class="num subt" data-subat="${i}" value="${fmt(e.at)}" inputmode="decimal" aria-label="Time of this sub"><span class="txt"><span class="onn">▲ ${esc(nameOf(e.on))}</span> <span class="off">▼ ${esc(nameOf(e.off))}</span></span>
       <button class="x ${S.confirm==='sd'+i?'sure':''}" data-act="subdel" data-i="${i}">${S.confirm==='sd'+i?'Tap to delete':'Delete'}</button></div>`).join('')}</div>
-    <p class="note">Type a new time and tap away to save it.</p>`:''}`:''}
+    <p class="note">Type a new time and tap away to save it.</p>`):''}`:''}`}
   </section>`;
 }
 
@@ -796,7 +812,7 @@ function gameView(id){
   ${S.scorer&&S.scorer.g===id&&g.goals?.[S.scorer.i]?scorerBar(g,S.scorer.i):''}
   ${S.askGk===id?keeperAsk(g):''}
   ${S.askSize&&S.askSize.g===id?sizeAsk(g,S.askSize):''}
-  <div class="cbtns">${cb}<button class="btn" data-act="fix">${S.fix===id?'Done':st?'Corrections':'Game length'}</button></div>
+  <div class="cbtns">${cb}<button class="btn" data-act="fix">${S.fix===id?'Done editing':'Edit'}</button></div>
   ${hint}
   <div class="pitch"><span class="lbl">On the pitch</span><span class="cnt num">${pitch.length}/${gameSize(g)}</span>
     <div class="chips">${pitch.length?pitch.map(p=>chip(p,'pitch')).join(''):'<span style="color:#ffffffcc;font-size:14px;padding-top:24px">Pick the starters below</span>'}</div></div>
@@ -1287,6 +1303,7 @@ document.addEventListener('click',e=>{
     case'switch':if(b.dataset.id===S.teamId){S.teams=false;render()}else switchTeam(b.dataset.id);break;
     case'addteam':S.menu=false;S.teams=false;S.gate=true;S.adding=true;render();break;
     case'gateback':S.gate=false;S.adding=false;S.teams=false;S.menu=true;render();break;
+    case'fixsec':case'fixmin':{const o=fixOpen(),k=a==='fixmin'?'min':b.dataset.k;o[k]=!o[k];lsSet('matchday-fixopen',JSON.stringify(o));render();break}
     case'fix':S.fix=S.fix===id?null:id;render();if(S.fix)setTimeout(()=>document.querySelector('.fix')?.scrollIntoView({behavior:'smooth',block:'start'}),0);break;
     case'clockset':{const v=parseT(document.getElementById('clkset')?.value);if(v==null){toast('Type the time like 4:30.');break}
       tryFix(id,g=>{g.clock.acc=v;if(g.clock.running)g.clock.startedAt=Date.now();g.subs.forEach(e=>{if(e.at>v)e.at=v});(g.gkChanges||[]).forEach(c=>{if(c.at>v)c.at=v})},`Clock set to ${fmt(v)}.`);break}
