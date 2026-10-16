@@ -315,6 +315,7 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 .ro [data-act]:not([data-act="tab"]):not([data-act="open"]):not([data-act="back"]){pointer-events:none;opacity:.45}
 .ro .chip{pointer-events:none}
 .gate .trow,.gate #tabs{display:none}
+.sc .plus.notyet{opacity:.4} /* scoring waits for kick-off */
 /* Parent view: the live score only, big enough to read across a pitch */
 body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
 .pboard{background:var(--grass);color:var(--chalk);border-radius:18px;padding:22px 16px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
@@ -352,7 +353,7 @@ body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.24.3';
+const APP_VERSION='0.24.4';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
@@ -627,7 +628,7 @@ function swap(id,a,aSide,b,bSide){
 /* ---------- scoreboard side (home on the left, away on the right) ---------- */
 function scoreSide(g,k){
   const nm=k==='us'?usName(g):(g.opponent||'Opponent'),who=k==='us'?'our':'their';
-  return `<div class="side"><span class="nm">${esc(nm)}<small>${(k==='us')===!isAway(g)?'Home':'Away'}</small></span><div class="sc"><button data-act="score" data-k="${k}" data-d="-1" aria-label="Remove ${who} goal">−</button><b class="num">${g.score[k]}</b><button class="plus" data-act="score" data-k="${k}" data-d="1" aria-label="Add ${who} goal">+</button></div></div>`;
+  return `<div class="side"><span class="nm">${esc(nm)}<small>${(k==='us')===!isAway(g)?'Home':'Away'}</small></span><div class="sc"><button data-act="score" data-k="${k}" data-d="-1" aria-label="Remove ${who} goal">−</button><b class="num">${g.score[k]}</b><button class="plus${!started(g)&&!g.done?' notyet':''}" data-act="score" data-k="${k}" data-d="1" aria-label="Add ${who} goal">+</button></div></div>`;
 }
 
 /* ---------- notes: something to pick up later with a player ---------- */
@@ -1412,6 +1413,7 @@ document.addEventListener('click',e=>{
     case'back':S.fix=null;S.game=null;S.pick=null;render();break;
     case'reset':if(S.confirm==='reset'){S.confirm=null;gids().forEach(g=>{const o=G(g),n=blank(o.n);Object.assign(n,{opponent:o.opponent,time:o.time,pitch:o.pitch,team:o.team});S.games[g]=n;put('games/'+g,n)});toast('Scores, line-ups and subs cleared. Fixtures kept.');render()}else{S.confirm='reset';render()}break;
     case'score':{const k=b.dataset.k,d=+b.dataset.d;
+      if(d>0&&!started(G(id))&&!G(id).done){toast(G(id).starters.length?`Tap Kick off first, then add the ${Words().goal}.`:`Pick the team and tap Kick off first, then add the ${Words().goal}.`);break}
       if(isRugby()){if(d>0){if(triesOnly())addScore(id,k,'try');else{S.rpick={g:id,k};S.scorer=null;render()}}else removeScore(id,k);break}
       if(d>0){const g=G(id),sc={...g.score,[k]:g.score[k]+1};withUndo(id,`${k==='us'?'Goal for '+usName():'Goal for '+(g.opponent||'them')} · game ${g.n} now ${isAway(g)?sc.them+'–'+sc.us:sc.us+'–'+sc.them}`)}
       if(k==='us'&&d>0){let i=0;mut(id,g=>{g.goals=[...(g.goals||[]),{at:el(g),p:null}];i=g.goals.length-1;g.score.us++});S.scorer={g:id,i};render();break}
