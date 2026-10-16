@@ -29,8 +29,10 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
      - The opponent's name is shown.
      - £1 per parent per year (one season, matching the yearly link), separate from the team's
        £3.99 unlock. Keeps ~62p via the website or ~71p via the app stores after VAT and fees.
-     - In the app stores this is a yearly purchase (auto-renewing subscription or a one-year
-       non-renewing pass): decide which when building.
+     - Auto-renewing yearly subscription (decided), in the app stores and on the website
+       (merchant of record handles renewals and tax). Needs clear price and renewal terms before
+       buying, a reminder before each renewal, and easy cancellation (store rules and UK
+       subscription rules).
 
 2. **Paid team unlock: £3.99 one-off per team (decided).** Free to try, then the team's
    manager pays once; coaches and parents who join with a code never pay.
