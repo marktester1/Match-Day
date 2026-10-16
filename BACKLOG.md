@@ -203,6 +203,17 @@ Today a phone can use the app with no account (anonymous sign-in); Google or ema
   (Firebase Blaze plan, pennies at this size) and notification permission on each phone.
   Shares the push set-up with the parent view.
 
+## Yellow and red cards
+- Record cards against a player in a game (who, when, which card), shown on their label and in the
+  game's timeline, and in the season record.
+- **Rugby yellow card** = 10 minutes in the sin bin. The player is off the pitch but **the time still
+  counts towards their playing time**. Show a 10-minute countdown on their label, remind the coach when
+  it's up, and don't let them be subbed while they're binned (the team plays one short).
+- **Red card** = sent off for the rest of the game; the team plays one short (no replacement).
+- **Football**: decide how grassroots sin bins (temporary dismissals for dissent) work for the age
+  groups using the app, and whether a yellow alone needs anything beyond a record.
+- Followers see nothing about cards (no players' names).
+
 ## Business and branding
 - **Company name and address on the pages?** Privacy and terms currently say Mark Miles Consultancy
   Limited (08286044), registered office in Winscombe. Decide whether Match Day should sit under a

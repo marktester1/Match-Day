@@ -316,6 +316,8 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 .ro .chip{pointer-events:none}
 .gate .trow,.gate #tabs{display:none}
 .sc .plus.notyet{opacity:.4} /* scoring waits for kick-off */
+.chip .gl{position:absolute;top:-9px;right:-6px;background:var(--gold);color:var(--gold-ink);border-radius:999px;font-size:11px;font-weight:700;padding:1px 6px;line-height:1.4}
+.benchask{border-color:var(--grass);box-shadow:inset 3px 0 0 var(--grass)}
 /* Parent view: the live score only, big enough to read across a pitch */
 body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
 .pboard{background:var(--grass);color:var(--chalk);border-radius:18px;padding:22px 16px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
@@ -353,9 +355,9 @@ body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.24.4';
+const APP_VERSION='0.24.5';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
-const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
+const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,benchAsk:null,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
   feed:null,pfeed:undefined,pgames:[],pbanner:null,awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
@@ -416,6 +418,13 @@ function goalTally(games){const c={};games.forEach(g=>(g.goals||[]).forEach(x=>{
 const alpha=l=>[...l].sort((a,b)=>a.name.localeCompare(b.name,'en',{sensitivity:'base'}));
 const byName=ids=>[...ids].sort((a,b)=>nameOf(a).localeCompare(nameOf(b),'en',{sensitivity:'base'}));
 
+// This game's goals (or tries / points) for one player, shown on their label
+function scoredBadge(g,p){
+  const mine=(g.goals||[]).filter(x=>x.p===p);if(!mine.length)return'';
+  if(!isRugby())return `<span class="gl num" aria-label="${mine.length} goal${mine.length>1?'s':''}">⚽ ${mine.length}</span>`;
+  const n=mine.reduce((a,x)=>a+ptsOf(x),0);if(!n)return'';
+  return triesOnly()?`<span class="gl num" aria-label="${n} tr${n>1?'ies':'y'}">${n} tr${n>1?'ies':'y'}</span>`:`<span class="gl num" aria-label="${n} points">${n} pts</span>`;
+}
 function onPitch(g){const s=new Set(g.starters);for(const e of bySubTime(g)){s.delete(e.off);if(e.on)s.add(e.on)}return s}
 function keeper(g){if(isRugby())return null;const ev=[...bySubTime(g).filter(e=>e.gk).map(e=>({at:e.at,p:e.on})),...(g.gkChanges||[])].sort((a,b)=>a.at-b.at);let k=g.gk;ev.forEach(e=>k=e.p);return k}
 function inGame(g){return [...new Set([...g.starters,...g.bench,...g.subs.flatMap(e=>[e.off,e.on])])].filter(Boolean)}
@@ -930,7 +939,7 @@ function gameView(id){
   pitch.sort((a,b)=>(b===k)-(a===k)||nameOf(a).localeCompare(nameOf(b),'en',{sensitivity:'base'}));
   bench.sort((a,b)=>nameOf(a).localeCompare(nameOf(b),'en',{sensitivity:'base'}));
   const pk=S.pick&&S.pick.g===id?S.pick:null;
-  const chip=(p,side)=>`<button class="chip ${p===k&&side==='pitch'?'keeper':''} ${pk&&pk.p===p?'sel':''} ${pk&&pk.p!==p&&(pk.side!==side||(side==='pitch'&&(pk.p===k||p===k)))?'target':''}" data-act="tap" data-side="${side}" data-p="${p}" data-g="${id}">${p===k&&side==='pitch'?'<span class="gkb">GK</span>':''}<span class="n">${esc(nameOf(p))}</span><span class="m num" data-m="${id}|${p}">${fmt(m[p]||0)}</span></button>`;
+  const chip=(p,side)=>`<button class="chip ${p===k&&side==='pitch'?'keeper':''} ${pk&&pk.p===p?'sel':''} ${pk&&pk.p!==p&&(pk.side!==side||(side==='pitch'&&(pk.p===k||p===k)))?'target':''}" data-act="tap" data-side="${side}" data-p="${p}" data-g="${id}">${p===k&&side==='pitch'?'<span class="gkb">GK</span>':''}<span class="n">${esc(nameOf(p))}</span><span class="m num" data-m="${id}|${p}">${fmt(m[p]||0)}</span>${scoredBadge(g,p)}</button>`;
   let hint='';
   if(pk)hint=`<div class="hint">${pk.side==='pitch'?`<b>${esc(nameOf(pk.p))}</b> selected. Tap a bench player to swap${pk.p===k?', or a pitch player to hand over the gloves':''}.`:`Bringing on <b>${esc(nameOf(pk.p))}</b>. Tap who's coming off.`} <button class="x" data-act="cancel">Cancel</button></div>`;
   else if(pitch.length)hint=`<div class="hint quiet">${st?'Tap a player to make a sub (or drag one onto another).':'Tap a player to swap them in or out of the starting line-up.'}</div>`;
@@ -948,8 +957,10 @@ function gameView(id){
       :`<div class="empty"><b>No squad yet</b>Add the players on the Squad tab first.</div>`}
     <p class="note">${isRugby()?`Pick ${gameSize(g)} to start`:`Pick a keeper and ${gameSize(g)-1} more to start`}${gameSize(g)!==tourSize()?` (${gameSize(g)}-a-side this game)`:''}. Anyone marked Out isn't in this game.</p></section>`:'';
   const others=S.squad.filter(p=>!inGame(g).includes(p.id));
-  const late=st&&!g.done&&others.length?`<section class="sec"><button class="btn small" data-act="late" style="align-self:flex-start">${S.addLate?'Hide':'Add a player to the bench'}</button>
-    ${S.addLate?`<div class="rows">${others.map(p=>`<div class="row"><span class="who">${esc(p.name)}</span><button class="x" data-act="addbench" data-p="${p.id}">+ Bench</button></div>`).join('')}</div>`:''}</section>`:'';
+  const late=!g.done?`<section class="sec"><button class="btn small" data-act="late" style="align-self:flex-start">${S.addLate?'Hide':'Add a player to the bench'}</button>
+    ${S.addLate?`${st&&others.length?`<div class="rows">${others.map(p=>`<div class="row"><span class="who">${esc(p.name)}</span><button class="x" data-act="addbench" data-p="${p.id}">+ Bench</button></div>`).join('')}</div>`:''}
+      <form class="addf" id="latef"><input id="latename" placeholder="New player's first name" autocomplete="off" aria-label="New player's first name"><button class="btn go" type="submit">Add to bench</button></form>
+      <p class="note">New players join the squad too.</p>`:''}</section>`:'';
   const subs=[...g.subs].sort((a,b)=>b.at-a.at);
   return `<div class="sec" style="gap:14px">
   ${gameStrip(id)}
@@ -1008,6 +1019,7 @@ function minutesView(){
 }
 function squadView(){
   return `<div class="sec">
+  ${benchCard()}
   <form class="addf" id="addf"><input id="newname" placeholder="Player's first name" autocomplete="off" aria-label="New player's first name"><button class="btn go" data-act="add" type="submit">Add</button></form>
   ${S.squad.length?`<div class="rows">${S.squad.map(p=>`<div class="row"><span class="who">${esc(p.name)}</span><button class="x ${S.confirm===p.id?'sure':''}" data-act="del" data-p="${p.id}">${S.confirm===p.id?'Tap to remove':'Remove'}</button></div>`).join('')}</div>`
   :`<div class="empty"><b>Add your squad</b>Type each player's first name above, or paste a list below. Every coach on the team sees the same squad.</div>`}
@@ -1223,7 +1235,7 @@ async function undoRestore(){
 
 /* ---------- squad helpers ---------- */
 function addNames(text){
-  addNames.skipped=[];
+  addNames.skipped=[];addNames.ids=[];
   const raw=String(text||'').split(/[\n,;]+/).map(x=>x.replace(/\s+/g,' ').replace(/[^\p{L}\p{M}\p{N}' -]/gu,'').trim()).filter(Boolean);
   if(!raw.length)return 0;
   const firsts=raw.map(n=>n.split(' ')[0]);
@@ -1234,10 +1246,22 @@ function addNames(text){
     if(parts[1]&&/^\p{N}+$/u.test(parts[1]))name=f+' '+parts[1]; // "Player 7" or a shirt number instead of a name: keep the number
     else if(all.filter(x=>x===f.toLowerCase()).length>1&&parts[1])name=f+' '+parts[1][0].toUpperCase();
     if(squad.some(p=>p.name.toLowerCase()===name.toLowerCase())){addNames.skipped.push(name);return}
-    squad.push({id:'p'+Math.random().toString(36).slice(2,9),name:name.slice(0,30)});added++});
+    const id='p'+Math.random().toString(36).slice(2,9);squad.push({id,name:name.slice(0,30)});addNames.ids.push(id);added++});
   S.squad=squad;if(added)saveSquad();return added;
 }
 const cap=w=>w?w[0].toUpperCase()+w.slice(1):w;
+// New players mid-tournament: offer to put them on the bench of games that already have a team picked
+const benchGames=()=>tourReady()?gids().filter(id=>{const g=G(id);return !g.done&&g.starters.length>0}):[];
+function askBench(ids){if(ids&&ids.length&&benchGames().length)S.benchAsk={ids:[...ids]}}
+function benchCard(){
+  const a=S.benchAsk;if(!a)return'';
+  const ids=a.ids.filter(p=>S.squad.some(x=>x.id===p)),gs=benchGames();if(!ids.length||!gs.length)return'';
+  const who=ids.map(nameOf),list=who.length>1?who.slice(0,-1).join(', ')+' and '+who[who.length-1]:who[0];
+  const ns=gs.map(id=>G(id).n),games=ns.length>1?'games '+ns.slice(0,-1).join(', ')+' and '+ns[ns.length-1]:'game '+ns[0];
+  return `<div class="card benchask"><h3>Put ${esc(list)} on the bench?</h3>
+    <p class="note">The team is already picked for ${games}. ${who.length>1?'They':esc(who[0])} can be added to the bench there, ready to come on.</p>
+    <div class="cbtns"><button class="btn go" data-act="benchyes">Add to the bench</button><button class="btn" data-act="benchno">Not now</button></div></div>`;
+}
 
 /* ---------- fixtures ---------- */
 function opponents(){const o=new Set();Object.values(S.games).forEach(g=>g&&g.opponent&&o.add(g.opponent));S.archive.forEach(t=>(t.games||[]).forEach(g=>g.opponent&&o.add(g.opponent)));return [...o].sort()}
@@ -1510,6 +1534,10 @@ document.addEventListener('click',e=>{
       if(S.confirm!=='undosub'){S.confirm='undosub';b.textContent=`Tap again to remove: ${what}`;break}
       S.confirm=null;mut(id,g=>{g.subs=g.subs.filter(x=>!(x.at===last.at&&x.off===last.off&&x.on===last.on))});toast(`Sub removed: ${what}.`);break}
     case'late':S.addLate=!S.addLate;render();break;
+    case'benchyes':{const a=S.benchAsk;S.benchAsk=null;if(!a)break;const gs=benchGames();
+      gs.forEach(gid=>mut(gid,g=>{const ing=new Set(inGame(g));a.ids.forEach(p=>{if(!ing.has(p)&&S.squad.some(x=>x.id===p))g.bench.push(p)})}));
+      toast(`On the bench for ${gs.length} game${gs.length>1?'s':''}.`);render();break}
+    case'benchno':S.benchAsk=null;render();break;
     case'addbench':mut(id,g=>{if(!g.bench.includes(p))g.bench.push(p)});break;
     case'del':if(S.confirm===p){S.confirm=null;S.squad=S.squad.filter(x=>x.id!==p);saveSquad()}else{S.confirm=p;render()}break;
     case'finish':if(S.confirm==='finish'){S.confirm=null;finishTournament()}else{S.confirm='finish';render()}break;
@@ -1540,7 +1568,7 @@ document.addEventListener('click',e=>{
       const t=document.getElementById('bulknames'),one=document.getElementById('newname');
       const text=[t?.value,one?.value].filter(x=>x&&x.trim()).join('\n');
       if(!text.trim()){toast('Type or paste some names first.');break}
-      const n=addNames(text),sk=addNames.skipped;if(t)t.value='';if(one)one.value='';
+      const n=addNames(text),sk=addNames.skipped;askBench(addNames.ids);if(t)t.value='';if(one)one.value='';
       toast(n?`${n} added to the squad.${sk.length?` ${sk.join(', ')} ${sk.length>1?'were':'was'} already in it.`:''}`
         :sk.length?`${sk.join(', ')} ${sk.length>1?'are':'is'} already in the squad.`:"Those don't look like names. Use letters only.");render();break}
     case'setupdone':{document.activeElement?.blur();const c={...S.cfg};['team','short'].forEach(k=>{const i=document.getElementById('cfg-'+k);if(i)c[k]=i.value.trim().slice(0,40)});
@@ -1591,7 +1619,13 @@ document.addEventListener('pointerup',e=>endDrag(e,false));
 document.addEventListener('pointercancel',e=>endDrag(e,true));
 
 document.addEventListener('submit',e=>{
-  document.activeElement?.blur(); // iPhones keep typing focus on submit; the app waits for it to leave before redrawing
+  document.activeElement?.blur();
+  if(e.target.id==='latef'){e.preventDefault();const gid=S.game,i=document.getElementById('latename'),v=(i?.value||'').trim();
+    if(!gid)return;if(!v){toast('Type a name first.');return}
+    const n=addNames(v),ids=addNames.ids,known=addNames.skipped.length?S.squad.find(p=>p.name.toLowerCase()===addNames.skipped[0].toLowerCase()):null;
+    const pid=ids[0]||known?.id;if(!pid){toast("That doesn't look like a name. Use letters only.");return}
+    if(inGame(G(gid)).includes(pid)){toast(`${nameOf(pid)} is already in this game.`);return}
+    mut(gid,g=>{g.bench.push(pid)});if(i)i.value='';toast(`${nameOf(pid)} is on the bench${n?' and in the squad':''}.`);return} // iPhones keep typing focus on submit; the app waits for it to leave before redrawing
   if(e.target.id==='notef'){e.preventDefault();const p=document.getElementById('notep').value,t=document.getElementById('notet').value.trim().slice(0,300);
     if(!p){toast('Choose a player first.');return}if(!t){toast('Write the note first.');return}
     S.notes=[...S.notes,{id:'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),p,text:t,at:Date.now(),done:false,by:FB?myName():''}];S.noteFor=p;
@@ -1603,7 +1637,7 @@ document.addEventListener('submit',e=>{
   if(!i.value.trim()&&b&&b.value.trim()){document.querySelector('[data-act=bulkadd]')?.click();return} // typed in the other box
   const n=i.value.trim();if(!n){toast('Type a name first.');return}
   if(S.squad.some(p=>p.name.toLowerCase()===n.toLowerCase())){toast(`${n} is already in the squad.`);return}
-  S.squad=[...S.squad,{id:'p'+Math.random().toString(36).slice(2,9),name:n.slice(0,30)}];
+  const nid='p'+Math.random().toString(36).slice(2,9);S.squad=[...S.squad,{id:nid,name:n.slice(0,30)}];askBench([nid]);
   i.value='';saveSquad();toast(`${n.slice(0,30)} added.`);setTimeout(()=>document.getElementById('newname')?.focus(),0);
 });
 document.addEventListener('change',e=>{
