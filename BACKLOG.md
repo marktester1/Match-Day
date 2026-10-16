@@ -202,6 +202,11 @@ Today a phone can use the app with no account (anonymous sign-in); Google or ema
   done in the app; when it's closed it needs web push plus a small scheduled server function
   (Firebase Blaze plan, pennies at this size) and notification permission on each phone.
   Shares the push set-up with the parent view.
+- **Push notifications for coaches about new coaches**, even with the app closed: "Sam (coach) wants
+  to join Example Team U10s: tap to accept or decline", and "Sam joined the team" once someone accepts.
+  The person who asked also gets one when they're accepted (or declined). Today coaches only see
+  requests when they open the app (banner and ☰ dot). Same push set-up as below (Cloud Messaging,
+  a server function on new join requests, Blaze plan); each coach allows notifications once.
 - **Push notifications for followers**, even with the app closed: game about to start / kick-off,
   goals (for either team, with the score), cards, half time and full time. Each follower chooses which
   ones they want. No players' names: e.g. "Goal! Example Team 2–1 Riverside", "Yellow card for
