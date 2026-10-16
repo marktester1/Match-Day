@@ -5,7 +5,7 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Waiting on testing
 
-- **v0.16.4 on beta, not yet live:** game set-up at the top of Games; generic Example Team examples; rugby as a per-team sport (points or tries only); sport chosen first at team set-up.
+- **v0.17.0 on beta, not yet live:** set-up journey for each tournament (settings fold to the bottom); generic Example Team examples; rugby as a per-team sport (points or tries only); sport chosen first at team set-up.
 - **v0.15.0 live:** save confirmation, edit saved tournaments; Tournament / Season sections, game strip, Notes, goal scorers, players a side,
   ☰ menu with team members, halves and quarters, Home v Away.
   Beta: https://match-day-beta-17b23.web.app (Beta Test Team code `L9J-Q7H`).
