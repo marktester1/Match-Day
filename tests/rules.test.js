@@ -191,6 +191,17 @@ test('a coach can publish the parent feed; it holds no player data', async () =>
   await assertSucceeds(setDoc(d(f, 'club', 'feed'), {id: FEED, season: '2026'}));
   await assertSucceeds(setDoc(doc(f, 'feeds', FEED), feed));
   await assertFails(setDoc(doc(f, 'feeds', FEED), {...feed, scorers: ['Sam']}));          // no names
+  const fx = {n: 1, home: 'Example Team', away: 'Riverside', us: 'home', time: '9:30', pitch: '2', score: {us: 1, them: 0}, status: 'ft'};
+  await assertSucceeds(setDoc(doc(f, 'feeds', FEED), {...feed, tname: 'Spring Cup', tdate: '2026-10-17'}));
+  await assertSucceeds(setDoc(doc(f, 'feeds', FEED, 'games', 'g1'), fx));
+  await assertSucceeds(setDoc(doc(f, 'feeds', FEED, 'games', 'g10'), {...fx, n: 10, status: 'pre'}));
+  await assertFails(setDoc(doc(f, 'feeds', FEED, 'games', 'g1'), {...fx, scorers: ['Sam']}));  // no names in fixtures either
+  await assertFails(setDoc(doc(f, 'feeds', FEED, 'games', 'g11'), fx));
+  await assertFails(setDoc(doc(mallory(), 'feeds', FEED, 'games', 'g2'), fx));             // not a coach in that team
+  const parent = db('parent2');
+  await assertSucceeds(getDocs(collection(parent, 'feeds', FEED, 'games')));
+  await assertFails(setDoc(doc(parent, 'feeds', FEED, 'games', 'g1'), {...fx, score: {us: 9, them: 0}}));
+  await assertSucceeds(deleteDoc(doc(f, 'feeds', FEED, 'games', 'g10')));
   await assertFails(setDoc(doc(f, 'feeds', FEED), {...feed, status: 'whatever'}));
   await assertFails(setDoc(doc(f, 'feeds', 'short'), feed));                               // IDs must be long and random
   await assertFails(setDoc(doc(mallory(), 'feeds', 'Zbcdefghijklmnopqrstuvwx'), feed));   // not a coach in that team

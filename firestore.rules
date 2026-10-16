@@ -74,11 +74,18 @@ service cloud.firestore {
     }
     // The parents' live score: team names, score, clock and status only. Never players.
     function validFeed(d) {
-      return d.keys().hasOnly(['team', 'home', 'away', 'us', 'score', 'status', 'clock', 'periods', 'len', 'gameN', 'sport', 'updatedAt'])
+      return d.keys().hasOnly(['team', 'home', 'away', 'us', 'score', 'status', 'clock', 'periods', 'len', 'gameN', 'sport', 'updatedAt', 'tname', 'tdate'])
+        && fStr(d, 'tname', 60) && fStr(d, 'tdate', 10)
         && d.team is string && fStr(d, 'home', 40) && fStr(d, 'away', 40) && fOneOf(d, 'us', ['home', 'away'])
         && validScore(d) && fOneOf(d, 'status', ['none', 'pre', 'live', 'paused', 'break', 'ft'])
         && validClock(d) && fOneOf(d, 'periods', [1, 2, 4]) && fInt(d, 'len', 1, 60) && fInt(d, 'gameN', 1, 10)
         && fOneOf(d, 'sport', ['football', 'rugby']) && fNum(d, 'updatedAt', 0, 9000000000000000);
+    }
+    // One of the day's fixtures or results for parents: team names, kick-off, pitch, score, status.
+    function validFeedGame(d) {
+      return d.keys().hasOnly(['n', 'home', 'away', 'us', 'time', 'pitch', 'score', 'status'])
+        && fInt(d, 'n', 1, 10) && fStr(d, 'home', 40) && fStr(d, 'away', 40) && fOneOf(d, 'us', ['home', 'away'])
+        && fStr(d, 'time', 10) && fStr(d, 'pitch', 10) && validScore(d) && fOneOf(d, 'status', ['pre', 'live', 'paused', 'break', 'ft']);
     }
     function validSquad(d) { return d.keys().hasOnly(['players']) && fList(d, 'players', 80) && (!('players' in d) || playersOk(d.players)); }
     function validNotes(d) { return d.keys().hasOnly(['items']) && fList(d, 'items', 300) && (!('items' in d) || notesOk(d.items)); }
@@ -266,6 +273,14 @@ service cloud.firestore {
         && signedIn() && exists(/databases/$(database)/documents/teams/$(request.resource.data.team)/members/$(request.auth.uid))
         && (resource == null || resource.data.team == request.resource.data.team);
       allow delete: if signedIn() && exists(/databases/$(database)/documents/teams/$(resource.data.team)/members/$(request.auth.uid));
+      // The day's games, one record each. Readable while the link is current; written by that team's coaches.
+      match /games/{g} {
+        allow get, list: if signedIn() && exists(/databases/$(database)/documents/feeds/$(f));
+        allow create, update: if g.matches('^g([1-9]|10)$') && validFeedGame(request.resource.data) && signedIn()
+          && exists(/databases/$(database)/documents/teams/$(get(/databases/$(database)/documents/feeds/$(f)).data.team)/members/$(request.auth.uid));
+        allow delete: if signedIn()
+          && exists(/databases/$(database)/documents/teams/$(get(/databases/$(database)/documents/feeds/$(f)).data.team)/members/$(request.auth.uid));
+      }
     }
 
     // Everything else is closed.
