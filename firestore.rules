@@ -16,50 +16,100 @@ service cloud.firestore {
     function fList(d, k, max) { return !(k in d) || (d[k] is list && d[k].size() <= max); }
     function fBool(d, k) { return !(k in d) || d[k] is bool; }
     function fOneOf(d, k, vals) { return !(k in d) || d[k] in vals; }
-    function fStrOrNull(d, k, max) { return !(k in d) || d[k] == null || (d[k] is string && d[k].size() <= max); }
     function validId(id) { return id.matches('^[A-Za-z0-9_-]{1,40}$'); }
-    function validMember(t, d) {
+    function validMemberShape(d) {
       return d.keys().hasOnly(['code', 'joined', 'name', 'via', 'seen', 'by'])
-        && d.code == teamAfter(t).code && fStr(d, 'name', 40) && fStr(d, 'by', 40)
+        && d.code is string && fStr(d, 'name', 40) && fStr(d, 'by', 40)
         && fOneOf(d, 'via', ['google', 'email', 'phone']);
     }
+    // New members quote the team's current invite code.
+    function validMember(t, d) { return validMemberShape(d) && d.code == teamAfter(t).code; }
+
+    // ---- inside lists ----
+    // Rules can't loop over a list, so lists of player IDs are checked in one go by joining them
+    // into one string (every entry must read as an ID), and lists of records are checked at their
+    // last position: the newest entry, which is what the app adds. Checking more positions would
+    // go over the rules' limit of 1000 steps per write for a busy game. Smaller documents have
+    // room for more: the squad (kept in name order, so a new player lands anywhere) is checked at
+    // seven spread-out positions, notes, award winners and saved games at their first and last.
+    // Each check passes for every shape the app has ever saved, and a few unknown extra fields
+    // are tolerated, so older data always saves again.
+    function pid(v) { return v == null || (v is string && v.matches('^[A-Za-z0-9_-]{1,40}$')); }
+    function upTo(v, hi) { return v is number && v >= 0 && v <= hi; }
+    function okSub(e) {
+      return e.size() <= 6 && upTo(e.get('at', 0), 36000000) && pid(e.get('off', null)) && pid(e.get('on', null)) && e.get('gk', false) is bool;
+    }
+    function okGk(e) { return e.size() <= 4 && upTo(e.get('at', 0), 36000000) && pid(e.get('p', null)); }
+    function okScore(e) {
+      return e.size() <= 5 && upTo(e.get('at', 0), 36000000) && (e.get('p', null) == 'og' || pid(e.get('p', null)))
+        && e.get('type', 'try') in ['try', 'con', 'pen', 'drop'];
+    }
+    function okPlayer(e) { return e.size() <= 6 && e.get('id', null) is string && pid(e.id) && e.get('name', '') is string && e.get('name', '').size() <= 40; }
+    function okNote(e) {
+      return e.size() <= 10 && e.get('id', '') is string && e.get('id', '').size() <= 40 && pid(e.get('p', null))
+        && e.get('text', '') is string && e.get('text', '').size() <= 300 && upTo(e.get('at', 0), 9000000000000000)
+        && e.get('done', false) is bool && e.get('by', '') is string && e.get('by', '').size() <= 40;
+    }
+    function okWinner(e) { return e.size() <= 4 && pid(e.get('p', null)) && e.get('reason', '') is string && e.get('reason', '').size() <= 80; }
+    function okArchGame(e) {
+      return e.size() <= 20 && strMax(e.get('opponent', ''), 40) && scoreMap(e.get('score', {})) && pid(e.get('gk', null))
+        && e.get('mins', {}) is map && e.get('goals', []) is list;
+    }
+    function at(l, f) { return l[int(l.size() * f)]; } // the entry a fraction f of the way along
+    function playersOk(l) {
+      return l.size() == 0 || (okPlayer(l[0]) && okPlayer(at(l, 0.17)) && okPlayer(at(l, 0.33)) && okPlayer(at(l, 0.5))
+        && okPlayer(at(l, 0.67)) && okPlayer(at(l, 0.83)) && okPlayer(l[l.size() - 1]));
+    }
+    function notesOk(l)     { return l.size() == 0 || (okNote(l[0]) && okNote(l[l.size() - 1])); }
+    function winnersOk(l)   { return l.size() == 0 || (okWinner(l[0]) && okWinner(l[l.size() - 1])); }
+    function archGamesOk(l) { return l.size() == 0 || (okArchGame(l[0]) && okArchGame(l[l.size() - 1])); }
 
     function validSettings(d) {
       return d.keys().hasOnly(['team', 'short', 'size', 'sport', 'rscore'])
         && fStr(d, 'team', 40) && fStr(d, 'short', 40) && fInt(d, 'size', 3, 11)
         && fOneOf(d, 'sport', ['football', 'rugby']) && fOneOf(d, 'rscore', ['points', 'tries']);
     }
-    function validSquad(d) { return d.keys().hasOnly(['players']) && fList(d, 'players', 80); }
-    function validNotes(d) { return d.keys().hasOnly(['items']) && fList(d, 'items', 300); }
+    function validSquad(d) { return d.keys().hasOnly(['players']) && fList(d, 'players', 80) && (!('players' in d) || playersOk(d.players)); }
+    function validNotes(d) { return d.keys().hasOnly(['items']) && fList(d, 'items', 300) && (!('items' in d) || notesOk(d.items)); }
     function validTournament(d) {
       return d.keys().hasOnly(['name', 'date', 'len', 'count', 'periods', 'size', 'ready'])
         && fStr(d, 'name', 60) && fStr(d, 'date', 10) && fInt(d, 'len', 1, 60) && fInt(d, 'count', 1, 10)
         && fOneOf(d, 'periods', [1, 2, 4]) && fInt(d, 'size', 3, 11) && fBool(d, 'ready');
     }
-    function validScore(d) {
-      return !('score' in d) || (d.score is map && d.score.keys().hasOnly(['us', 'them'])
-        && fInt(d.score, 'us', 0, 999) && fInt(d.score, 'them', 0, 999));
+    // Games are the busiest documents, so their checks are written to stay well inside the limit:
+    // a missing field reads as a valid default (older games still save), then one check each.
+    function strMax(v, max) { return v is string && v.size() <= max; }
+    function intIn(v, lo, hi) { return v is int && v >= lo && v <= hi; }
+    function scoreMap(v) { return v is map && v.keys().hasOnly(['us', 'them']) && intIn(v.get('us', 0), 0, 999) && intIn(v.get('them', 0), 0, 999); }
+    function clockMap(v) {
+      return v is map && v.keys().hasOnly(['running', 'startedAt', 'acc']) && v.get('running', false) is bool
+        && upTo(v.get('startedAt', 0), 9000000000000000) && upTo(v.get('acc', 0), 36000000);
     }
-    function validClock(d) {
-      return !('clock' in d) || (d.clock is map && d.clock.keys().hasOnly(['running', 'startedAt', 'acc'])
-        && fBool(d.clock, 'running') && fNum(d.clock, 'startedAt', 0, 9000000000000000) && fNum(d.clock, 'acc', 0, 36000000));
-    }
+    function ids(l, max) { return l is list && l.size() <= max && l.join(',').matches('^([A-Za-z0-9_-]{1,40}(,[A-Za-z0-9_-]{1,40})*)?$'); }
+    function subs(l)   { return l is list && l.size() <= 300 && (l.size() == 0 || okSub(l[l.size() - 1])); }
+    function gks(l)    { return l is list && l.size() <= 100 && (l.size() == 0 || okGk(l[l.size() - 1])); }
+    function scores(l) { return l is list && l.size() <= 200 && (l.size() == 0 || okScore(l[l.size() - 1])); }
     function validGame(d) {
       return d.keys().hasOnly(['n', 'opponent', 'team', 'time', 'pitch', 'gk', 'starters', 'bench', 'subs',
           'gkChanges', 'goals', 'opp', 'clock', 'score', 'done', 'side', 'size'])
-        && fInt(d, 'n', 1, 10) && fStr(d, 'opponent', 40) && fStr(d, 'team', 40) && fStr(d, 'time', 10) && fStr(d, 'pitch', 10)
-        && fStrOrNull(d, 'gk', 40) && fList(d, 'starters', 15) && fList(d, 'bench', 80) && fList(d, 'subs', 300)
-        && fList(d, 'gkChanges', 100) && fList(d, 'goals', 200) && fList(d, 'opp', 200)
-        && validClock(d) && validScore(d) && fBool(d, 'done') && fOneOf(d, 'side', ['home', 'away']) && fInt(d, 'size', 3, 11);
+        && intIn(d.get('n', 1), 1, 10) && strMax(d.get('opponent', ''), 40) && strMax(d.get('team', ''), 40)
+        && strMax(d.get('time', ''), 10) && strMax(d.get('pitch', ''), 10) && pid(d.get('gk', null))
+        && ids(d.get('starters', []), 15) && ids(d.get('bench', []), 80)
+        && subs(d.get('subs', [])) && gks(d.get('gkChanges', [])) && scores(d.get('goals', [])) && scores(d.get('opp', []))
+        && clockMap(d.get('clock', {})) && scoreMap(d.get('score', {})) && d.get('done', false) is bool
+        && d.get('side', 'home') in ['home', 'away'] && intIn(d.get('size', 5), 3, 11);
     }
     function validAward(d) {
       return d.keys().hasOnly(['date', 'type', 'label', 'winners', 'createdAt'])
-        && fStr(d, 'date', 10) && fStr(d, 'type', 20) && fStr(d, 'label', 60) && fList(d, 'winners', 30) && fNum(d, 'createdAt', 0, 9000000000000000);
+        && fStr(d, 'date', 10) && fStr(d, 'type', 20) && fStr(d, 'label', 60) && fList(d, 'winners', 30) && fNum(d, 'createdAt', 0, 9000000000000000)
+        && (!('winners' in d) || winnersOk(d.winners));
     }
     function validArchive(d) {
       return d.keys().hasOnly(['name', 'date', 'savedAt', 'games', 'players'])
-        && fStr(d, 'name', 60) && fStr(d, 'date', 10) && fNum(d, 'savedAt', 0, 9000000000000000)
-        && fList(d, 'games', 10) && fList(d, 'players', 80);
+        && strMax(d.get('name', ''), 60) && strMax(d.get('date', ''), 10) && upTo(d.get('savedAt', 0), 9000000000000000)
+        && d.get('games', []) is list && d.get('games', []).size() <= 10 && archGamesOk(d.get('games', []))
+        && d.get('players', []) is list && d.get('players', []).size() <= 80
+        && (d.get('players', []).size() == 0 || (okPlayer(d.players[0]) && okPlayer(d.players[d.players.size() - 1])));
     }
     // The app's owner (signed in with this Google account) can see team-level facts for the
     // Admin page: the team record, its settings (name, sport) and its coach list. Never squads,
@@ -69,13 +119,38 @@ service cloud.firestore {
         && request.auth.token.email_verified == true;
     }
 
-    // Invite code -> team id. Readable one code at a time, never listable.
+    function teamDoc(t) { return /databases/$(database)/documents/teams/$(t); }
+    function codeDoc(c) { return /databases/$(database)/documents/codes/$(c); }
+
+    // Invite code -> team id. Readable one code at a time, never listable. Codes are 8 characters
+    // (6 for teams made before v0.23.0, until their manager makes a new one).
     match /codes/{code} {
       allow get: if signedIn();
       allow create: if signedIn()
         && request.resource.data.keys().hasOnly(['team'])
         && teamAfter(request.resource.data.team).code == code
         && teamAfter(request.resource.data.team).createdBy == request.auth.uid;
+      // the manager retires the old code when making a new one
+      allow delete: if signedIn()
+        && get(teamDoc(resource.data.team)).data.createdBy == request.auth.uid
+        && teamAfter(resource.data.team).code != code;
+    }
+
+    // Each sign-in can have join requests waiting in at most 3 teams at once, so one phone can't
+    // flood every team it finds a code for. A team leaves the list only once its request is gone
+    // (accepted, declined or cancelled).
+    function stillAsking(old, nw, i) {
+      return old.size() <= i || old[i] in nw
+        || !existsAfter(/databases/$(database)/documents/teams/$(old[i])/requests/$(request.auth.uid));
+    }
+    function validJoins(d) { return d.keys().hasOnly(['teams']) && d.teams is list && d.teams.size() <= 3 && ids(d.teams, 3); }
+    match /joins/{uid} {
+      allow get: if signedIn() && uid == request.auth.uid;
+      allow create: if signedIn() && uid == request.auth.uid && validJoins(request.resource.data);
+      allow update: if signedIn() && uid == request.auth.uid && validJoins(request.resource.data)
+        && stillAsking(resource.data.teams, request.resource.data.teams, 0)
+        && stillAsking(resource.data.teams, request.resource.data.teams, 1)
+        && stillAsking(resource.data.teams, request.resource.data.teams, 2);
     }
 
     match /teams/{t} {
@@ -86,7 +161,17 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['code', 'createdBy', 'created'])
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.code is string
-        && request.resource.data.code.size() == 6;
+        && (request.resource.data.code.size() == 8 || request.resource.data.code.size() == 6);
+      // The manager can make a new invite code (the old one stops working at once) and hand the
+      // manager role to another coach in the team. Nothing else about the team record changes.
+      allow update: if signedIn() && resource.data.createdBy == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['code', 'createdBy'])
+        && (request.resource.data.code == resource.data.code || (
+             request.resource.data.code is string && request.resource.data.code.size() == 8
+             && getAfter(codeDoc(request.resource.data.code)).data.team == t
+             && !existsAfter(codeDoc(resource.data.code))))
+        && (request.resource.data.createdBy == resource.data.createdBy
+             || existsAfter(/databases/$(database)/documents/teams/$(t)/members/$(request.resource.data.createdBy)));
 
       // Joining: a phone sends a join request quoting the invite code; an existing coach accepts it
       // by creating the member record. Nobody can add themselves with just the code.
@@ -101,13 +186,21 @@ service cloud.firestore {
         allow create: if signedIn() && validMember(t, request.resource.data) && (
              (uid == request.auth.uid && teamAfter(t).createdBy == request.auth.uid)        // the creator, when the team is made
           || (exists(memberPath(t)) && exists(/databases/$(database)/documents/teams/$(t)/requests/$(uid)))); // a coach accepting a request
-        allow update: if signedIn() && uid == request.auth.uid && validMember(t, request.resource.data);
+        // keeping your own entry up to date; the code you joined with may be an older one
+        allow update: if signedIn() && uid == request.auth.uid && validMemberShape(request.resource.data)
+          && (request.resource.data.code == resource.data.code || request.resource.data.code == teamAfter(t).code);
       }
       match /requests/{uid} {
+        // The request carries the asker's name, how they signed in and (with an account) their
+        // sign-in email, which must be their real one, so coaches can tell who is asking. The team
+        // must be on the asker's joins list (at most 3 teams waiting at once).
         allow create, update: if signedIn() && uid == request.auth.uid
-          && request.resource.data.keys().hasOnly(['code', 'name', 'via', 'at'])
-          && request.resource.data.code == get(/databases/$(database)/documents/teams/$(t)).data.code
-          && fStr(request.resource.data, 'name', 40) && fOneOf(request.resource.data, 'via', ['google', 'email', 'phone']);
+          && request.resource.data.keys().hasOnly(['code', 'name', 'via', 'at', 'email'])
+          && request.resource.data.code == get(teamDoc(t)).data.code
+          && fStr(request.resource.data, 'name', 40) && fOneOf(request.resource.data, 'via', ['google', 'email', 'phone'])
+          && fNum(request.resource.data, 'at', 0, 9000000000000000)
+          && (!('email' in request.resource.data) || request.resource.data.email == request.auth.token.email)
+          && t in getAfter(/databases/$(database)/documents/joins/$(request.auth.uid)).data.teams;
         allow get: if signedIn() && (uid == request.auth.uid || exists(memberPath(t)));
         allow list: if signedIn() && exists(memberPath(t));
         allow delete: if signedIn() && (uid == request.auth.uid || exists(memberPath(t)));
