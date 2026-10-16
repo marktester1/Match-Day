@@ -96,6 +96,29 @@ closed are under Notifications.
      rating), full Xcode on the Mac. Risk: Apple may reject thin web wrappers; offline use, live
      sync and push notifications help.
 
+## Accessibility (from review)
+- Larger text: sizes in rem so phone text-size settings apply; check every screen at 200%
+  text size (nothing cut off, no sideways scrolling).
+- Screen readers: label every icon-only button; announce the save status, undo bar and toasts
+  as polite live regions; stop the ticking clock being read out every second; give the pitch
+  and bench lists proper headings; move focus into pop-ups and back out again.
+- Visible focus outlines for keyboard / switch users; dialogs close with Escape.
+- Contrast: check muted grey text and the green on dark against WCAG AA in both themes.
+- Clear confirmation of important actions (done: Full time, delete season, restore, remove
+  coach, undo bar); keep that pattern for new features.
+- Respect "reduce motion" everywhere (already for chips and the swap button).
+
+## Release checks (run before every promote to live)
+- Rules: live's deployed rules match firestore.rules (compare via the Firebase CLI).
+- Sign-in: Anonymous, Email/Password and Google switched on in both projects.
+- Separation: beta's app config can't read or write live (a beta sign-in is refused by live).
+- Privacy: a backup holds only first names (no surnames, emails or dates of birth).
+- Updates: the service worker cache name changed, and an old version picks up the new one on
+  next open (no coach stuck on an old version).
+- Isolation: emulator tests prove one team can't read another's data (have them; keep growing).
+- Before wider release: dependency check, security headers on Firebase Hosting (CSP, HSTS,
+  X-Content-Type-Options, Referrer-Policy), and Firebase usage limits / budget alert.
+
 ## Usability on the touchline (from review)
 - Large tap targets with good spacing (check every button against ~44px).
 - High contrast in bright sunlight; works in the dark.

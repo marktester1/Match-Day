@@ -230,6 +230,11 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 .req{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;border:2px solid var(--live);background:var(--live-bg)}
 .menubtn.dot{position:relative}
 .menubtn.dot::after{content:"";position:absolute;top:6px;right:6px;width:10px;height:10px;border-radius:50%;background:var(--live);border:2px solid var(--surface)}
+.qps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.qp{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:58px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);text-align:left}
+.qp b{font-size:18px}
+.qp .num{font-size:13px;color:var(--muted)}
+.modal .box{max-height:calc(100vh - 32px);overflow:auto}
 .undobar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:10px;background:var(--ink);color:var(--bg);font-size:14px;font-weight:600}
 .undobar button{border:0;background:none;color:var(--grass);font-weight:800;font-size:15px;padding:4px 8px;flex:0 0 auto}
 .ftscore{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;text-align:center;font-weight:700}
@@ -300,10 +305,10 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.21.0';
+const APP_VERSION='0.22.0';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
-  gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,undo:null,askFt:null,requests:[],pending:[],notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
+  gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
   awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const nice=d=>{if(!d)return'';const t=new Date(d+'T12:00');return isNaN(t)?d:t.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})};
@@ -500,6 +505,26 @@ function sizeAsk(g,a){
   </div></div>`;
 }
 
+/* ---------- one-tap subs: tap a player, pick from big buttons ---------- */
+function quickPick(g,q){
+  const st=started(g),m=mins(g),k=keeper(g),nm=esc(nameOf(q.p)),pitch=[...onPitch(g)],bench=benchNow(g);
+  const opt=(p,side,extra='')=>`<button class="qp" data-act="qpick" data-p="${p}" data-side="${side}"><b>${esc(nameOf(p))}</b>${extra}<span class="num">${st?fmt(m[p]||0):''}</span></button>`;
+  const byMins=l=>[...l].sort((a,b)=>(m[a]||0)-(m[b]||0)||nameOf(a).localeCompare(nameOf(b)));
+  let title,body;
+  if(q.side==='pitch'){
+    const isK=q.p===k;
+    title=st?`${nm} off. Who's coming on?`:`Swap ${nm} with…`;
+    body=(bench.length?`<span class="lbl">${st?'Bench, least time first':'Bench'}</span><div class="qps">${byMins(bench).map(p=>opt(p,'bench',isK?'<span class="note">goes in goal</span>':'')).join('')}</div>`:'<p class="note">Nobody on the bench.</p>')
+      +(isK&&!isRugby()?`<span class="lbl">Or give the gloves to</span><div class="qps">${byName(pitch.filter(p=>p!==k)).map(p=>opt(p,'pitch')).join('')}</div>`:'');
+  }else{
+    title=st?`${nm} on. Who's coming off?`:`Put ${nm} in for…`;
+    body=`<span class="lbl">${st?'On the pitch, most time first':'Starting'}</span><div class="qps">${byMins(pitch).reverse().map(p=>opt(p,'pitch',p===k&&!isRugby()?'<span class="note">in goal</span>':'')).join('')}</div>`;
+  }
+  return `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="qpq"><div class="box">
+    <h3 id="qpq">${title}</h3>${body}
+    <button class="btn" data-act="qpclose">Cancel</button></div></div>`;
+}
+
 /* ---------- full time: confirm, showing the final score ---------- */
 function ftAsk(g){
   return `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="ftq"><div class="box">
@@ -691,7 +716,7 @@ function gameView(id){
   const chip=(p,side)=>`<button class="chip ${p===k&&side==='pitch'?'keeper':''} ${pk&&pk.p===p?'sel':''} ${pk&&pk.p!==p&&(pk.side!==side||(side==='pitch'&&(pk.p===k||p===k)))?'target':''}" data-act="tap" data-side="${side}" data-p="${p}" data-g="${id}">${p===k&&side==='pitch'?'<span class="gkb">GK</span>':''}<span class="n">${esc(nameOf(p))}</span><span class="m num" data-m="${id}|${p}">${fmt(m[p]||0)}</span></button>`;
   let hint='';
   if(pk)hint=`<div class="hint">${pk.side==='pitch'?`<b>${esc(nameOf(pk.p))}</b> selected. Tap a bench player to swap${pk.p===k?', or a pitch player to hand over the gloves':''}.`:`Bringing on <b>${esc(nameOf(pk.p))}</b>. Tap who's coming off.`} <button class="x" data-act="cancel">Cancel</button></div>`;
-  else if(pitch.length)hint=`<div class="hint quiet">${st?'Drag a bench player onto someone on the pitch to make a sub. Tapping one then the other works too.':'Drag between pitch and bench to change the starting line-up. Drag the keeper onto a player to swap the gloves.'}</div>`;
+  else if(pitch.length)hint=`<div class="hint quiet">${st?'Tap a player to make a sub (or drag one onto another).':'Tap a player to swap them in or out of the starting line-up.'}</div>`;
   const cb=g.done?`<button class="btn" data-act="reopen">Reopen game</button>`
     :g.clock.running?`<button class="btn" data-act="pause">Pause</button><button class="btn warn" data-act="ft">Full time</button>`
     :st?`<button class="btn go" data-act="kick">${atBreak(g)?'Start '+perName(atBreak(g)):'Resume'}</button><button class="btn warn" data-act="ft">Full time</button>`
@@ -729,6 +754,7 @@ function gameView(id){
   </section>
   ${undoLive(id)?`<div class="undobar" role="status"><span>${esc(S.undo.label)}</span><button data-act="undoact">Undo</button></div>`:''}
   ${S.askFt===id?ftAsk(g):''}
+  ${S.qp&&S.qp.g===id?quickPick(g,S.qp):''}
   ${S.rpick&&S.rpick.g===id?rugbyBar(g,S.rpick.k):''}
   ${S.scorer&&S.scorer.g===id&&g.goals?.[S.scorer.i]?scorerBar(g,S.scorer.i):''}
   ${S.askGk===id?keeperAsk(g):''}
@@ -1158,9 +1184,9 @@ document.addEventListener('click',e=>{
         S.askSize={g:id,n:startersAfter+1,p,r,why:'more'};render();break}
       mut(id,g=>{g.starters=g.starters.filter(x=>x!==p);g.bench=g.bench.filter(x=>x!==p);if(g.gk===p)g.gk=null;
         if(r==='gk'){g.gk=p;g.starters.unshift(p)}if(r==='start')g.starters.push(p);if(r==='bench')g.bench.push(p)});break}
-    case'tap':{const side=b.dataset.side;
-      if(S.pick&&S.pick.g===id&&S.pick.p!==p&&(S.pick.side!==side||side==='pitch')){const pk=S.pick;S.pick=null;swap(id,pk.p,pk.side,p,side);if(!S.pick)render()}
-      else{S.pick=S.pick&&S.pick.p===p?null:{g:id,p,side};render()}break}
+    case'tap':{if(G(id).done){toast('Reopen the game to change the line-up.');break}S.pick=null;S.qp={g:id,p,side:b.dataset.side};render();break}
+    case'qpick':{const q=S.qp;S.qp=null;if(q)swap(q.g,q.p,q.side,b.dataset.p,b.dataset.side);render();break}
+    case'qpclose':S.qp=null;render();break;
     case'cancel':S.pick=null;render();break;
     case'acctcreate':S.acct='create';render();setTimeout(()=>document.getElementById('acctemail')?.focus(),0);break;
     case'acctsignin':S.acct='signin';render();setTimeout(()=>document.getElementById('acctemail')?.focus(),0);break;
