@@ -13,7 +13,18 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Features
 
-Nothing waiting. Add new requests here.
+1. **Parent view: live score only.** Parents follow a game's score from their own phone, with
+   notifications for goals, half time and full time. No children's names, line-ups, minutes,
+   notes or scorers, ever.
+   - A separate parent link or code per team (or per game), different from the coaches'
+     invite code, so parents can't join as coaches.
+   - Data: the coaches' app copies just the score, opponent, kick-off and clock state into a
+     small public-to-parents record; parents can read only that, never the team's data
+     (security rule to match).
+   - Notifications: web push via the app's service worker (works on Android, and on iPhone
+     once the app is added to the home screen). Parents choose which alerts they want.
+   - Questions: one link for the whole season or per tournament? Show our goals as "Goal!"
+     with no scorer name? Include the opponent's name? Is it part of the paid unlock?
 
 ## Later
 
