@@ -29,6 +29,21 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
    - Questions: one link for the whole season or per tournament? Show our goals as "Goal!"
      with no scorer name? Include the opponent's name?
 
+2. **Paid team unlock: £3.99 one-off per team (decided).** Free to try, then the team's
+   manager pays once; coaches and parents who join with a code never pay.
+   - Decide what's free (e.g. one team, one tournament) and what the unlock adds.
+   - Take payment through a merchant of record (Paddle / Lemon Squeezy, ~5% + 50p) so UK and
+     overseas VAT/sales tax is handled; app stores later as in-app purchase.
+   - Security rule so only unlocked teams get the paid features.
+   - The user sets up the payment account and bank details themselves.
+
+3. **Privacy policy and terms page** (needed before taking any money). First names only, adult
+   coaches as users, UK/EU GDPR. Host alongside the app (README plans Cloudflare Pages).
+
+4. **Selling internationally.** Local prices (£3.99 / €4.49 / $4.99 / A$6.99) via the merchant
+   of record. Only if those markets show interest: US wording switch (soccer, field, US dates)
+   and rugby league scoring (try 4, conversion 2, penalty 2, drop goal 1) next to union.
+
 ## Later
 
 - Combined fixtures view across all of a coach's teams.
