@@ -148,6 +148,17 @@ Today a phone can use the app with no account (anonymous sign-in); Google or ema
   (Firebase Blaze plan, pennies at this size) and notification permission on each phone.
   Shares the push set-up with the parent view.
 
+## Business and branding
+- **Company name and address on the pages?** Privacy and terms currently say Mark Miles Consultancy
+  Limited (08286044), registered office in Winscombe. Decide whether Match Day should sit under a
+  different company or trading name, or show a different address (e.g. a registered office service
+  rather than a home address). Update privacy.html, terms.html and Lemon Squeezy's store details.
+- **Get a domain name** (e.g. matchday-something.co.uk) instead of match-day-17b23.web.app. Firebase
+  Hosting can serve it for free once it's connected. Then: add it to Google sign-in's authorised domains and
+  OAuth redirect URIs, update LIVE_HOSTS in firebase-config.js, Lemon Squeezy's links, the parent
+  link addresses, and the release checks. Keep the old address redirecting so existing home-screen
+  icons and parent links keep working.
+
 ## Later
 
 - Combined fixtures view across all of a coach's teams.
