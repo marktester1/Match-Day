@@ -302,6 +302,11 @@ body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
 .pbanner small{display:block;font-family:var(--body);font-size:16px}
 @keyframes pop{from{transform:scale(.8);opacity:0}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){.pbanner{animation:none}}
+.prow{align-items:center}.prow.cur{border-color:var(--grass);box-shadow:inset 3px 0 0 var(--grass)}
+.prow .pn{font-family:var(--display);font-weight:700;font-size:20px;min-width:22px;color:var(--muted)}
+.prow .who{flex:1;min-width:0}.prow .who small{display:block}
+.prow .psc{font-family:var(--display);font-size:24px}
+.prow .flag{color:var(--muted)}.prow .flag.run{color:var(--live)}
 .plink{font-size:13px;overflow-wrap:anywhere;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;user-select:all}
 #toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;max-width:calc(100% - 32px);z-index:40}
 @media (prefers-reduced-motion:no-preference){.chip{transition:transform .12s}}
@@ -324,7 +329,7 @@ const APP_VERSION='0.22.0';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
-  feed:null,pfeed:undefined,pbanner:null,awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
+  feed:null,pfeed:undefined,pgames:[],pbanner:null,awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const nice=d=>{if(!d)return'';const t=new Date(d+'T12:00');return isNaN(t)?d:t.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})};
 let db=null,pending=false,suppressClick=false;
@@ -394,6 +399,8 @@ function mins(g){
 /* ---------- saving ---------- */
 function put(path,body){
   if(!db)return;
+  if(/^games\/g\d+$/.test(path))feedGame=path.slice(6);
+  if(/^(games\/|club\/(tournament|settings)$)/.test(path))schedulePublish();
   queues[path]=(queues[path]||Promise.resolve()).then(()=>db.doc(path).set(body)).catch(e=>{
     if(e&&e.code==='invalid_argument'){S.readOnly=true;render();toast("You can view this but not edit it. Ask the owner to invite you by email as an Editor.")}
     else if(e&&e.code==='quota_exceeded')toast("Storage is full, so that change wasn't saved.");
@@ -404,7 +411,7 @@ function remove(path){
   if(!db)return;
   queues[path]=(queues[path]||Promise.resolve()).then(()=>db.doc(path).delete()).catch(()=>toast("Couldn't delete that. Check your connection and try again."));
 }
-function mut(id,fn){const g=structuredClone(G(id));fn(g);S.games[id]=g;put('games/'+id,g);publishFeed(id);render()}
+function mut(id,fn){const g=structuredClone(G(id));fn(g);S.games[id]=g;put('games/'+id,g);render()}
 function saveSquad(){S.squad=alpha(S.squad);put('club/squad',{players:S.squad});render()}
 function saveTour(){put('club/tournament',S.tour)}
 
@@ -418,28 +425,36 @@ const newFeedId=()=>Array.from(crypto.getRandomValues(new Uint8Array(24)),n=>FEE
 const feedUrl=id=>location.origin+location.pathname.replace(/index\.html$/,'')+'?follow='+id;
 const feedOn=()=>FB&&S.teamId&&S.feed&&S.feed.season===seasonNow();
 const gStatus=g=>g.done?'ft':g.clock.running?'live':atBreak(g)?'break':started(g)?'paused':'pre';
-let feedGame=null,feedLast='';
+let feedGame=null,feedLast='',feedGamesLast={},feedT;
+const schedulePublish=()=>{clearTimeout(feedT);feedT=setTimeout(publishFeed,300)}; // one update after a burst of changes
 function feedBody(id){
   const g=id?G(id):null,us=usName().slice(0,40);
   const b={team:S.teamId,home:us,away:'',us:'home',score:{us:0,them:0},status:'none',clock:{running:false,startedAt:0,acc:0},
-    periods:nPer(),len:Math.min(60,Math.max(1,+S.tour.len||10)),gameN:1,sport:isRugby()?'rugby':'football'};
+    periods:nPer(),len:Math.min(60,Math.max(1,+S.tour.len||10)),gameN:1,sport:isRugby()?'rugby':'football',
+    tname:String(S.tour.name||'').slice(0,60),tdate:String(S.tour.date||'').slice(0,10)};
   if(!g)return b;
   return{...b,home:homeName(g).slice(0,40),away:awayName(g).slice(0,40),us:isAway(g)?'away':'home',score:{us:g.score.us,them:g.score.them},
     status:gStatus(g),clock:{running:!!g.clock.running,startedAt:g.clock.startedAt||0,acc:g.clock.acc||0},gameN:g.n};
 }
-function publishFeed(id){ // id: the game that just changed on this phone
-  if(id)feedGame=id;
-  if(!feedOn())return;
-  const run=gids().find(x=>G(x).clock.running);
-  const b=feedBody(run||feedGame),k=JSON.stringify(b);
-  if(k===feedLast)return;feedLast=k;
-  track(FB.F.setDoc(FB.F.doc(FB.fs,'feeds',S.feed.id),{...b,updatedAt:Date.now()}),()=>{feedLast=''});
+const feedFixture=id=>{const g=G(id);return{n:g.n,home:homeName(g).slice(0,40),away:awayName(g).slice(0,40),us:isAway(g)?'away':'home',
+  time:String(g.time||'').slice(0,10),pitch:String(g.pitch||'').slice(0,10),score:{us:g.score.us,them:g.score.them},status:gStatus(g)}};
+function publishFeed(){ // sends parents the changes made on this phone (only what changed)
+  if(!feedOn()||!tourReady())return; // between tournaments: the last results stay up for parents
+  const {F,fs}=FB,id=S.feed.id,ids=gids(),run=ids.find(x=>G(x).clock.running);
+  const b=feedBody(run||(ids.includes(feedGame)?feedGame:null)),k=JSON.stringify(b);
+  if(k!==feedLast){feedLast=k;track(F.setDoc(F.doc(fs,'feeds',id),{...b,updatedAt:Date.now()}),()=>{feedLast=''})}
+  ids.forEach(g=>{const x=feedFixture(g),k=JSON.stringify(x);if(feedGamesLast[g]===k)return;feedGamesLast[g]=k;
+    track(F.setDoc(F.doc(fs,'feeds',id,'games',g),x),()=>{delete feedGamesLast[g]})});
+  Object.keys(feedGamesLast).filter(g=>!ids.includes(g)).forEach(g=>{delete feedGamesLast[g];track(F.deleteDoc(F.doc(fs,'feeds',id,'games',g)),()=>{})});
 }
 function makeFeed(){
   if(!navigator.onLine){toast('You need a signal to create the parent link.');return}
   const old=S.feed&&S.feed.id,id=newFeedId();
-  S.feed={id,season:seasonNow()};put('club/feed',S.feed);feedLast='';publishFeed(feedGame);
-  if(old)track(FB.F.deleteDoc(FB.F.doc(FB.fs,'feeds',old)),()=>{}); // the old link stops working
+  S.feed={id,season:seasonNow()};put('club/feed',S.feed);feedLast='';feedGamesLast={};
+  // the new link starts with the team name; fixtures follow once a tournament is set up
+  if(tourReady())publishFeed();else track(FB.F.setDoc(FB.F.doc(FB.fs,'feeds',id),{...feedBody(null),updatedAt:Date.now()}),()=>{});
+  if(old){const {F,fs}=FB,b=F.writeBatch(fs); // the old link stops working
+    for(let i=1;i<=10;i++)b.delete(F.doc(fs,'feeds',old,'games','g'+i));b.delete(F.doc(fs,'feeds',old));track(b.commit(),()=>{})}
   S.confirm=null;render();toast('Parent link ready. Share it with your parents.');
 }
 async function shareFeed(copyOnly){
@@ -489,8 +504,24 @@ function parentView(){
   </div>
   ${'Notification' in window&&Notification.permission==='default'?`<button class="btn" data-act="palerts">Alert me for ${f.sport==='rugby'?'scores':'goals'}, half time and full time</button>`:''}
   ${'Notification' in window&&Notification.permission==='granted'?`<p class="note">Alerts are on while this page is open.</p>`:''}
+  ${pGamesList(f)}
   <p class="note">The score updates live from the coaches' phones. Keep this page open to get alerts.</p>
   </div>${S.pbanner?`<div class="pbanner" role="alert">${esc(S.pbanner.t)}<small>${esc(S.pbanner.s)}</small></div>`:''}`;
+}
+function pGamesList(f){
+  const l=S.pgames;if(!l.length)return'';
+  const tag={pre:'',live:'Live',paused:'Live',break:'Live',ft:'Full time'};
+  const row=g=>{const h=g.us==='home'?g.score.us:g.score.them,a=g.us==='home'?g.score.them:g.score.us,cur=g.n===f.gameN&&f.status!=='none';
+    const when=[g.status==='pre'?'':g.time,g.pitch?'Pitch '+g.pitch:''].filter(Boolean).join(' · ');
+    return `<div class="row prow ${cur?'cur':''}"><span class="pn num">${g.n}</span>
+      <span class="who">${esc(g.home)} <span class="note">v</span> ${esc(g.away)}${when?`<small class="note">${esc(when)}</small>`:''}</span>
+      ${g.status==='pre'?`<span class="note">${g.time?esc(g.time):'To come'}</span>`
+        :`<b class="num psc">${h}–${a}</b>${tag[g.status]?`<span class="flag ${g.status==='ft'?'':'run'}">${tag[g.status]}</span>`:''}`}</div>`};
+  const done=l.filter(g=>g.status!=='pre'),next=l.filter(g=>g.status==='pre');
+  const title=[f.tname,f.tdate?nice(f.tdate):''].filter(Boolean).join(' · ');
+  return `${title?`<h3>${esc(title)}</h3>`:''}
+    ${done.length?`<section class="sec"><span class="lbl">Played</span><div class="rows">${done.map(row).join('')}</div></section>`:''}
+    ${next.length?`<section class="sec"><span class="lbl">Still to play</span><div class="rows">${next.map(row).join('')}</div></section>`:''}`;
 }
 let pbTimer;
 function pAlert(t,sub){
@@ -518,6 +549,7 @@ async function followFeed(){
   await signedIn();
   FB.F.onSnapshot(FB.F.doc(FB.fs,'feeds',FOLLOW),s=>{setSync(true,'Live');onFeed(s.exists()?s.data():null)},
     e=>{setSync('bad',e&&e.code==='permission-denied'?'Not available':'No signal');if(S.pfeed===undefined)S.pfeed=null;render()});
+  FB.F.onSnapshot(FB.F.collection(FB.fs,'feeds',FOLLOW,'games'),s=>{S.pgames=s.docs.map(d=>d.data()).sort((a,b)=>a.n-b.n);render()},()=>{S.pgames=[];render()});
   setInterval(()=>{const f=S.pfeed;if(f&&f.clock.running)document.querySelectorAll('[data-pclock]').forEach(n=>n.textContent=pClock(f))},1000);
 }
 
