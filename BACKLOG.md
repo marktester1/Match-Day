@@ -27,9 +27,10 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
      - One parent link per team per year (a new link each season).
      - Our goals show as just "Goal!" (no scorer name).
      - The opponent's name is shown.
-     - £1 per parent download, separate from the team's £3.99 unlock. Keeps ~62p via the website
-       or ~71p via the app stores after VAT and fees.
-   - Open: does the £1 cover one season (matching the yearly link) or for good?
+     - £1 per parent per year (one season, matching the yearly link), separate from the team's
+       £3.99 unlock. Keeps ~62p via the website or ~71p via the app stores after VAT and fees.
+     - In the app stores this is a yearly purchase (auto-renewing subscription or a one-year
+       non-renewing pass): decide which when building.
 
 2. **Paid team unlock: £3.99 one-off per team (decided).** Free to try, then the team's
    manager pays once; coaches and parents who join with a code never pay.
