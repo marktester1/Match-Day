@@ -5,7 +5,7 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Waiting on testing
 
-- **v0.18.0 live:** owner Admin page (☰ → Admin: all teams); rugby, set-up journey, home/away swap, save confirmation, edit saved
+- **v0.22.0 live:** data safety, join requests, one-tap subs, undo bar, release checks; earlier: Admin page, owner Admin page (☰ → Admin: all teams); rugby, set-up journey, home/away swap, save confirmation, edit saved
   tournaments, sections, game strip, notes, players a side, ☰ menu.
   Beta: https://match-day-beta-17b23.web.app (Beta Test Team code `L9J-Q7H`).
 - **Accounts:** Google sign-in works on live. Still to try: signing in on a second phone and
