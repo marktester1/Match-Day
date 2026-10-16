@@ -1,6 +1,7 @@
 // Release checks for Match Day. Run before and after promoting beta to live:
 //   node tools/release-check.cjs pre    (before: beta is ready, live is safe to update)
 //   node tools/release-check.cjs post   (after: live runs the reviewed rules and the new version)
+//   add --e2e to "pre" to also play a coach's whole match day on beta (tools/e2e, a few minutes)
 // Uses the Firebase CLI's own sign-in (firebase login) to read project settings; reads nothing
 // from any team. Exit code 1 if any check fails.
 const fs = require('node:fs'), path = require('node:path'), {execSync} = require('node:child_process');
@@ -93,6 +94,17 @@ async function main() {
     out('PASS', 'rules tests in the emulator (incl. team isolation)');
   } catch (e) { out('FAIL', 'rules tests in the emulator', (e.stdout || '').toString().split('\n').filter(l => /✖|not ok/.test(l)).slice(0, 3).join(' | ')); }
   try { fs.unlinkSync(path.join(ROOT, 'tests/firestore-debug.log')); } catch (_) {}
+
+  // 6b. Optional: a coach's whole match day on beta, in WebKit (iPhone) and Chromium
+  if (STAGE === 'pre') {
+    const E2E = path.join(ROOT, 'tools/e2e');
+    if (!process.argv.includes('--e2e')) out('INFO', 'end-to-end journey on beta', 'skipped: add --e2e to run it');
+    else if (!fs.existsSync(path.join(E2E, 'node_modules/@playwright/test'))) out('FAIL', 'end-to-end journey on beta', 'set up first: cd tools/e2e && npm install && npm run setup');
+    else try {
+      execSync('npx playwright test', {cwd: E2E, stdio: 'pipe', timeout: 10 * 60 * 1000});
+      out('PASS', 'end-to-end journey on beta', 'WebKit (iPhone) and Chromium');
+    } catch (e) { out('FAIL', 'end-to-end journey on beta', (e.stdout || '').toString().split('\n').filter(l => /✘|Error:|^\s+> /.test(l)).slice(0, 4).map(l => l.trim()).join(' | ') + ' (details: cd tools/e2e && npx playwright test)'); }
+  }
 
   // 7. Private files never published; security headers; dependencies; usage limits
   for (const f of ['.git/HEAD', 'exports/', 'firestore.rules', 'BACKLOG.md', 'CLAUDE.md', 'tests/rules.test.js']) {

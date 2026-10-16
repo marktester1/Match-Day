@@ -11,3 +11,5 @@ public/
 tests/node_modules/
 *-debug.log
 !ios-app/ios/App/App/Assets.xcassets/**/*.png
+tools/e2e/test-results/
+tools/e2e/playwright-report/

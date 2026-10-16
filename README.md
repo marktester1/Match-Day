@@ -87,6 +87,29 @@ beta link first. `main` always matches what's live.
 
 Security rules publish separately: `firebase deploy --only firestore:rules`.
 
+### Testing a whole match day automatically (beta only)
+
+`tools/e2e/` plays a coach's day on the beta site with Playwright, in WebKit (Safari's engine,
+iPhone screen and touch) and Chromium: create a team and squad, add players, a follower link
+open in a second browser, a 3-game tournament with fixtures, a game with goals, a sub, yellow
+and red cards and full time, new players mid-tournament, finishing with a match report and
+Results, then rugby with a try and the sin bin. It checks each step saved (by reloading), that
+followers never see a player's name, and that "Share results" holds no names. Each browser
+gets a fresh sign-in and its own "Claude E2E U9s" team, which it leaves at the end. It refuses
+to run against live and never opens the Beta Test Team. About a minute for both browsers.
+
+```sh
+cd tools/e2e && npm install && npm run setup   # once: Playwright and its browsers (not published)
+cd tools/e2e && npx playwright test            # both browsers; or npm run test:webkit
+cd tools/e2e && npm run test:phones            # iPhone 17, 16, 15, Galaxy S24, A55, Pixel 9, Z Flip 7 (~4 min)
+node tools/release-check.cjs pre --e2e         # the release checks plus this journey
+```
+
+Set `MATCHDAY_URL=http://127.0.0.1:8000` to test a local copy (localhost uses beta data). On
+a failure, `npx playwright show-trace test-results/*/trace.zip` replays every step. The phones are Playwright's
+engines (WebKit for iPhones, Chromium for Android) at each phone's screen size and with touch,
+not the real devices; real Safari and Chrome need the iOS Simulator or Android Emulator.
+
 ### Keeping data safe between versions
 
 - New versions may **add** fields but never rename or remove them. The app fills in missing
