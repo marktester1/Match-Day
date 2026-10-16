@@ -18,6 +18,11 @@ service cloud.firestore {
     function fOneOf(d, k, vals) { return !(k in d) || d[k] in vals; }
     function fStrOrNull(d, k, max) { return !(k in d) || d[k] == null || (d[k] is string && d[k].size() <= max); }
     function validId(id) { return id.matches('^[A-Za-z0-9_-]{1,40}$'); }
+    function validMember(t, d) {
+      return d.keys().hasOnly(['code', 'joined', 'name', 'via', 'seen', 'by'])
+        && d.code == teamAfter(t).code && fStr(d, 'name', 40) && fStr(d, 'by', 40)
+        && fOneOf(d, 'via', ['google', 'email', 'phone']);
+    }
 
     function validSettings(d) {
       return d.keys().hasOnly(['team', 'short', 'size', 'sport', 'rscore'])
@@ -83,19 +88,29 @@ service cloud.firestore {
         && request.resource.data.code is string
         && request.resource.data.code.size() == 6;
 
-      // Joining: a phone adds itself, and must quote the team's invite code.
+      // Joining: a phone sends a join request quoting the invite code; an existing coach accepts it
+      // by creating the member record. Nobody can add themselves with just the code.
       // Members of a team can see who else is in it: a display name, how they sign in and when
       // they last used the app. Never an email address.
       match /members/{uid} {
         allow get: if signedIn() && (uid == request.auth.uid || exists(memberPath(t)));
         allow list: if signedIn() && exists(memberPath(t));
         allow get, list: if isOwner();
-        allow delete: if signedIn() && uid == request.auth.uid;
+        // leave the team yourself; the manager can remove a coach
+        allow delete: if signedIn() && (uid == request.auth.uid || get(/databases/$(database)/documents/teams/$(t)).data.createdBy == request.auth.uid);
+        allow create: if signedIn() && validMember(t, request.resource.data) && (
+             (uid == request.auth.uid && teamAfter(t).createdBy == request.auth.uid)        // the creator, when the team is made
+          || (exists(memberPath(t)) && exists(/databases/$(database)/documents/teams/$(t)/requests/$(uid)))); // a coach accepting a request
+        allow update: if signedIn() && uid == request.auth.uid && validMember(t, request.resource.data);
+      }
+      match /requests/{uid} {
         allow create, update: if signedIn() && uid == request.auth.uid
-          && request.resource.data.keys().hasOnly(['code', 'joined', 'name', 'via', 'seen'])
-          && request.resource.data.code == teamAfter(t).code
-          && (!('name' in request.resource.data) || (request.resource.data.name is string && request.resource.data.name.size() <= 40))
-          && (!('via' in request.resource.data) || request.resource.data.via in ['google', 'email', 'phone']);
+          && request.resource.data.keys().hasOnly(['code', 'name', 'via', 'at'])
+          && request.resource.data.code == get(/databases/$(database)/documents/teams/$(t)).data.code
+          && fStr(request.resource.data, 'name', 40) && fOneOf(request.resource.data, 'via', ['google', 'email', 'phone']);
+        allow get: if signedIn() && (uid == request.auth.uid || exists(memberPath(t)));
+        allow list: if signedIn() && exists(memberPath(t));
+        allow delete: if signedIn() && (uid == request.auth.uid || exists(memberPath(t)));
       }
 
       // The app's data. Members can read it; writes must have the right shape: only known

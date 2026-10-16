@@ -112,19 +112,42 @@ test('someone not in the team can read and write nothing', async () => {
   await assertFails(getDocs(collection(f, 'teams')));
   await assertFails(getDoc(d(db(null), 'club', 'squad'))); // not signed in at all
 });
-test('joining needs the right invite code, and codes cannot be listed', async () => {
+test('joining: the code only lets you ask; a coach must accept', async () => {
   const f = mallory();
-  await assertFails(setDoc(doc(f, 'teams', T, 'members', 'mallory'), {code: 'WRONG1', joined: serverTimestamp()}));
   await assertFails(getDocs(collection(f, 'codes')));
   await assertSucceeds(getDoc(doc(f, 'codes', CODE)));
-  await assertSucceeds(setDoc(doc(f, 'teams', T, 'members', 'mallory'), {code: CODE, joined: serverTimestamp(), name: 'Mal', via: 'phone'}));
-  await assertSucceeds(getDoc(d(f, 'club', 'squad'))); // now a member
+  // can't add yourself, even with the right code
+  await assertFails(setDoc(doc(f, 'teams', T, 'members', 'mallory'), {code: CODE, joined: serverTimestamp(), name: 'Mal', via: 'phone'}));
+  // can ask with the right code, not a wrong one, and only for yourself
+  await assertFails(setDoc(doc(f, 'teams', T, 'requests', 'mallory'), {code: 'WRONG1', name: 'Mal', via: 'phone', at: 1}));
+  await assertFails(setDoc(doc(f, 'teams', T, 'requests', 'someoneelse'), {code: CODE, name: 'Mal', via: 'phone', at: 1}));
+  await assertSucceeds(setDoc(doc(f, 'teams', T, 'requests', 'mallory'), {code: CODE, name: 'Mal', via: 'phone', at: 1}));
+  await assertFails(getDoc(d(f, 'club', 'squad')));            // still can't see the team
+  await assertFails(getDocs(collection(f, 'teams', T, 'requests'))); // or other requests
+  // a coach sees the request and accepts it
+  const a = alice();
+  await assertSucceeds(getDocs(collection(a, 'teams', T, 'requests')));
+  await assertSucceeds(setDoc(doc(a, 'teams', T, 'members', 'mallory'), {code: CODE, joined: serverTimestamp(), name: 'Mal', via: 'phone', by: 'Alice'}));
+  await assertSucceeds(deleteDoc(doc(a, 'teams', T, 'requests', 'mallory')));
+  await assertSucceeds(getDoc(d(f, 'club', 'squad')));          // now in
 });
-test("a member can't add someone else, or give themselves odd fields", async () => {
+test("a coach can't add someone who hasn't asked, and nobody can give themselves odd fields", async () => {
   const f = alice();
   await assertFails(setDoc(doc(f, 'teams', T, 'members', 'mallory'), {code: CODE, joined: serverTimestamp()}));
   await assertFails(setDoc(doc(f, 'teams', T, 'members', 'alice'), {code: CODE, joined: serverTimestamp(), role: 'admin'}));
   await assertFails(setDoc(doc(f, 'teams', T, 'members', 'alice'), {code: CODE, name: 'x'.repeat(41)}));
+  await assertSucceeds(setDoc(doc(f, 'teams', T, 'members', 'alice'), {code: CODE, name: 'Alice', via: 'phone', seen: serverTimestamp()}, {merge: true}));
+});
+test('declining and removing: coaches decline requests; only the manager removes a coach', async () => {
+  await env.withSecurityRulesDisabled(async ctx => {
+    const f = ctx.firestore();
+    await setDoc(doc(f, 'teams', T, 'members', 'carol'), {code: CODE, joined: new Date()});
+    await setDoc(doc(f, 'teams', T, 'requests', 'mallory'), {code: CODE, name: 'Mal', via: 'phone', at: 1});
+  });
+  await assertSucceeds(deleteDoc(doc(db('carol'), 'teams', T, 'requests', 'mallory'))); // any coach can decline
+  await assertFails(deleteDoc(doc(db('carol'), 'teams', T, 'members', 'alice')));       // carol isn't the manager
+  await assertSucceeds(deleteDoc(doc(alice(), 'teams', T, 'members', 'carol')));        // alice created the team
+  await assertFails(getDoc(d(db('carol'), 'club', 'squad')));                            // carol is out
 });
 test('creating a team the way the app does is allowed', async () => {
   const f = db('bob'), b = writeBatch(f);

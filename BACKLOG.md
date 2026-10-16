@@ -22,6 +22,11 @@ Also from scenario testing: subs checked against the live line-up (no duplicate 
 one-tap Undo bar for subs, keeper changes, goals and clock actions; Full time asks first and
 shows the final score; the app opens on a live or about-to-start game.
 
+**Joining needs a coach to accept (v0.21.0, beta): done.** The invite code only sends a
+request; any coach accepts or declines (banner + ☰ dot); "X joined the team" notice; the
+manager can remove a coach. Rules enforce it (14 emulator tests). Push alerts when the app is
+closed are under Notifications.
+
 **Step 2: Invite codes**
 - Firebase App Check against scripted guessing; 8-character codes; manager can make a new code
   (old one stops working) and remove a coach. Real rate limiting needs Cloud Functions (paid

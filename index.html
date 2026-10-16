@@ -226,6 +226,10 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 .admid{font-size:11px;opacity:.7}
 .errs{margin:0;padding-left:18px;font-size:14px;color:var(--bad);display:flex;flex-direction:column;gap:4px}
 .errs.ok{color:var(--ink)}
+.reqs{display:flex;flex-direction:column;gap:8px}
+.req{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;border:2px solid var(--live);background:var(--live-bg)}
+.menubtn.dot{position:relative}
+.menubtn.dot::after{content:"";position:absolute;top:6px;right:6px;width:10px;height:10px;border-radius:50%;background:var(--live);border:2px solid var(--surface)}
 .undobar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:10px;background:var(--ink);color:var(--bg);font-size:14px;font-weight:600}
 .undobar button{border:0;background:none;color:var(--grass);font-weight:800;font-size:15px;padding:4px 8px;flex:0 0 auto}
 .ftscore{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;text-align:center;font-weight:700}
@@ -296,10 +300,10 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.20.0';
+const APP_VERSION='0.21.0';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
-  gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,undo:null,askFt:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
+  gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,undo:null,askFt:null,requests:[],pending:[],notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
   awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const nice=d=>{if(!d)return'';const t=new Date(d+'T12:00');return isNaN(t)?d:t.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})};
@@ -601,7 +605,7 @@ function render(){
   pending=false;syncHeader(true);
   document.body.classList.toggle('ro',S.readOnly);
   document.body.classList.toggle('gate',!!(S.gate||S.teams||S.menu||S.adminOpen||(S.cfgLoaded&&!S.cfg.team))); // set-up screen stands alone
-  const mb=document.getElementById('menubtn');if(mb)mb.hidden=!(FB&&S.teamId&&!S.gate);
+  const mb=document.getElementById('menubtn');if(mb){mb.hidden=!(FB&&S.teamId&&!S.gate);mb.classList.toggle('dot',S.requests.length>0);mb.setAttribute('aria-label',S.requests.length?`Menu, ${S.requests.length} join request${S.requests.length>1?'s':''}`:'Menu')}
   const sec=secOf(S.tab);document.body.classList.toggle('sec-season',sec==='season');
   document.body.classList.toggle('ingame',!(S.tab==='games'&&!S.game&&!S.fx)); // name/date only on the Games list
   document.getElementById('sections').innerHTML=Object.entries(SECTIONS).map(([k,x])=>`<button class="${k===sec?'on':''}" data-act="section" data-s="${k}" aria-pressed="${k===sec}">${x.label}</button>`).join('');
@@ -659,10 +663,11 @@ function setupLine(){
     :`<button class="setupline" data-act="setupopen"><span>${esc(bits.join(' · '))}</span><b>Change</b></button>`;
 }
 function gamesList(){
-  if(!tourReady())return `<div class="sec">${setupCard()}</div>`;
+  if(!tourReady())return `<div class="sec">${requestsBanner()}${setupCard()}</div>`;
   let W=0,D=0,L=0,F=0,A=0;const ids=gids();
   ids.forEach(id=>{const g=G(id);if(g.done){F+=g.score.us;A+=g.score.them;g.score.us>g.score.them?W++:g.score.us<g.score.them?L++:D++}});
   return `<div class="sec">
+  ${requestsBanner()}
   <div class="summary num"><span>Played <b>${W+D+L}</b> of ${ids.length}</span><span>W <b>${W}</b> · D <b>${D}</b> · L <b>${L}</b></span><span>${Words().goals} <b>${F}–${A}</b></span></div>
   <div class="glist">${ids.map(id=>{const g=G(id);const n=inGame(g).length;
     return `<button class="gcard" data-act="open" data-g="${id}">
@@ -1111,7 +1116,7 @@ document.addEventListener('click',e=>{
   if(suppressClick){suppressClick=false;return}
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act,id=S.game,p=b.dataset.p;
-  if(!['reset','del','finish','awdel','tdel','wipe','leave','clock0','subdel','signout','notedel','restoreundo'].includes(a))S.confirm=null;
+  if(!['reset','del','finish','awdel','tdel','wipe','leave','clock0','subdel','signout','notedel','restoreundo','rmcoach'].includes(a))S.confirm=null;
   switch(a){
     case'tab':if(b.dataset.t===S.tab&&S.game){S.game=null;S.fix=null;S.pick=null;render();break}
       S.tab=b.dataset.t;lastTab[secOf(S.tab)]=S.tab;S.pick=null;render();break;
@@ -1183,6 +1188,10 @@ document.addEventListener('click',e=>{
     case'adminclose':S.adminOpen=false;render();break;
     case'menu':checkOwner();S.menu=true;S.teams=false;S.game=null;S.fix=null;render();window.scrollTo(0,0);break;
     case'menuclose':S.menu=false;S.acct=null;render();break;
+    case'reqok':b.disabled=true;acceptRequest(b.dataset.id);break;
+    case'reqno':b.disabled=true;declineRequest(b.dataset.id);break;
+    case'reqcancel':cancelRequest(b.dataset.id);break;
+    case'rmcoach':{const k='rm-'+b.dataset.id;if(S.confirm===k){S.confirm=null;removeCoach(b.dataset.id)}else{S.confirm=k;render()}break}
     case'teams':S.teams=true;S.game=null;S.fix=null;render();window.scrollTo(0,0);break;
     case'teamsclose':S.teams=false;render();break;
     case'switch':if(b.dataset.id===S.teamId){S.teams=false;render()}else switchTeam(b.dataset.id);break;
@@ -1400,6 +1409,7 @@ async function connectFirebase(){
   await signedIn().catch(()=>{});
   await loadAccountTeams();
   const t=lsGet(TEAM_KEY)||myTeams()[0];
+  watchPending();
   if(t)openTeam(t);else{S.gate=true;setSync(false,'No team yet');render()}
   return true;
 }
@@ -1409,7 +1419,7 @@ function openTeam(t){
   saveTeams([...myTeams(),t]);syncTeamList();
   lsSet(TEAM_KEY,t);S.gate=false;S.adding=false;S.teamId=t;db=fsAdapter('teams/'+t);liveLabel();watchTeams();
   F.getDoc(F.doc(fs,'teams',t)).then(s=>{S.invite=s.data()?.code||'';S.createdBy=s.data()?.createdBy||null;render()}).catch(()=>{});
-  watchMembers(t);touchMember(t);
+  watchMembers(t);watchRequests(t);touchMember(t);
   subscribe(e=>{if(leaving)return; // we're leaving on purpose: let leaveTeam finish (and wipe)
     if(e&&e.code==='permission-denied'){setSync(false,'Not a member');toast("This phone isn't a member of that team any more.");leaveTeam(false)}});
   render();
@@ -1443,11 +1453,70 @@ async function joinTeam(raw){
     const ref=F.doc(fs,'codes',code);
     const s=await F.getDoc(ref).catch(()=>F.getDocFromServer(ref));
     if(!s.exists()){toast("That code didn't match a team. Check it with the coach who sent it.");return}
-    const t=s.data().team;
-    await F.setDoc(F.doc(fs,'teams',t,'members',auth.currentUser.uid),{code,joined:F.serverTimestamp(),name:myName(),via:signInVia(),seen:F.serverTimestamp()});
-    openTeam(t);toast('Joined.');
-  }catch(e){toast(`Couldn't join (${errCode(e)}). Check your signal and try again, or tell the person who sent you the app.`)}
+    const t=s.data().team,uid=auth.currentUser.uid;
+    const nm=(document.getElementById('joinname')?.value||'').trim().slice(0,40);
+    if(nm)lsSet('matchday-name',nm);
+    if(!myName()){toast('Add your name, so the coaches know who is asking.');return}
+    const already=await F.getDoc(F.doc(fs,'teams',t,'members',uid)).then(x=>x.exists()).catch(()=>false);
+    if(already){openTeam(t);toast('You were already in this team.');return}
+    await F.setDoc(F.doc(fs,'teams',t,'requests',uid),{code,name:myName(),via:signInVia(),at:Date.now()});
+    addPending(t,code);toast('Request sent. A coach needs to accept you.');render();
+  }catch(e){toast(`Couldn't send the request (${errCode(e)}). Check your signal and try again.`)}
 }
+/* ---------- join requests: waiting to be accepted ---------- */
+function getPending(){try{return JSON.parse(lsGet('matchday-pending')||'[]').filter(x=>x&&x.t&&x.code)}catch(_){return[]}}
+function addPending(t,code){const l=getPending().filter(x=>x.t!==t);l.push({t,code,at:Date.now()});lsSet('matchday-pending',JSON.stringify(l));S.pending=l;watchPending()}
+function dropPending(t){const l=getPending().filter(x=>x.t!==t);lsSet('matchday-pending',l.length?JSON.stringify(l):null);S.pending=l}
+const pendingWatch={};
+function watchPending(){
+  const {F,fs,auth}=FB,uid=auth.currentUser?.uid;if(!uid)return;S.pending=getPending();
+  S.pending.forEach(({t})=>{if(pendingWatch[t])return;
+    pendingWatch[t]=[
+      F.onSnapshot(F.doc(fs,'teams',t,'members',uid),m=>{if(!m.exists())return; // accepted
+        stopPending(t);dropPending(t);saveTeams([...myTeams(),t]);syncTeamList();
+        if(!S.teamId)openTeam(t);else{toast("You've been accepted. Open the team from My teams.");render()}},()=>{}),
+      F.onSnapshot(F.doc(fs,'teams',t,'requests',uid),r=>{if(r.exists()||r.metadata.hasPendingWrites)return;
+        F.getDoc(F.doc(fs,'teams',t,'members',uid)).then(m=>{if(!m.exists()&&getPending().some(x=>x.t===t)){ // declined
+          stopPending(t);dropPending(t);toast("Your request to join wasn't accepted.");render()}}).catch(()=>{})},()=>{})];
+  });
+}
+function stopPending(t){(pendingWatch[t]||[]).forEach(u=>{try{u()}catch(_){}});delete pendingWatch[t]}
+async function cancelRequest(t){
+  const {F,fs,auth}=FB;stopPending(t);dropPending(t);
+  await F.deleteDoc(F.doc(fs,'teams',t,'requests',auth.currentUser.uid)).catch(()=>{});render();
+}
+
+/* ---------- the team side: requests to accept, new coaches, removing a coach ---------- */
+function watchRequests(t){
+  const {F,fs}=FB;
+  F.onSnapshot(F.collection(fs,'teams',t,'requests'),s=>{S.requests=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.at||0)-(b.at||0));render()},()=>{});
+}
+async function acceptRequest(id){
+  const {F,fs}=FB,r=S.requests.find(x=>x.id===id);if(!r)return;
+  if(!S.invite){const t=await F.getDoc(F.doc(fs,'teams',S.teamId)).catch(()=>null);S.invite=t?.data()?.code||''}
+  try{const b=F.writeBatch(fs);
+    b.set(F.doc(fs,'teams',S.teamId,'members',id),{code:S.invite,joined:F.serverTimestamp(),name:r.name||'',via:r.via||'phone',by:myName()});
+    b.delete(F.doc(fs,'teams',S.teamId,'requests',id));
+    await track(b.commit());toast(`${r.name||'The new coach'} is in the team.`)}
+  catch(e){toast(`Couldn't accept (${errCode(e)}).`)}
+}
+async function declineRequest(id){
+  const {F,fs}=FB,r=S.requests.find(x=>x.id===id);
+  await track(F.deleteDoc(F.doc(fs,'teams',S.teamId,'requests',id))).then(()=>toast(`Declined ${r?.name||'the request'}.`)).catch(e=>toast(`Couldn't decline (${errCode(e)}).`));
+}
+async function removeCoach(id){
+  const {F,fs}=FB,m=S.members.find(x=>x.id===id);
+  await track(F.deleteDoc(F.doc(fs,'teams',S.teamId,'members',id))).then(()=>toast(`${m?.name||'That coach'} has been removed from the team.`)).catch(e=>toast(`Couldn't remove (${errCode(e)}).`));
+}
+function requestsBanner(){
+  if(!S.requests.length)return'';
+  const via={google:'Google',email:'email',phone:'no account'};
+  return `<section class="reqs" aria-label="Join requests">${S.requests.map(r=>`<div class="req" role="alert">
+    <span><b>${esc(r.name||'Someone')}</b> wants to join the team <span class="note">(${via[r.via]||'no account'})</span></span>
+    <span class="cbtns"><button class="btn go small" data-act="reqok" data-id="${esc(r.id)}">Accept</button>
+    <button class="btn small" data-act="reqno" data-id="${esc(r.id)}">Decline</button></span></div>`).join('')}</section>`;
+}
+
 async function wipeLocalData(){ // shared phones: nothing from the team stays on the device
   const {F,fs}=FB;
   try{await F.terminate(fs);await F.clearIndexedDbPersistence(fs)}
@@ -1523,7 +1592,12 @@ async function moveTeamsTo(signIn){
   for(const t of myTeams()){const s=await within(F.getDoc(F.doc(fs,'teams',t)).catch(()=>null),3000);if(s?.exists())codes[t]=s.data().code}
   try{await signIn()}catch(e){toast(authMsg(e));return}
   const uid=auth.currentUser.uid;
-  await Promise.all(Object.entries(codes).map(([t,code])=>F.setDoc(F.doc(fs,'teams',t,'members',uid),{code,joined:F.serverTimestamp(),name:myName(),via:signInVia(),seen:F.serverTimestamp()}).catch(()=>{})));
+  // Teams this phone was in under its old sign-in: the account is already in some of them; for the
+  // rest, ask again (a coach accepts, as for anyone joining).
+  const acc=await within(F.getDoc(F.doc(fs,'users',uid)).catch(()=>null),3000),theirs=Object.keys(acc?.data?.()?.teams||{});
+  const ask=Object.entries(codes).filter(([t])=>!theirs.includes(t));
+  await Promise.all(ask.map(([t,code])=>F.setDoc(F.doc(fs,'teams',t,'requests',uid),{code,name:myName(),via:signInVia(),at:Date.now()}).then(()=>addPending(t,code)).catch(()=>{})));
+  if(ask.length)saveTeams(myTeams().filter(t=>!ask.some(([x])=>x===t)));
   await loadAccountTeams();syncTeamList();
   if(!lsGet(TEAM_KEY))lsSet(TEAM_KEY,myTeams()[0]||null);
   location.reload();
@@ -1580,14 +1654,22 @@ function accountCard(){
     <p class="note">Right now your teams are only on this phone. Sign in with Google or make a free email account, and you can get all your teams back on a new phone. Optional.</p>
     ${S.acct?acctForm(S.acct):`${googleBtn()}<div class="cbtns"><button class="btn" data-act="acctcreate">Create an account with email</button><button class="btn" data-act="acctsignin">Sign in with email</button></div>`}</div>`;
 }
+function pendingCard(){
+  if(!S.pending.length)return'';
+  return `<div class="card"><h3>Waiting to be accepted</h3>
+    ${S.pending.map(p=>`<div class="row" style="padding:6px 0;border:0"><span>Request sent with code <b class="num">${esc(showCode(p.code))}</b>. A coach in that team needs to accept you; this updates by itself.</span>
+      <button class="x" data-act="reqcancel" data-id="${esc(p.t)}">Cancel</button></div>`).join('')}</div>`;
+}
 function gateView(){
   return `<div class="sec" style="gap:14px">
+  ${pendingCard()}
   ${S.adding?`<button class="back" data-act="gateback">← My teams</button><h2>Add a team</h2>`:''}
   <div class="card"><h3>Start a new team</h3>
     <p class="note">You'll get an invite code to give the other coaches.</p>
     <button class="btn go" data-act="mkteam">Create a team</button></div>
   <div class="card"><h3>Join a team</h3>
     <p class="note">Ask a coach for the team's invite code. It's on their Squad tab.</p>
+    <label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">Your name (the coaches see this)</span><input id="joinname" value="${esc(myName())}" placeholder="e.g. Sam (coach)" maxlength="40" autocomplete="name"></label>
     <form class="addf" id="joinf"><input id="joincode" placeholder="e.g. ABC-234" autocomplete="off" autocapitalize="characters" aria-label="Invite code"><button class="btn go" data-act="join" type="submit">Join</button></form></div>
   ${FB&&!isAccount()?`<div class="card"><h3>Your account</h3>
     <p class="note">Optional. Sign in with Google or a free email account and your teams are saved to you, so you can get them all back on a new phone.</p>
@@ -1656,7 +1738,11 @@ function adminView(){
 }
 function watchMembers(t){
   const {F,fs}=FB;
-  F.onSnapshot(F.collection(fs,'teams',t,'members'),s=>{S.members=s.docs.map(d=>({id:d.id,...d.data()}));if(S.menu)render()},()=>{});
+  let known=null;
+  F.onSnapshot(F.collection(fs,'teams',t,'members'),s=>{S.members=s.docs.map(d=>({id:d.id,...d.data()}));
+    const me=FB.auth.currentUser?.uid,ids=new Set(S.members.map(m=>m.id));
+    if(known)S.members.filter(m=>!known.has(m.id)&&m.id!==me).forEach(m=>toast(`${m.name||'A new coach'} joined the team.`));
+    known=ids;if(S.menu)render()},()=>{});
 }
 function ago(ts){
   const ms=ts?.toMillis?.();if(!ms)return'';const d=Math.floor((Date.now()-ms)/864e5);
@@ -1667,7 +1753,8 @@ function membersList(){
   const l=[...S.members].sort((a,b)=>(b.id===S.createdBy)-(a.id===S.createdBy)||(b.id===me)-(a.id===me)||(a.name||'~').localeCompare(b.name||'~'));
   return `<div class="rows">${l.map(m=>`<div class="row member"><span class="who">${esc(m.name||(m.via==='phone'||!m.via?'Coach (no account)':'Coach'))}
       ${m.id===S.createdBy?'<span class="tag mgr">Manager</span>':''}${m.id===me?'<span class="tag">you</span>':''}</span>
-    <span class="note">${via[m.via]||'No account'}${ago(m.seen)?' · '+ago(m.seen):''}</span></div>`).join('')||'<p class="note">Loading…</p>'}</div>`;
+    <span class="note">${via[m.via]||'No account'}${ago(m.seen)?' · '+ago(m.seen):''}</span>
+    ${S.createdBy===me&&m.id!==me?`<button class="x ${S.confirm==='rm-'+m.id?'sure':''}" data-act="rmcoach" data-id="${esc(m.id)}">${S.confirm==='rm-'+m.id?'Tap to remove':'Remove'}</button>`:''}</div>`).join('')||'<p class="note">Loading…</p>'}</div>`;
 }
 function menuView(){
   const u=FB.auth.currentUser;
@@ -1686,9 +1773,11 @@ function menuView(){
       return `<button class="row teamrow ${cur?'cur':''}" data-act="switch" data-id="${esc(t)}"><span class="who">${esc((cur?S.cfg.team:i.name)||'Loading…')}</span>
         ${i.running&&i.running.length?`<span class="flag run">Game ${i.running.join(', ')} running</span>`:''}<span class="note">${cur?'Open now':'Switch'}</span></button>`}).join('')}</div>
     <button class="btn" data-act="addteam">+ Add a team</button></div>
+  ${pendingCard()}
   <div class="card"><h3>${esc(S.cfg.team||'This team')}</h3>
     <p>Invite code: <b class="num" style="font-family:var(--display);font-size:26px;letter-spacing:.06em">${esc(showCode(S.invite))||'…'}</b></p>
     <p class="note">Other coaches open the app, tap <b>Join a team</b> and enter this code.</p>
+    ${requestsBanner()}
     <span class="lbl">Team members</span>
     ${membersList()}
     <button class="x ${S.confirm==='leave'?'sure':''}" data-act="leave">${S.confirm==='leave'?'Tap again to leave this team on this phone':'Leave this team on this phone'}</button></div>
