@@ -10,9 +10,14 @@ Rules from this branch go to beta only while testing. Afterwards, re-deploy main
 
 ## 1. Team unlock: £3.99 one-off per team
 
-**What's free and what's paid** (to agree):
-- Proposal: free to try = one team, the current tournament, up to 2 saved tournaments.
-  Unlock = unlimited saved tournaments, season results, notes and backups, for that team for good.
+**What's free and what's paid** (decided: 30-day free trial):
+- Every feature is free for 30 days from when the team is created (`teams/{t}.created`).
+- After that, without the unlock, the team becomes **view-only**: coaches can still see games,
+  results and the season record and save a backup, but can't start or change games until the
+  team is unlocked. Nothing is ever deleted.
+- Teams created before this launches start their 30 days on the launch date, not their creation
+  date. Winscombe is a founding club (never pays).
+- Reminders in the app at 7 days and 1 day before the trial ends.
 - Coaches who join by invite never pay; the unlock is per team, not per coach.
 
 **How a team is marked as unlocked**
@@ -24,8 +29,7 @@ Rules from this branch go to beta only while testing. Afterwards, re-deploy main
 
 **Taking payment** (web first)
 - A merchant of record handles checkout, receipts, refunds and VAT/sales tax in every country.
-  Recommended: **Lemon Squeezy** (~5% + 50p, individuals welcome, test mode). Alternatives:
-  Paddle (similar, stricter onboarding), Stripe + Stripe Tax (cheaper, but VAT is your job).
+  **Decided: Lemon Squeezy** (~5% + 50p, individuals welcome, test mode).
 - Flow: Unlock button → provider's hosted checkout (in test mode while on beta) → provider tells
   our server function → it writes `billing/state` → every coach's app unlocks within seconds.
 - The server function needs Firebase's **Blaze** (pay-as-you-go) plan on the beta project
@@ -72,6 +76,5 @@ subscription before showing live updates. Prototype first without payment.
 5. Review together, then merge into main and release through beta as usual.
 
 ## Needed from you
-- Choice of payment provider (recommended Lemon Squeezy), and later its account in your name.
-- The free tier (proposal above).
+- A Lemon Squeezy account in your name (test mode first) when we reach step 4.
 - OK to switch the **beta** project to Blaze when we reach step 4 (with a budget alert).
