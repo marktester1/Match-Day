@@ -203,6 +203,16 @@ Today a phone can use the app with no account (anonymous sign-in); Google or ema
   (Firebase Blaze plan, pennies at this size) and notification permission on each phone.
   Shares the push set-up with the parent view.
 
+## Followers: follow several teams
+- A follower (e.g. a grandparent with two grandchildren in different teams, or a club official) can
+  follow more than one team in the app. Each follower link opened on the phone is remembered; the
+  follower screen lists the teams with their live score and status, and tapping one opens its
+  scoreboard and games. Live teams go to the top.
+- Remove a team from the list. No sign-in needed (the list lives on the phone), but if they sign in,
+  the list could follow them to a new phone.
+- Alerts (goals, half time, full time) say which team they're for.
+- Keep it read-only and name-free, exactly like a single follower link today.
+
 ## Yellow and red cards
 - Record cards against a player in a game (who, when, which card), shown on their label and in the
   game's timeline, and in the season record.
