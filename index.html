@@ -320,6 +320,8 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 .tsum{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
 .chip .cd{position:absolute;top:-9px;left:-6px;font-size:12px;line-height:1.4;background:var(--surface);border-radius:999px;padding:0 4px;font-weight:700}
 .report{white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.kinds{display:flex;flex-wrap:wrap;gap:6px}.kinds button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 12px;font-weight:700}
+.kinds button.on{background:var(--grass);border-color:var(--grass);color:var(--chalk)}
 .benchask{border-color:var(--grass);box-shadow:inset 3px 0 0 var(--grass)}
 /* Parent view: the live score only, big enough to read across a pitch */
 body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
@@ -358,9 +360,9 @@ body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.25.1';
+const APP_VERSION='0.26.0';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
-const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,benchAsk:null,rptEdit:null,
+const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,benchAsk:null,rptEdit:null,fpush:undefined,fpushEdit:false,fkinds:null,dpush:undefined,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
   feed:null,pfeed:undefined,pgames:[],pbanner:null,awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
@@ -492,7 +494,13 @@ function saveTour(){put('club/tournament',S.tour)}
 /* ---------- parent link: a live score for parents, with no players' names ---------- */
 // The team's feeds/{id} record holds team names, score, clock and status only. Coaches' phones
 // update it whenever a game changes; parents read it through ?follow=<id>. One link per season.
-const FOLLOW=(()=>{const f=new URLSearchParams(location.search).get('follow');return f&&/^[A-Za-z0-9]{24}$/.test(f)?f:null})();
+const FOLLOW=(()=>{ // ?follow=<id>; a home-screen icon opens the app's start page, so a follower-only phone reopens its link
+  const ok=f=>!!f&&/^[A-Za-z0-9]{24}$/.test(f),u=new URLSearchParams(location.search).get('follow');
+  try{if(ok(u)){localStorage.setItem('matchday-follow',u);return u}
+    const st=localStorage.getItem('matchday-follow'),teams=JSON.parse(localStorage.getItem('matchday-teams')||'[]');
+    const app=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+    if(ok(st)&&app&&!localStorage.getItem('matchday-team')&&!teams.length)return st}catch(_){}
+  return null})();
 const seasonNow=()=>{const d=new Date(),y=d.getMonth()>=6?d.getFullYear():d.getFullYear()-1;return y+'/'+String(y+1).slice(2)}; // seasons start in July
 const FEED_CHARS='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 const newFeedId=()=>Array.from(crypto.getRandomValues(new Uint8Array(24)),n=>FEED_CHARS[n%62]).join('');
@@ -508,7 +516,8 @@ function feedBody(id){
     tname:String(S.tour.name||'').slice(0,60),tdate:String(S.tour.date||'').slice(0,10)};
   if(!g)return b;
   return{...b,home:homeName(g).slice(0,40),away:awayName(g).slice(0,40),us:isAway(g)?'away':'home',score:{us:g.score.us,them:g.score.them},
-    status:gStatus(g),clock:{running:!!g.clock.running,startedAt:g.clock.startedAt||0,acc:g.clock.acc||0},gameN:g.n};
+    status:gStatus(g),clock:{running:!!g.clock.running,startedAt:g.clock.startedAt||0,acc:g.clock.acc||0},gameN:g.n,
+    cards:Math.min(60,(g.cards||[]).length),...((g.cards||[]).length?{lastCard:(({c,at})=>({c,at:Math.min(36000000,at||0)}))(g.cards[g.cards.length-1])}:{})};
 }
 const feedFixture=id=>{const g=G(id);return{n:g.n,home:homeName(g).slice(0,40),away:awayName(g).slice(0,40),us:isAway(g)?'away':'home',
   time:String(g.time||'').slice(0,10),pitch:String(g.pitch||'').slice(0,10),score:{us:g.score.us,them:g.score.them},status:gStatus(g)}};
@@ -576,8 +585,7 @@ function parentView(){
       <div class="tn">${esc(f.away)}<small>Away</small></div></div>
     ${f.status==='pre'||f.status==='ft'?'':`<div class="pclock num" data-pclock>${pClock(f)}</div>`}${st}`}
   </div>
-  ${'Notification' in window&&Notification.permission==='default'?`<button class="btn" data-act="palerts">Alert me for ${f.sport==='rugby'?'scores':'goals'}, half time and full time</button>`:''}
-  ${'Notification' in window&&Notification.permission==='granted'?`<p class="note">Alerts are on while this page is open.</p>`:''}
+  ${followPushCard(f)}
   ${pGamesList(f)}
   <p class="note">The score updates live from the coaches' phones. Keep this page open to get alerts.</p>
   <p class="note" style="text-align:center"><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p>
@@ -598,11 +606,64 @@ function pGamesList(f){
     ${done.length?`<section class="sec"><span class="lbl">Played</span><div class="rows">${done.map(row).join('')}</div></section>`:''}
     ${next.length?`<section class="sec"><span class="lbl">Still to play</span><div class="rows">${next.map(row).join('')}</div></section>`:''}`;
 }
+/* ---------- push notifications (followers' alerts; coaches' join requests) ---------- */
+const isIOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const standalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+let MSG=null;
+async function pushToken(){ // asks permission (straight after a tap) and returns this phone's push address
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window))throw new Error(isIOS&&!standalone()?'ios-home':'unsupported');
+  if(await Notification.requestPermission()!=='granted')throw new Error('denied');
+  if(!MSG)MSG=await import(FB_SDK+'firebase-messaging.js');
+  if(!(await MSG.isSupported()))throw new Error('unsupported');
+  return MSG.getToken(MSG.getMessaging(),{serviceWorkerRegistration:await navigator.serviceWorker.ready});
+}
+const pushWhy=e=>({'ios-home':'On iPhone, first add this page to your Home Screen (Share → Add to Home Screen), then open it from there and try again.',
+  denied:"Notifications are blocked for this site. Allow them in your phone's settings for this browser, then try again.",
+  unsupported:"This browser can't get notifications. Try Chrome on Android, or the Home Screen app on iPhone."})[e&&e.message]||`Couldn't turn on notifications (${errCode(e)}).`;
+const KINDS=[['kick','Kick-off'],['goal','Goals'],['card','Cards'],['ht','Half time'],['ft','Full time']];
+function followPushCard(f){
+  if(S.fpush===undefined)return'';
+  const on=S.fpush,kl=k=>k==='goal'&&f.sport==='rugby'?'Scores':(KINDS.find(x=>x[0]===k)||[])[1];
+  if(on&&!S.fpushEdit)return `<div class="card"><h3>🔔 Notifications on</h3><p class="note">For: ${on.kinds.map(kl).join(', ')||'nothing'}. They arrive even when this page is closed.</p>
+    <div class="cbtns"><button class="btn" data-act="fpushedit">Change</button><button class="btn" data-act="fpushoff">Turn off</button></div></div>`;
+  const sel=S.fkinds||(on?on.kinds:KINDS.map(x=>x[0]));
+  return `<div class="card"><h3>Get notifications</h3>
+    <p class="note">Get an alert on this phone, even when this page is closed. Team names and scores only, never players' names.</p>
+    <div class="kinds">${KINDS.map(([k])=>`<button class="${sel.includes(k)?'on':''}" data-act="fkind" data-k="${k}" aria-pressed="${sel.includes(k)}">${kl(k)}</button>`).join('')}</div>
+    ${isIOS&&!standalone()?'<p class="warnline">On iPhone: first add this page to your Home Screen (Share → Add to Home Screen), then open it from there and turn notifications on.</p>':''}
+    <div class="cbtns"><button class="btn go" data-act="fpushon">${on?'Save':'Turn on notifications'}</button>${on?'<button class="btn" data-act="fpushcancel">Cancel</button>':''}</div></div>`;
+}
+async function followPushOn(){
+  const kinds=S.fkinds||(S.fpush?S.fpush.kinds:KINDS.map(x=>x[0]));
+  if(!kinds.length){toast('Pick at least one, or turn notifications off.');return}
+  try{const token=await pushToken();await FB.F.setDoc(FB.F.doc(FB.fs,'feeds',FOLLOW,'push',FB.auth.currentUser.uid),{token,kinds,at:Date.now()});
+    S.fpush={kinds};S.fpushEdit=false;S.fkinds=null;toast('Notifications on.')}catch(e){toast(pushWhy(e))}
+  render();
+}
+async function followPushOff(){
+  try{await FB.F.deleteDoc(FB.F.doc(FB.fs,'feeds',FOLLOW,'push',FB.auth.currentUser.uid));S.fpush=null;toast('Notifications off.')}catch(e){toast(`Couldn't turn them off (${errCode(e)}).`)}
+  render();
+}
+// Coaches (and people waiting to be accepted): this phone's push address for join alerts
+async function loadDevice(){try{const d=await FB.F.getDoc(FB.F.doc(FB.fs,'devices',FB.auth.currentUser.uid));S.dpush=d.exists()}catch(_){S.dpush=false}render()}
+async function devicePush(on){
+  const ref=FB.F.doc(FB.fs,'devices',FB.auth.currentUser.uid);
+  try{if(on){await FB.F.setDoc(ref,{token:await pushToken(),at:Date.now()});S.dpush=true;toast('Notifications on for this phone.')}
+    else{await FB.F.deleteDoc(ref);S.dpush=false;toast('Notifications off for this phone.')}}catch(e){toast(on?pushWhy(e):`Couldn't turn them off (${errCode(e)}).`)}
+  render();
+}
+function devicePushCard(){
+  if(S.dpush===undefined)return'';
+  return `<div class="card"><h3>${S.dpush?'🔔 ':''}Notifications on this phone</h3>
+    <p class="note">${S.dpush?'On: you get':'Get'} a notification when someone asks to join a team you coach, and when a coach is accepted, even when the app is closed.</p>
+    ${!S.dpush&&isIOS&&!standalone()?'<p class="warnline">On iPhone, open Match Day from your Home Screen first (Share → Add to Home Screen).</p>':''}
+    <button class="btn ${S.dpush?'':'go'}" data-act="${S.dpush?'dpushoff':'dpushon'}">${S.dpush?'Turn off':'Turn on notifications'}</button></div>`;
+}
 let pbTimer;
 function pAlert(t,sub){
   S.pbanner={t,s:sub};clearTimeout(pbTimer);pbTimer=setTimeout(()=>{S.pbanner=null;render()},6000);
-  try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(_){}
-  if('Notification' in window&&Notification.permission==='granted'&&navigator.serviceWorker)
+  try{if(navigator.vibrate&&(!navigator.userActivation||navigator.userActivation.hasBeenActive))navigator.vibrate([200,100,200])}catch(_){} // phones only allow it after a tap
+  if(!S.fpush&&'Notification' in window&&Notification.permission==='granted'&&navigator.serviceWorker) // with push on, the server sends it
     navigator.serviceWorker.ready.then(r=>r.showNotification(t,{body:sub,icon:'icons/icon-192.png?v=whistle',tag:'matchday-score'})).catch(()=>{});
 }
 function onFeed(f){
@@ -611,6 +672,7 @@ function onFeed(f){
     const score=`${f.home} ${pScore(f,'home')}–${pScore(f,'away')} ${f.away}`,w=f.sport==='rugby'?'Score!':'Goal!';
     const up=side=>pScore(f,side)>pScore(p,side);
     if(up('home')||up('away'))pAlert(w+' '+(up('home')?f.home:f.away),score);
+    else if((f.cards||0)>(p.cards||0))pAlert(`${f.lastCard&&f.lastCard.c==='r'?'Red':'Yellow'} card for ${f.us==='home'?f.home:f.away}`,score);
     else if(f.status!==p.status){
       if(f.status==='live'&&(p.status==='pre'||p.status==='none'))pAlert('Kick-off',score);
       else if(f.status==='break')pAlert(pStatus(f),score);
@@ -622,6 +684,7 @@ function onFeed(f){
 async function followFeed(){
   document.body.classList.add('parent');
   await signedIn();
+  FB.F.getDoc(FB.F.doc(FB.fs,'feeds',FOLLOW,'push',FB.auth.currentUser.uid)).then(d=>{S.fpush=d.exists()?{kinds:d.data().kinds||[]}:null;render()}).catch(()=>{S.fpush=null;render()});
   FB.F.onSnapshot(FB.F.doc(FB.fs,'feeds',FOLLOW),s=>{setSync(true,'Live');onFeed(s.exists()?s.data():null)},
     e=>{setSync('bad',e&&e.code==='permission-denied'?'Not available':'No signal');if(S.pfeed===undefined)S.pfeed=null;render()});
   FB.F.onSnapshot(FB.F.collection(FB.fs,'feeds',FOLLOW,'games'),s=>{S.pgames=s.docs.map(d=>d.data()).sort((a,b)=>a.n-b.n);render()},()=>{S.pgames=[];render()});
@@ -1598,7 +1661,13 @@ document.addEventListener('click',e=>{
     case'pnew':if(S.confirm==='pnew')makeFeed();else{S.confirm='pnew';render()}break;
     case'pshare':shareFeed(false);break;
     case'pcopy':shareFeed(true);break;
-    case'palerts':Notification.requestPermission().then(()=>render());break;
+    case'fkind':{const k=b.dataset.k,cur=S.fkinds||(S.fpush?S.fpush.kinds:KINDS.map(x=>x[0]));S.fkinds=cur.includes(k)?cur.filter(x=>x!==k):[...cur,k];render();break}
+    case'fpushon':b.disabled=true;followPushOn();break;
+    case'fpushoff':followPushOff();break;
+    case'fpushedit':S.fpushEdit=true;S.fkinds=null;render();break;
+    case'fpushcancel':S.fpushEdit=false;S.fkinds=null;render();break;
+    case'dpushon':b.disabled=true;devicePush(true);break;
+    case'dpushoff':devicePush(false);break;
     case'menuclose':S.menu=false;S.acct=null;render();break;
     case'reqok':b.disabled=true;acceptRequest(b.dataset.id);break;
     case'reqno':b.disabled=true;declineRequest(b.dataset.id);break;
@@ -1907,6 +1976,7 @@ async function connectFirebase(){
   if(FOLLOW){await followFeed();return true} // a parent following the score: no teams, no team data
   if(await finishGoogle())return true; // reloading into the coach's existing account
   await signedIn().catch(()=>{});
+  loadDevice();
   await loadAccountTeams();
   await within(finishLeaves(),8000);addEventListener('online',finishLeaves);
   const t=lsGet(TEAM_KEY)||myTeams()[0];
@@ -2317,7 +2387,8 @@ const leaveBtn=()=>`<button class="x ${S.confirm&&S.confirm.startsWith('leave')?
 function pendingCard(){
   if(!S.pending.length)return'';
   const sent=p=>new Date(p.at||Date.now()).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
-  return `<div class="card"><h3>Your requests to join</h3>
+  const askPush=S.dpush===false&&S.pending.some(p=>!p.status||p.status==='wait')?`<button class="btn small" data-act="dpushon" style="align-self:flex-start">🔔 Tell me when I'm accepted</button>`:'';
+  return `<div class="card"><h3>Your requests to join</h3>${askPush}
     ${S.pending.map(p=>{const c=`<b class="num">${esc(showCode(p.code))}</b>`;
       return `<div class="pend ${p.status||'wait'}">${
       p.status==='declined'?`<span><b>Not accepted.</b> Your request with code ${c} wasn't accepted by the team's coaches. If that's a mistake, talk to them, then ask again.</span>
@@ -2455,6 +2526,7 @@ function menuView(){
     ${membersList()}
     ${leaveBtn()}</div>
   ${parentCard()}
+  ${devicePushCard()}
   ${backupCard()}
   ${S.owner?'<button class="btn" data-act="admin">Admin: all teams</button>':''}
   <p class="note num" style="text-align:center">Match Day v${APP_VERSION}</p><p class="note" style="text-align:center"><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p>

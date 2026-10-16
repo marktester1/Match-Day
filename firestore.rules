@@ -75,8 +75,10 @@ service cloud.firestore {
     }
     // The parents' live score: team names, score, clock and status only. Never players.
     function validFeed(d) {
-      return d.keys().hasOnly(['team', 'home', 'away', 'us', 'score', 'status', 'clock', 'periods', 'len', 'gameN', 'sport', 'updatedAt', 'tname', 'tdate'])
-        && fStr(d, 'tname', 60) && fStr(d, 'tdate', 10)
+      return d.keys().hasOnly(['team', 'home', 'away', 'us', 'score', 'status', 'clock', 'periods', 'len', 'gameN', 'sport', 'updatedAt', 'tname', 'tdate', 'cards', 'lastCard'])
+        && fStr(d, 'tname', 60) && fStr(d, 'tdate', 10) && fInt(d, 'cards', 0, 60)
+        && (!('lastCard' in d) || (d.lastCard is map && d.lastCard.keys().hasOnly(['c', 'at'])
+            && d.lastCard.get('c', 'y') in ['y', 'r'] && upTo(d.lastCard.get('at', 0), 36000000)))
         && d.team is string && fStr(d, 'home', 40) && fStr(d, 'away', 40) && fOneOf(d, 'us', ['home', 'away'])
         && validScore(d) && fOneOf(d, 'status', ['none', 'pre', 'live', 'paused', 'break', 'ft'])
         && validClock(d) && fOneOf(d, 'periods', [1, 2, 4]) && fInt(d, 'len', 1, 60) && fInt(d, 'gameN', 1, 10)
@@ -87,6 +89,10 @@ service cloud.firestore {
       return d.keys().hasOnly(['n', 'home', 'away', 'us', 'time', 'pitch', 'score', 'status'])
         && fInt(d, 'n', 1, 10) && fStr(d, 'home', 40) && fStr(d, 'away', 40) && fOneOf(d, 'us', ['home', 'away'])
         && fStr(d, 'time', 10) && fStr(d, 'pitch', 10) && validScore(d) && fOneOf(d, 'status', ['pre', 'live', 'paused', 'break', 'ft']);
+    }
+    function pushDoc(d, keys) {
+      return d.keys().hasOnly(keys) && d.token is string && d.token.size() > 20 && d.token.size() <= 4096
+        && upTo(d.get('at', 0), 9000000000000000);
     }
     function validSquad(d) { return d.keys().hasOnly(['players']) && fList(d, 'players', 80) && (!('players' in d) || playersOk(d.players)); }
     function validNotes(d) { return d.keys().hasOnly(['items']) && fList(d, 'items', 300) && (!('items' in d) || notesOk(d.items)); }
@@ -260,6 +266,12 @@ service cloud.firestore {
     // Each sign-in's own list of teams, so a coach with an account gets them back on a new phone.
     // Only that sign-in can see or change it. It grants no access by itself: the team's
     // members doc does that.
+    // This phone's push address for coach alerts (join requests, being accepted). Private to the sign-in.
+    match /devices/{uid} {
+      allow get, delete: if signedIn() && uid == request.auth.uid;
+      allow create, update: if signedIn() && uid == request.auth.uid && pushDoc(request.resource.data, ['token', 'at']);
+    }
+
     match /users/{uid} {
       allow read, delete: if signedIn() && uid == request.auth.uid;
       allow create, update: if signedIn() && uid == request.auth.uid
@@ -276,6 +288,15 @@ service cloud.firestore {
         && (resource == null || resource.data.team == request.resource.data.team);
       allow delete: if signedIn() && exists(/databases/$(database)/documents/teams/$(resource.data.team)/members/$(request.auth.uid));
       // The day's games, one record each. Readable while the link is current; written by that team's coaches.
+      // A follower's notification sign-up: their phone's push address and which alerts they want.
+      // Only that follower can see or change it; the server reads it to send the alerts.
+      match /push/{uid} {
+        allow get, delete: if signedIn() && uid == request.auth.uid;
+        allow create, update: if signedIn() && uid == request.auth.uid && exists(/databases/$(database)/documents/feeds/$(f))
+          && pushDoc(request.resource.data, ['token', 'kinds', 'at'])
+          && request.resource.data.kinds is list && request.resource.data.kinds.size() <= 5
+          && request.resource.data.kinds.hasOnly(['kick', 'goal', 'card', 'ht', 'ft']);
+      }
       match /games/{g} {
         allow get, list: if signedIn() && exists(/databases/$(database)/documents/feeds/$(f));
         allow create, update: if g.matches('^g([1-9]|10)$') && validFeedGame(request.resource.data) && signedIn()

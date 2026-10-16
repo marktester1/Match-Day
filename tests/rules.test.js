@@ -216,6 +216,32 @@ test('a parent can read a feed by its link, but not list feeds or see the team',
   await assertFails(getDoc(doc(db(null), 'feeds', FEED)));                                 // must be signed in (the app does this)
 });
 
+// ---- push notifications ----
+const TOKEN = 'fcm-token-' + 'x'.repeat(140);
+test('followers sign up for alerts on a feed; only they can see or change it', async () => {
+  await env.withSecurityRulesDisabled(async ctx => { await setDoc(doc(ctx.firestore(), 'feeds', FEED), feed); });
+  const fol = db('follower1');
+  await assertSucceeds(setDoc(doc(fol, 'feeds', FEED, 'push', 'follower1'), {token: TOKEN, kinds: ['kick', 'goal', 'card', 'ht', 'ft'], at: 1}));
+  await assertSucceeds(getDoc(doc(fol, 'feeds', FEED, 'push', 'follower1')));
+  await assertFails(setDoc(doc(fol, 'feeds', FEED, 'push', 'someone-else'), {token: TOKEN, kinds: ['goal'], at: 1}));
+  await assertFails(getDoc(doc(db('follower2'), 'feeds', FEED, 'push', 'follower1')));
+  await assertFails(getDocs(collection(alice(), 'feeds', FEED, 'push')));               // not even the team's coaches
+  await assertFails(setDoc(doc(fol, 'feeds', FEED, 'push', 'follower1'), {token: TOKEN, kinds: ['names'], at: 1}));
+  await assertFails(setDoc(doc(fol, 'feeds', FEED, 'push', 'follower1'), {token: 'short', kinds: ['goal'], at: 1}));
+  await assertFails(setDoc(doc(fol, 'feeds', 'Zzzzzzzzzzzzzzzzzzzzzzzz', 'push', 'follower1'), {token: TOKEN, kinds: ['goal'], at: 1})); // no such feed
+  await assertSucceeds(deleteDoc(doc(fol, 'feeds', FEED, 'push', 'follower1')));
+});
+test('the feed can carry a name-free card count', async () => {
+  await assertSucceeds(setDoc(doc(alice(), 'feeds', FEED), {...feed, cards: 2, lastCard: {c: 'y', at: 720000}}));
+  await assertFails(setDoc(doc(alice(), 'feeds', FEED), {...feed, cards: 1, lastCard: {c: 'y', at: 1, p: 'Sam'}}));
+});
+test("a phone's push address for coach alerts is private to its sign-in", async () => {
+  await assertSucceeds(setDoc(doc(alice(), 'devices', 'alice'), {token: TOKEN, at: 1}));
+  await assertFails(setDoc(doc(alice(), 'devices', 'mallory'), {token: TOKEN, at: 1}));
+  await assertFails(getDoc(doc(mallory(), 'devices', 'alice')));
+  await assertFails(setDoc(doc(alice(), 'devices', 'alice'), {token: TOKEN, at: 1, team: T}));
+});
+
 // ---- each sign-in's own team list ----
 test('a team list is private to its sign-in', async () => {
   await assertSucceeds(setDoc(doc(alice(), 'users', 'alice'), {teams: {[T]: true}}));
