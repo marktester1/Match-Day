@@ -352,7 +352,7 @@ body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.24.2';
+const APP_VERSION='0.24.3';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
@@ -494,7 +494,7 @@ function makeFeed(){
   if(tourReady())publishFeed();else track(FB.F.setDoc(FB.F.doc(FB.fs,'feeds',id),{...feedBody(null),updatedAt:Date.now()}),()=>{});
   if(old){const {F,fs}=FB,b=F.writeBatch(fs); // the old link stops working
     for(let i=1;i<=10;i++)b.delete(F.doc(fs,'feeds',old,'games','g'+i));b.delete(F.doc(fs,'feeds',old));track(b.commit(),()=>{})}
-  S.confirm=null;render();toast('Follower link ready. Share it with parents, family and friends.');
+  S.confirm=null;render();toast('Follower link ready. Share it with family, carers and friends.');
 }
 async function shareFeed(copyOnly){
   const url=feedUrl(S.feed.id),title=`${S.cfg.team||'Our team'}: live scores`;
@@ -505,7 +505,7 @@ function parentCard(){
   if(!FB||!S.teamId)return'';
   const cur=feedOn();
   return `<div class="card"><h3>Followers</h3>
-    <p class="note">Anyone with this link can follow the score live: parents, grandparents, friends. They see team names, the score, clock, half time and full time, and the day's games. They never see players' names, line-ups or minutes, and they can't change anything.</p>
+    <p class="note">Anyone with this link can follow the score live: family, carers and friends. They see team names, the score, clock, half time and full time, and the day's games. They never see players' names, line-ups or minutes, and they can't change anything.</p>
     ${cur?`<div class="plink">${esc(feedUrl(S.feed.id))}</div>
       <div class="cbtns"><button class="btn go" data-act="pshare">Share link</button><button class="btn" data-act="pcopy">Copy</button></div>
       <p class="note">This link works for the ${esc(S.feed.season)} season.</p>
