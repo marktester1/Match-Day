@@ -352,7 +352,7 @@ body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.24.0';
+const APP_VERSION='0.24.1';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
@@ -1222,14 +1222,17 @@ async function undoRestore(){
 
 /* ---------- squad helpers ---------- */
 function addNames(text){
-  const raw=String(text||'').split(/[\n,;]+/).map(x=>x.replace(/\s+/g,' ').replace(/[^\p{L}\p{M}' -]/gu,'').trim()).filter(Boolean);
+  addNames.skipped=[];
+  const raw=String(text||'').split(/[\n,;]+/).map(x=>x.replace(/\s+/g,' ').replace(/[^\p{L}\p{M}\p{N}' -]/gu,'').trim()).filter(Boolean);
   if(!raw.length)return 0;
   const firsts=raw.map(n=>n.split(' ')[0]);
   const all=firsts.map(f=>f.toLowerCase());
-  let added=0;const squad=[...S.squad];
+  let added=0;const squad=[...S.squad];addNames.skipped=[];
   raw.forEach((n,i)=>{const parts=n.split(' '),f=cap(parts[0]);
-    let name=f;if(all.filter(x=>x===f.toLowerCase()).length>1&&parts[1])name=f+' '+parts[1][0].toUpperCase();
-    if(squad.some(p=>p.name.toLowerCase()===name.toLowerCase()))return;
+    let name=f;
+    if(parts[1]&&/^\p{N}+$/u.test(parts[1]))name=f+' '+parts[1]; // "Player 7" or a shirt number instead of a name: keep the number
+    else if(all.filter(x=>x===f.toLowerCase()).length>1&&parts[1])name=f+' '+parts[1][0].toUpperCase();
+    if(squad.some(p=>p.name.toLowerCase()===name.toLowerCase())){addNames.skipped.push(name);return}
     squad.push({id:'p'+Math.random().toString(36).slice(2,9),name:name.slice(0,30)});added++});
   S.squad=squad;if(added)saveSquad();return added;
 }
@@ -1531,7 +1534,13 @@ document.addEventListener('click',e=>{
       S.tour={...S.tour,count:f.length};saveTour();
       f.forEach((x,i)=>{const id='g'+(i+1),g=structuredClone(G(id));Object.assign(g,{time:x.time,opponent:x.opponent,pitch:x.pitch,side:x.side});S.games[id]=g;put('games/'+id,g)});
       document.getElementById('fxpaste').value='';toast(`${f.length} fixtures filled in. Check them above.`);render();break}
-    case'bulkadd':{document.activeElement?.blur();const t=document.getElementById('bulknames');const n=addNames(t?.value);if(t)t.value='';toast(n?`${n} added to the squad.`:'Nobody new to add.');render();break}
+    case'bulkadd':{document.activeElement?.blur(); // either box: easy to type in one and tap the other's button
+      const t=document.getElementById('bulknames'),one=document.getElementById('newname');
+      const text=[t?.value,one?.value].filter(x=>x&&x.trim()).join('\n');
+      if(!text.trim()){toast('Type or paste some names first.');break}
+      const n=addNames(text),sk=addNames.skipped;if(t)t.value='';if(one)one.value='';
+      toast(n?`${n} added to the squad.${sk.length?` ${sk.join(', ')} ${sk.length>1?'were':'was'} already in it.`:''}`
+        :sk.length?`${sk.join(', ')} ${sk.length>1?'are':'is'} already in the squad.`:"Those don't look like names. Use letters only.");render();break}
     case'setupdone':{document.activeElement?.blur();const c={...S.cfg};['team','short'].forEach(k=>{const i=document.getElementById('cfg-'+k);if(i)c[k]=i.value.trim().slice(0,40)});
       const sz=document.getElementById('cfg-size');c.size=Math.min(11,Math.max(3,parseInt(sz?.value)||c.size||5));
       if(!c.team){toast('Add a team name first.');break}if(!c.short)c.short=shortName(c.team);
@@ -1588,10 +1597,12 @@ document.addEventListener('submit',e=>{
   if(e.target.id==='joinf'){e.preventDefault();joinTeam(document.getElementById('joincode').value);return}
   if(e.target.id==='acctf'){e.preventDefault();document.activeElement?.blur();(e.target.dataset.mode==='create'?createAccount:signInAccount)();return}
   if(e.target.id!=='addf')return;e.preventDefault();
-  const i=document.getElementById('newname'),n=i.value.trim();if(!n)return;
+  const i=document.getElementById('newname'),b=document.getElementById('bulknames');
+  if(!i.value.trim()&&b&&b.value.trim()){document.querySelector('[data-act=bulkadd]')?.click();return} // typed in the other box
+  const n=i.value.trim();if(!n){toast('Type a name first.');return}
   if(S.squad.some(p=>p.name.toLowerCase()===n.toLowerCase())){toast(`${n} is already in the squad.`);return}
   S.squad=[...S.squad,{id:'p'+Math.random().toString(36).slice(2,9),name:n.slice(0,30)}];
-  i.value='';saveSquad();setTimeout(()=>document.getElementById('newname')?.focus(),0);
+  i.value='';saveSquad();toast(`${n.slice(0,30)} added.`);setTimeout(()=>document.getElementById('newname')?.focus(),0);
 });
 document.addEventListener('change',e=>{
   const t=e.target;
