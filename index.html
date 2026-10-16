@@ -219,6 +219,9 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 .swapbtn{width:40px;height:42px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--grass);display:grid;place-items:center;padding:0}
 .swapbtn:active{transform:rotate(180deg)}
 @media (prefers-reduced-motion:no-preference){.swapbtn{transition:transform .2s}}
+.adm{flex-direction:column;align-items:stretch;gap:2px}
+.adm .who{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-weight:700}
+.admid{font-size:11px;opacity:.7}
 .setupcard{display:flex;flex-direction:column;gap:10px}
 .setupline{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;border:1px dashed var(--line);border-radius:10px;background:none;color:var(--muted);padding:10px 12px;font-size:13px}
 .setupline b{color:var(--grass);flex:0 0 auto}
@@ -285,10 +288,10 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.17.2';
+const APP_VERSION='0.18.0';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
-  gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,teams:false,adding:false,acct:null,
+  gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
   awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const nice=d=>{if(!d)return'';const t=new Date(d+'T12:00');return isNaN(t)?d:t.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})};
@@ -547,7 +550,7 @@ function render(){
   if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA')&&a.type!=='file'&&a.closest('#view, .top')){pending=true;syncHeader(false);return}
   pending=false;syncHeader(true);
   document.body.classList.toggle('ro',S.readOnly);
-  document.body.classList.toggle('gate',!!(S.gate||S.teams||S.menu||(S.cfgLoaded&&!S.cfg.team))); // set-up screen stands alone
+  document.body.classList.toggle('gate',!!(S.gate||S.teams||S.menu||S.adminOpen||(S.cfgLoaded&&!S.cfg.team))); // set-up screen stands alone
   const mb=document.getElementById('menubtn');if(mb)mb.hidden=!(FB&&S.teamId&&!S.gate);
   const sec=secOf(S.tab);document.body.classList.toggle('sec-season',sec==='season');
   document.body.classList.toggle('ingame',!(S.tab==='games'&&!S.game&&!S.fx)); // name/date only on the Games list
@@ -559,6 +562,7 @@ function render(){
   h.classList.toggle('others',sw&&myTeams().some(t=>t!==S.teamId&&teamInfo[t]?.running?.length));
   if(S.gate){v.innerHTML=gateView();return}
   if(S.teams){v.innerHTML=teamsView();return}
+  if(S.adminOpen){v.innerHTML=adminView();return}
   if(S.menu){v.innerHTML=menuView();return}
   if(S.cfgLoaded&&!S.cfg.team){v.innerHTML=setupView();return}
   v.innerHTML=S.tab==='games'&&S.fx&&!S.game?fixturesView():S.tab==='games'?(S.game?gameView(S.game):gamesList()):S.tab==='minutes'?minutesView():S.tab==='notes'?notesView():S.tab==='awards'?awardsView():S.tab==='season'?seasonView():squadView();
@@ -1025,7 +1029,10 @@ document.addEventListener('click',e=>{
     case'setupopen':S.setupOpen=true;render();setTimeout(()=>document.querySelector('.setupcard')?.scrollIntoView({behavior:'smooth',block:'start'}),0);break;
     case'setupclose':document.activeElement?.blur();S.setupOpen=false;render();break;
     case'periods':S.tour={...S.tour,periods:+b.dataset.v};saveTour();render();break;
-    case'menu':S.menu=true;S.teams=false;S.game=null;S.fix=null;render();window.scrollTo(0,0);break;
+    case'admin':S.adminOpen=true;loadAdmin();window.scrollTo(0,0);break;
+    case'adminload':loadAdmin();break;
+    case'adminclose':S.adminOpen=false;render();break;
+    case'menu':checkOwner();S.menu=true;S.teams=false;S.game=null;S.fix=null;render();window.scrollTo(0,0);break;
     case'menuclose':S.menu=false;S.acct=null;render();break;
     case'teams':S.teams=true;S.game=null;S.fix=null;render();window.scrollTo(0,0);break;
     case'teamsclose':S.teams=false;render();break;
@@ -1422,6 +1429,40 @@ function touchMember(t,force){ // keep my entry in this team's member list up to
   F.setDoc(F.doc(fs,'teams',t,'members',u.uid),{name:myName(),via:signInVia(),seen:F.serverTimestamp()},{merge:true})
     .then(()=>{seen[t]=Date.now();lsSet('matchday-seen',JSON.stringify(seen))}).catch(()=>{});
 }
+function checkOwner(){
+  const {F,fs,auth}=FB;if(!auth.currentUser?.email){S.owner=false;return}
+  F.getDocs(F.query(F.collection(fs,'teams'),F.limit(1))).then(()=>{S.owner=true;if(S.menu)render()}).catch(()=>{S.owner=false});
+}
+async function loadAdmin(){
+  const {F,fs}=FB;S.admin={loading:true,teams:[]};render();
+  try{
+    const ts=await F.getDocs(F.collection(fs,'teams'));
+    const rows=await Promise.all(ts.docs.map(async d=>{
+      const [st,ms]=await Promise.all([F.getDoc(F.doc(fs,'teams',d.id,'club','settings')).catch(()=>null),F.getDocs(F.collection(fs,'teams',d.id,'members')).catch(()=>null)]);
+      const cfg=st?.data?.()||{},mem=ms?ms.docs.map(m=>m.data()):[];
+      const seen=Math.max(0,...mem.map(m=>m.seen?.toMillis?.()||m.joined?.toMillis?.()||0));
+      return{id:d.id,name:cfg.team||'',sport:cfg.sport||'football',created:d.data().created?.toMillis?.()||0,coaches:mem.length,seen};
+    }));
+    S.admin={loading:false,teams:rows.sort((a,b)=>b.seen-a.seen)};
+  }catch(e){S.admin={loading:false,error:errCode(e),teams:[]}}
+  render();
+}
+function adminView(){
+  const A=S.admin||{teams:[]},T=A.teams,day=864e5,now=Date.now();
+  const week=T.filter(t=>now-t.seen<7*day).length,rug=T.filter(t=>t.sport==='rugby').length;
+  const when=ms=>ms?nice(new Date(ms).toISOString().slice(0,10)):'–';
+  return `<div class="sec" style="gap:14px">
+  <button class="back" data-act="adminclose">← Back</button>
+  <h2>Admin</h2>
+  <p class="note">Only you can see this. Team names and activity only, never squads, games or notes.</p>
+  ${A.loading?'<p class="note">Loading…</p>':A.error?`<p class="note">Couldn't load (${esc(A.error)}).</p>`:`
+  <div class="summary num"><span>Teams <b>${T.length}</b></span><span>Active this week <b>${week}</b></span><span>Football <b>${T.length-rug}</b> · Rugby <b>${rug}</b></span></div>
+  <div class="rows">${T.map(t=>`<div class="row adm"><div class="who">${esc(t.name||'(not set up yet)')}<span class="tag">${t.sport==='rugby'?'Rugby':'Football'}</span></div>
+    <div class="note">${t.coaches} coach${t.coaches===1?'':'es'} · last active ${esc(when(t.seen))} · created ${esc(when(t.created))}</div>
+    <div class="note num admid">${esc(t.id)}</div></div>`).join('')}</div>
+  <button class="btn small" data-act="adminload" style="align-self:flex-start">Refresh</button>`}
+  </div>`;
+}
 function watchMembers(t){
   const {F,fs}=FB;
   F.onSnapshot(F.collection(fs,'teams',t,'members'),s=>{S.members=s.docs.map(d=>({id:d.id,...d.data()}));if(S.menu)render()},()=>{});
@@ -1461,6 +1502,7 @@ function menuView(){
     ${membersList()}
     <button class="x ${S.confirm==='leave'?'sure':''}" data-act="leave">${S.confirm==='leave'?'Tap again to leave this team on this phone':'Leave this team on this phone'}</button></div>
   ${backupCard()}
+  ${S.owner?'<button class="btn" data-act="admin">Admin: all teams</button>':''}
   <p class="note num" style="text-align:center">Match Day v${APP_VERSION}</p>
   </div>`;
 }

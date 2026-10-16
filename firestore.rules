@@ -6,6 +6,13 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     function memberPath(t) { return /databases/$(database)/documents/teams/$(t)/members/$(request.auth.uid); }
     function teamAfter(t) { return getAfter(/databases/$(database)/documents/teams/$(t)).data; }
+    // The app's owner (signed in with this Google account) can see team-level facts for the
+    // Admin page: the team record, its settings (name, sport) and its coach list. Never squads,
+    // games, notes or results.
+    function isOwner() {
+      return signedIn() && request.auth.token.email == 'markdavidmiles@gmail.com'
+        && request.auth.token.email_verified == true;
+    }
 
     // Invite code -> team id. Readable one code at a time, never listable.
     match /codes/{code} {
@@ -18,6 +25,8 @@ service cloud.firestore {
 
     match /teams/{t} {
       allow get: if signedIn() && exists(memberPath(t));
+      allow get, list: if isOwner();
+      match /club/settings { allow get: if isOwner(); }
       allow create: if signedIn()
         && request.resource.data.keys().hasOnly(['code', 'createdBy', 'created'])
         && request.resource.data.createdBy == request.auth.uid
@@ -30,6 +39,7 @@ service cloud.firestore {
       match /members/{uid} {
         allow get: if signedIn() && (uid == request.auth.uid || exists(memberPath(t)));
         allow list: if signedIn() && exists(memberPath(t));
+        allow get, list: if isOwner();
         allow delete: if signedIn() && uid == request.auth.uid;
         allow create, update: if signedIn() && uid == request.auth.uid
           && request.resource.data.keys().hasOnly(['code', 'joined', 'name', 'via', 'seen'])
