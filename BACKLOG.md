@@ -5,19 +5,17 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Waiting on testing
 
-- **v0.23.0 on beta (review fixes), rules on beta only; live rules need the go-ahead.**
-  To try: join a team (coach sees name, sign-in and email, Accept/Decline; asker sees waiting /
-  not accepted); ☰ → Make a new invite code; Make manager; tap the save status; Undo after a
-  goal, and after a later change; restore preview; leave with flight mode on, then reopen;
-  **Google sign-in on beta** (the new enforced security policy must not block it) and
-  **signing into an existing account on a phone that already has teams** (teams move across,
-  the phone accepts the account; can't be tested by Claude because it needs a password).
-
-- **v0.22.0 live:** data safety, join requests, one-tap subs, undo bar, release checks; earlier: Admin page, owner Admin page (☰ → Admin: all teams); rugby, set-up journey, home/away swap, save confirmation, edit saved
-  tournaments, sections, game strip, notes, players a side, ☰ menu.
-  Beta: https://match-day-beta-17b23.web.app (Beta Test Team code `L9J-Q7H`).
-- **Accounts:** Google sign-in works on live. Still to try: signing in on a second phone and
-  seeing the teams come back.
+- **v0.26.1 on beta:** a warning at full time (and on Finish tournament) when a game has no
+  opposition, with a box to add it there and then; the goal count on a player's label is now a
+  neutral grey pill under the minutes, so it no longer overlaps the corner or looks like a card.
+- **v0.26.0 live:** push notifications. Still to try on real phones: a follower turning on
+  alerts (iPhone needs the app on the Home Screen first) and getting kick-off, goal, card,
+  half-time and full-time alerts; a coach getting an alert when someone asks to join, and the
+  asker getting one when accepted.
+- **Accounts, still to try (needs a password, so Claude can't):** signing into an existing
+  account on a phone that already has teams (teams move across), and signing in on a second
+  phone and seeing the teams come back.
+- Beta: https://match-day-beta-17b23.web.app (Beta Test Team code `L9J-Q7H`).
 
 ## From the code review (do these before more features)
 

@@ -316,7 +316,7 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 .ro .chip{pointer-events:none}
 .gate .trow,.gate #tabs{display:none}
 .sc .plus.notyet{opacity:.4} /* scoring waits for kick-off */
-.chip .gl{position:absolute;top:-9px;right:-6px;background:var(--gold);color:var(--gold-ink);border-radius:999px;font-size:11px;font-weight:700;padding:1px 6px;line-height:1.4}
+.chip .gl{margin-top:2px;background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:999px;font-size:11px;font-weight:700;padding:0 6px;line-height:1.4}
 .tsum{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
 .chip .cd{position:absolute;top:-9px;left:-6px;font-size:12px;line-height:1.4;background:var(--surface);border-radius:999px;padding:0 4px;font-weight:700}
 .report{white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
@@ -360,7 +360,7 @@ body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.26.0';
+const APP_VERSION='0.26.1';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,benchAsk:null,rptEdit:null,fpush:undefined,fpushEdit:false,fkinds:null,dpush:undefined,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
@@ -833,6 +833,8 @@ function ftAsk(g){
   return `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="ftq"><div class="box">
     <h3 id="ftq">End game ${g.n}?</h3>
     <p class="ftscore"><span>${esc(homeName(g))}</span><b class="num">${scoreHA(g)}</b><span>${esc(awayName(g))}</span></p>
+    ${g.opponent?'':`<p class="warnline">⚠️ No opposition entered for this game. Add who you played so the result makes sense in Results and for followers.</p>
+    <label>Opposition<input id="ftopp" maxlength="40" placeholder="e.g. Riverside" list="ftopps" autocomplete="off"></label><datalist id="ftopps">${opponents().map(o=>`<option value="${esc(o)}"></option>`).join('')}</datalist>`}
     <p class="note">The clock stops at ${tAt(el(g))} and the result counts in today's record. You can reopen the game later if needed.</p>
     <div class="cbtns"><button class="btn warn" data-act="ftyes">End game</button><button class="btn" data-act="ftno">Keep playing</button></div>
   </div></div>`;
@@ -960,8 +962,10 @@ function render(){
   if(S.menu){v.innerHTML=menuView();if(S.syncOpen)v.insertAdjacentHTML('afterbegin',syncPanel());return}
   if(S.cfgLoaded&&!S.cfg.team){keepSetup(()=>{v.innerHTML=setupView()});return} // updates arriving mid-typing mustn't wipe it
   const keepRpt=document.getElementById('rpttext')?.value; // a half-written report survives redraws
+  const keepOpp=document.getElementById('ftopp')?.value;
   v.innerHTML=S.tab==='games'&&S.fx&&!S.game?fixturesView():S.tab==='games'?(S.game?gameView(S.game):gamesList()):S.tab==='minutes'?minutesView():S.tab==='notes'?notesView():S.tab==='awards'?awardsView():S.tab==='season'?seasonView():squadView();
   if(keepRpt!=null&&document.getElementById('rpttext'))document.getElementById('rpttext').value=keepRpt;
+  if(keepOpp&&document.getElementById('ftopp'))document.getElementById('ftopp').value=keepOpp;
   if(S.saved){const keep=document.getElementById('rptnew')?.value;v.insertAdjacentHTML('beforeend',savedPop());if(keep)document.getElementById('rptnew').value=keep}
   if(S.requests.length&&!v.querySelector('.reqs'))v.insertAdjacentHTML('afterbegin',`<button class="reqnote" data-act="menu">${esc(S.requests.map(r=>r.name||'Someone').join(', '))} ${S.requests.length>1?'want':'wants'} to join the team. Tap to see who and accept or decline.</button>`);
   if(S.syncOpen)v.insertAdjacentHTML('afterbegin',syncPanel());
@@ -1023,6 +1027,7 @@ function gamesList(){
       <span class="res">${started(g)?`<span class="scr num">${scoreHA(g)}</span>`:''}${status(g)}${started(g)&&!g.done?`<span class="sub num" data-clock="${id}">${nPer()>1?perShort(perOf(el(g)))+' ':''}${clockText(g)}</span>`:''}</span>
     </button>`}).join('')}</div>
   <button class="btn" data-act="fxopen">Enter opponents and kick-off times</button>
+  ${(()=>{const no=ids.filter(id=>started(G(id))&&!G(id).opponent).map(id=>G(id).n);return no.length?`<p class="warnline">⚠️ No opposition entered for game${no.length>1?'s':''} ${no.join(', ')}. Tap <b>Enter opponents and kick-off times</b> to add ${no.length>1?'them':'it'} before you save.</p>`:''})()}
   <button class="btn go" data-act="finish">${S.confirm==='finish'?'Tap again to save and start fresh':'Finish tournament and save to Results'}</button>
   <p class="note">Saves results and every player's minutes to Season → Results, then clears the games ready for the next tournament.</p>
   <button class="btn warn" data-act="reset">${S.confirm==='reset'?'Tap again to clear without saving':'Clear scores and line-ups without saving'}</button>
@@ -1615,8 +1620,8 @@ document.addEventListener('click',e=>{
     case'gkcancel':S.askGk=null;render();break;
     case'pause':withUndo(id,'Clock paused');mut(id,g=>{g.clock.acc=el(g);g.clock.running=false});break;
     case'ft':S.pick=null;S.askFt=id;render();break;
-    case'ftyes':{const fid=S.askFt;S.askFt=null;if(!fid)break;const g=G(fid);
-      withUndo(fid,`Full time · ${homeName(g)} ${scoreHA(g)} ${awayName(g)}`);mut(fid,g=>{g.clock.acc=el(g);g.clock.running=false;g.done=true});break}
+    case'ftyes':{const fid=S.askFt;S.askFt=null;if(!fid)break;const g=G(fid),opp=(document.getElementById('ftopp')?.value||'').trim().slice(0,40);
+      withUndo(fid,`Full time · ${opp&&!g.opponent?homeName({...g,opponent:opp}):homeName(g)} ${scoreHA(g)} ${opp&&!g.opponent?awayName({...g,opponent:opp}):awayName(g)}`);mut(fid,g=>{g.clock.acc=el(g);g.clock.running=false;g.done=true;if(opp&&!g.opponent)g.opponent=opp});break}
     case'ftno':S.askFt=null;render();break;
     case'undoact':undoAction();break;
     case'reopen':mut(id,g=>{g.done=false});break;
