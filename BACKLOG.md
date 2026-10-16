@@ -5,7 +5,7 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Waiting on testing
 
-- **v0.17.1 on beta, not yet live:** home/away swap button; set-up journey for each tournament (settings fold to the bottom); generic Example Team examples; rugby as a per-team sport (points or tries only); sport chosen first at team set-up.
+- **v0.17.2 on beta, not yet live:** home/away swap button, our name shown locked; set-up journey for each tournament (settings fold to the bottom); generic Example Team examples; rugby as a per-team sport (points or tries only); sport chosen first at team set-up.
 - **v0.15.0 live:** save confirmation, edit saved tournaments; Tournament / Season sections, game strip, Notes, goal scorers, players a side,
   ☰ menu with team members, halves and quarters, Home v Away.
   Beta: https://match-day-beta-17b23.web.app (Beta Test Team code `L9J-Q7H`).

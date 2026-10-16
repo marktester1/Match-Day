@@ -247,7 +247,11 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 .lbl .us{font-size:10px;letter-spacing:.06em;color:var(--grass);border:1px solid currentColor;border-radius:5px;padding:0 4px;margin-left:4px}
 .weare{grid-column:1/-1;display:flex;flex-direction:column;gap:4px}
 .fixed{display:flex;flex-direction:column;gap:4px;min-width:0}
-.usname{display:block;padding:9px 10px;border:1px dashed var(--line);border-radius:8px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.usname{display:flex;align-items:center;gap:6px;padding:9px 2px;border:1px solid transparent;color:var(--muted);font-weight:600;overflow:hidden;white-space:nowrap}
+.usname span{overflow:hidden;text-overflow:ellipsis}
+.usname svg{flex:0 0 auto;opacity:.8}
+.hav input{border-color:var(--muted);background:var(--surface);color:var(--ink)}
+.hav input:focus{border-color:var(--grass);outline:none}
 .board .nm small{display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .hint.scorer{display:flex;flex-direction:column;gap:8px}
 .modal{position:fixed;inset:0;z-index:50;background:#0009;display:flex;align-items:center;justify-content:center;padding:16px}
@@ -281,7 +285,7 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.17.1';
+const APP_VERSION='0.17.2';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,teams:false,adding:false,acct:null,
@@ -651,7 +655,7 @@ function gameView(id){
   <div class="ghead"><h2>Game ${g.n}</h2>${status(g)}</div>
   <div class="hav">
     ${['home','away'].map(sd=>{const ours=(sd==='away')===isAway(g),lbl=`<span class="lbl">${sd==='home'?'Home':'Away'}${ours?' <span class="us">us</span>':''}</span>`;
-      return (ours?`<div class="fixed">${lbl}<span class="usname" title="Change it in Squad → Team settings">${esc(usName())}</span></div>`
+      return (ours?`<div class="fixed">${lbl}<span class="usname" title="Your team's name is set in Team settings"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3M6 11h12v9H6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>${esc(usName())}</span></span></div>`
         :`<label>${lbl}<input id="opponent-${id}" data-field="opponent" value="${esc(g.opponent)}" placeholder="e.g. Riverside"></label>`)
         +(sd==='home'?`<button class="swapbtn" data-act="side" data-v="${isAway(g)?'home':'away'}" aria-label="Swap home and away (we are ${isAway(g)?'away':'home'})" title="Swap home and away"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M7 7h12l-3-3M17 17H5l3 3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`:'')}).join('')}
   </div>
