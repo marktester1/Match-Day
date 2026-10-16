@@ -276,7 +276,7 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 .note-done-who{padding:8px 12px 0}
 .gstrip{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
 .gstrip::-webkit-scrollbar{display:none}
-.gs{flex:1 0 46px;display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 4px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--muted);position:relative}
+.gs{flex:1 0 46px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:46px;padding:6px 4px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--muted);position:relative}
 .gs b{font-family:var(--display);font-size:22px;line-height:1;color:var(--ink)}
 .gs small{font-size:11px}
 .gs.done{opacity:.7}
@@ -489,7 +489,7 @@ function notesView(){
 function gameStrip(cur){
   return `<div class="gstrip" role="tablist" aria-label="Games">${gids().map(x=>{const g=G(x),st=started(g);
     return `<button class="gs ${x===cur?'on':''} ${g.clock.running?'live':''} ${g.done?'done':''}" data-act="open" data-g="${x}" role="tab" aria-selected="${x===cur}" aria-label="Game ${g.n}${g.opponent?' v '+esc(g.opponent):''}">
-      <b class="num">${g.n}</b><small class="num">${st?scoreHA(g):g.time?esc(g.time):'&nbsp;'}</small></button>`}).join('')}</div>`;
+      <b class="num">${g.n}</b>${st||g.time?`<small class="num">${st?scoreHA(g):esc(g.time)}</small>`:''}</button>`}).join('')}</div>`;
 }
 
 /* ---------- opening the app on match day: go straight to the game that matters now ---------- */
