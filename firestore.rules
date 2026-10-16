@@ -85,6 +85,8 @@ service cloud.firestore {
       return v is map && v.keys().hasOnly(['running', 'startedAt', 'acc']) && v.get('running', false) is bool
         && upTo(v.get('startedAt', 0), 9000000000000000) && upTo(v.get('acc', 0), 36000000);
     }
+    function validScore(d) { return scoreMap(d.get('score', {})); }
+    function validClock(d) { return clockMap(d.get('clock', {})); }
     function ids(l, max) { return l is list && l.size() <= max && l.join(',').matches('^([A-Za-z0-9_-]{1,40}(,[A-Za-z0-9_-]{1,40})*)?$'); }
     function subs(l)   { return l is list && l.size() <= 300 && (l.size() == 0 || okSub(l[l.size() - 1])); }
     function gks(l)    { return l is list && l.size() <= 100 && (l.size() == 0 || okGk(l[l.size() - 1])); }

@@ -4,6 +4,7 @@
 # Runs automatically before every `firebase deploy` / `hosting:channel:deploy` (see firebase.json).
 set -e
 cd "$(dirname "$0")/.."
+node tools/csp.cjs --check # the published security policy must match index.html's script
 rm -rf public
 mkdir -p public/icons
 for f in index.html firebase-config.js manifest.webmanifest sw.js \

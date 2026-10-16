@@ -50,7 +50,14 @@ h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:
 .sync{font-size:12px;padding:3px 9px;border-radius:99px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
 .sync.on{color:var(--good);border-color:currentColor}
 .sync.wait{color:var(--live);border-color:currentColor}
-.sync.bad{color:var(--bad);border-color:currentColor}
+.sync.bad{color:var(--bad);border-color:currentColor;font-weight:700}
+.sync{cursor:pointer}
+.syncp{border-color:var(--line)}
+.failrow{flex-direction:column;align-items:flex-start;gap:6px}
+.saveline{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;border-radius:10px;font-size:14px}
+.saveline.bad{border:2px solid var(--bad);color:var(--bad)}
+.saveline.wait{background:var(--live-bg);color:var(--live)}
+.reqnote{display:block;width:100%;text-align:left;border:2px solid var(--live);background:var(--live-bg);color:var(--ink);border-radius:12px;padding:10px 12px;font-weight:600;margin-bottom:12px}
 .trow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,150px);gap:8px}
 @media(max-width:420px){.trow{grid-template-columns:minmax(0,1fr) minmax(0,130px)}}
 
@@ -226,8 +233,20 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 .admid{font-size:11px;opacity:.7}
 .errs{margin:0;padding-left:18px;font-size:14px;color:var(--bad);display:flex;flex-direction:column;gap:4px}
 .errs.ok{color:var(--ink)}
+.cmp{display:grid;grid-template-columns:auto 1fr 1fr;gap:4px 12px;font-size:14px}
+.cmp .chg{font-weight:700;color:var(--live)}
+.warnline{border-left:4px solid var(--live);padding:6px 10px;background:var(--live-bg);border-radius:6px}
+.rstate{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-radius:10px;font-size:14px;background:var(--live-bg)}
+.rstate.done{background:var(--grass-2)}
+.rstate.failed{border:2px solid var(--bad);background:none}
 .reqs{display:flex;flex-direction:column;gap:8px}
 .req{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;border:2px solid var(--live);background:var(--live-bg)}
+.checks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.checks .ok{color:var(--good)} .checks .no{color:var(--bad)}
+.report{margin-bottom:12px}
+.pend{display:flex;flex-direction:column;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
+.pend:first-of-type{border-top:0}
+.pend.declined b:first-child,.pend.removed b:first-child{color:var(--bad)}
 .menubtn.dot{position:relative}
 .menubtn.dot::after{content:"";position:absolute;top:6px;right:6px;width:10px;height:10px;border-radius:50%;background:var(--live);border:2px solid var(--surface)}
 .qps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
@@ -305,7 +324,7 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.22.0';
+const APP_VERSION='0.23.0';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
@@ -316,8 +335,11 @@ let db=null,pending=false,suppressClick=false;
 const queues={};
 const gids=()=>Array.from({length:Math.min(10,Math.max(1,S.tour.count||6))},(_,i)=>'g'+(i+1));
 
-function withUndo(id,label){ // call just before changing a game
-  S.undo={g:id,label,prev:structuredClone(G(id)),at:Date.now()};
+// Undo: the bar names the action, and undo is refused if the game has changed since (another
+// change on this phone or another coach's), so it can never wipe out a later goal or sub.
+const canon=v=>JSON.stringify(v,(k,x)=>x&&typeof x==='object'&&!Array.isArray(x)?Object.fromEntries(Object.keys(x).sort().map(k=>[k,x[k]])):x);
+function withUndo(id,label){ // call just before changing a game; the next mut() of that game records what it became
+  S.undo={g:id,label,prev:structuredClone(G(id)),at:Date.now(),armed:true,after:null};
   setTimeout(()=>{if(S.undo&&Date.now()-S.undo.at>=10000){S.undo=null;render()}},10050);
 }
 const undoLive=id=>S.undo&&S.undo.g===id&&Date.now()-S.undo.at<10000;
@@ -389,7 +411,16 @@ function remove(path){
   if(!db)return;
   queues[path]=(queues[path]||Promise.resolve()).then(()=>db.doc(path).delete()).catch(()=>toast("Couldn't delete that. Check your connection and try again."));
 }
-function mut(id,fn){const g=structuredClone(G(id));fn(g);S.games[id]=g;put('games/'+id,g);render()}
+function mut(id,fn){const g=structuredClone(G(id));fn(g);S.games[id]=g;
+  if(S.undo&&S.undo.g===id&&S.undo.armed){S.undo.armed=false;S.undo.after=canon(G(id))}
+  put('games/'+id,g);render()}
+function undoAction(){
+  const u=S.undo;S.undo=null;S.scorer=null;S.rpick=null;
+  if(!u||Date.now()-u.at>=10500){render();return}
+  if(u.after&&canon(G(u.g))!==u.after){toast(`Can't undo "${u.label}": game ${G(u.g).n} has changed since. Use Corrections to fix it.`);render();return}
+  S.games[u.g]=u.prev;put('games/'+u.g,u.prev);
+  toast(`Undone: ${u.label}.${navigator.onLine?'':' Saved on this phone; it uploads when there is signal.'}`);render();
+}
 function saveSquad(){S.squad=alpha(S.squad);put('club/squad',{players:S.squad});render()}
 function saveTour(){put('club/tournament',S.tour)}
 
@@ -639,13 +670,18 @@ function render(){
   const h=document.getElementById('hteam');h.textContent=S.gate?'':S.cfg.team||'';
   const sw=!!(FB&&S.teamId&&!S.gate&&S.cfg.team);h.classList.toggle('teamsw',sw);if(sw)h.dataset.act='teams';else delete h.dataset.act;
   h.classList.toggle('others',sw&&myTeams().some(t=>t!==S.teamId&&teamInfo[t]?.running?.length));
-  if(S.gate){v.innerHTML=gateView();return}
+  if(S.closed){v.innerHTML=`<div class="card"><h3>This window has closed the team</h3><p>${esc(S.closed)}</p><button class="btn go" data-act="reload" style="align-self:flex-start">Reload</button></div>`;return}
+  if(S.gate){v.innerHTML=gateView();if(S.syncOpen)v.insertAdjacentHTML('afterbegin',syncPanel());return}
   if(S.teams){v.innerHTML=teamsView();return}
   if(S.adminOpen){v.innerHTML=adminView();return}
-  if(S.menu){v.innerHTML=menuView();return}
+  if(S.menu){v.innerHTML=menuView();if(S.syncOpen)v.insertAdjacentHTML('afterbegin',syncPanel());return}
   if(S.cfgLoaded&&!S.cfg.team){v.innerHTML=setupView();return}
   v.innerHTML=S.tab==='games'&&S.fx&&!S.game?fixturesView():S.tab==='games'?(S.game?gameView(S.game):gamesList()):S.tab==='minutes'?minutesView():S.tab==='notes'?notesView():S.tab==='awards'?awardsView():S.tab==='season'?seasonView():squadView();
   if(S.saved)v.insertAdjacentHTML('beforeend',savedPop());
+  if(S.requests.length)v.insertAdjacentHTML('afterbegin',`<button class="reqnote" data-act="menu">${esc(S.requests.map(r=>r.name||'Someone').join(', '))} ${S.requests.length>1?'want':'wants'} to join the team. Tap to see who and accept or decline.</button>`);
+  if(S.syncOpen)v.insertAdjacentHTML('afterbegin',syncPanel());
+  if(getReport())v.insertAdjacentHTML('afterbegin',reportCard());
+  if(S.pending.some(p=>p.status))v.insertAdjacentHTML('afterbegin',pendingCard());
 }
 function syncHeader(force){
   const n=document.getElementById('tname'),d=document.getElementById('tdate');
@@ -752,7 +788,8 @@ function gameView(id){
     <div class="clock"><span class="t num" data-clock="${id}">${clockText(g)}</span><button class="lenbtn num" data-act="fix" data-clocksub="${id}" aria-label="Change game length or fix the clock">${clockSub(g)}</button></div>
     ${scoreSide(g,isAway(g)?'us':'them')}
   </section>
-  ${undoLive(id)?`<div class="undobar" role="status"><span>${esc(S.undo.label)}</span><button data-act="undoact">Undo</button></div>`:''}
+  ${undoLive(id)?`<div class="undobar" role="status"><span>${esc(S.undo.label)}</span><button data-act="undoact" aria-label="Undo: ${esc(S.undo.label)}">Undo</button></div>`:''}
+  ${gameSaveLine(id)}
   ${S.askFt===id?ftAsk(g):''}
   ${S.qp&&S.qp.g===id?quickPick(g,S.qp):''}
   ${S.rpick&&S.rpick.g===id?rugbyBar(g,S.rpick.k):''}
@@ -835,12 +872,23 @@ function backupCard(){
     <p class="note">The file has problems, so nothing was changed:</p>
     <ul class="errs">${r.errors.slice(0,6).map(e=>`<li>${esc(e)}</li>`).join('')}${r.errors.length>6?`<li>…and ${r.errors.length-6} more</li>`:''}</ul>
     <button class="btn" data-act="restorecancel">OK</button></div>`;
-  if(r){const d=r.diff;return `<div class="card"><h3>Restore this backup?</h3>
-    <p>Saved ${esc(nice(r.exported.slice(0,10)))} from <b>${esc(r.data.cfg?.team||'a team')}</b>.</p>
+  if(r){const d=r.diff,from=r.data.cfg?.team||'',here=S.cfg.team||'this team',when=backupWhen(r.exported);
+    return `<div class="card"><h3>Preview: nothing has changed yet</h3>
+    <p>Backup of <b>${esc(from||'a team (no name in the file)')}</b>${when?`, saved ${esc(when)}`:''}.</p>
+    ${from&&from!==S.cfg.team?`<p class="warnline">This backup is from a different team from the one open now (<b>${esc(here)}</b>). Restoring puts its players and games into <b>${esc(here)}</b>.</p>`:''}
+    <div class="cmp num"><span></span><b>Now</b><b>Backup</b>
+      ${r.counts.map(([k,a,b2])=>`<span>${k}</span><span>${a}</span><span class="${a!==b2?'chg':''}">${b2}</span>`).join('')}</div>
+    <span class="lbl">What restoring replaces</span>
     <ul class="errs ok">${d.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
-    <p class="note">This replaces the team's data for every coach on the team. A copy of the current data is kept on this phone, so you can undo it.</p>
+    <p class="note">This replaces <b>${esc(here)}</b>'s data for every coach on the team. A copy of the current data is kept on this phone, so you can undo it.</p>
     <div class="cbtns"><button class="btn warn" data-act="restoreok">Replace with backup</button><button class="btn" data-act="restorecancel">Cancel</button></div></div>`}
-  return `<div class="card"><h3>Backup</h3>
+  const rs=S.restoreState;
+  const status=rs?`<div class="rstate ${rs.phase}" role="status">${rs.phase==='saving'?`<b>Restoring…</b> Sending the backup to the other coaches.`
+      :rs.phase==='local'?`<b>Restored on this phone only.</b> No signal: it reaches the other coaches when there is signal. Keep the app open.`
+      :rs.phase==='done'?`<b>Restored and shared ✓</b> ${esc(rs.what)} at ${esc(rs.time)}. Every coach now sees it.`
+      :`<b>${esc(rs.what)} failed, so nothing was changed.</b> ${esc(rs.msg||'')}`}
+      ${rs.phase==='done'||rs.phase==='failed'?'<button class="x" data-act="rstateok">OK</button>':''}</div>`:'';
+  return `<div class="card"><h3>Backup</h3>${status}
     <p class="note">Save a copy of everything (squad, games, season record, awards) to this phone. Do it before the end of the season, or before deleting anything.</p>
     <p class="note"><b>The file holds your players' first names.</b> Keep it somewhere private, and don't share it in group chats.</p>
     <div class="cbtns"><button class="btn" data-act="backup">Save a backup</button>
@@ -931,10 +979,17 @@ function restoreDiff(r){ // what the restore will add, change or remove
     `Awards: ${r.awards.length} (${plus(aw1,aw0)} added, ${plus(aw0,aw1)} removed)`,
     ...(r.hasNotes?[`Notes: ${r.notes.length}`]:[]),...(r.cfg&&r.cfg.team?[`Team settings from the backup (${r.cfg.team})`]:[])];
 }
+function backupWhen(iso){const t=new Date(iso);return iso&&!isNaN(t)?t.toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):''}
+function restoreCounts(r){ // side by side: the team now, and the backup
+  const played=gs=>Object.values(gs).filter(g=>g&&(g.done||(g.clock&&g.clock.acc>0))).length;
+  return[['Players',S.squad.length,r.squad.length],['Games',`${Object.keys(S.games).length} (${played(S.games)} played)`,`${Object.keys(r.games).length} (${played(r.games)} played)`],
+    ['Saved tournaments',S.archive.length,r.archive.length],['Awards',S.awards.length,r.awards.length],...(r.hasNotes?[['Notes',S.notes.length,r.notes.length]]:[])];
+}
 async function readBackup(f){
   let d=null;try{if(f.size>5e6)throw 0;d=JSON.parse(await f.text())}catch(_){S.restore={errors:["That file isn't a Match Day backup."]};render();return}
   const v=validateBackup(d);
-  S.restore=v.errors.length?{errors:v.errors}:{errors:[],exported:String(d.exported||''),data:v.data,diff:restoreDiff(v.data)};
+  S.restoreState=null;
+  S.restore=v.errors.length?{errors:v.errors}:{errors:[],exported:String(d.exported||''),data:v.data,diff:restoreDiff(v.data),counts:restoreCounts(v.data)};
   render();
 }
 const undoKey=()=>'matchday-undo-'+S.teamId;
@@ -950,19 +1005,22 @@ async function writeTeamData(r,undoable){ // replace this team's data with r in 
   Object.entries(r.games).forEach(([id,g])=>{b.set(d('games',id),g);op()});
   [['awards',r.awards],['archive',r.archive]].forEach(([c,list])=>{const keep=new Set(list.map(x=>x.id));
     S[c].forEach(x=>{if(!keep.has(x.id)){b.delete(d(c,x.id));op()}});list.forEach(({id,...doc})=>{b.set(d(c,id),doc);op()})});
-  if(!navigator.onLine)toast('Restore saved on this phone. It finishes uploading when there is signal.');
-  await track(b.commit()); // resolves only when the server has accepted every change
+  const p=b.commit(); // resolves only when the server has accepted every change
+  S.restoreState={phase:navigator.onLine?'saving':'local',what:undoable?'Restore':'Undoing the restore'};render();
+  await track(p,null,'restore');
 }
+const restoreDone=what=>{S.restoreState={phase:'done',what,time:new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})};delete sync.failed.restore;liveLabel()};
 async function applyRestore(){
   const r=S.restore;S.restore=null;render();if(!r||r.errors.length)return;
-  try{await writeTeamData(r.data,true);toast('Restore complete ✓');}
-  catch(e){toast(`Restore failed, so nothing was changed (${e.message==='too-big'?'backup too big':errCode(e)}).`);}
+  try{await writeTeamData(r.data,true);restoreDone('Restored');toast('Restored and shared ✓')}
+  catch(e){S.restoreState={phase:'failed',what:'Restore',msg:e.message==='too-big'?'The backup is too big to restore in one go.':whyText(e)}}
   render();
 }
 async function undoRestore(){
   let u=null;try{u=JSON.parse(lsGet(undoKey())||'null')}catch(_){}
   if(!u||!u.data)return;
-  try{await writeTeamData(u.data,false);lsSet(undoKey(),null);toast('Restore undone ✓')}catch(e){toast(`Couldn't undo (${errCode(e)}).`)}
+  try{await writeTeamData(u.data,false);lsSet(undoKey(),null);restoreDone('Restore undone');toast('Restore undone ✓')}
+  catch(e){S.restoreState={phase:'failed',what:'Undoing the restore',msg:whyText(e)}}
   render();
 }
 
@@ -1142,7 +1200,7 @@ document.addEventListener('click',e=>{
   if(suppressClick){suppressClick=false;return}
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act,id=S.game,p=b.dataset.p;
-  if(!['reset','del','finish','awdel','tdel','wipe','leave','clock0','subdel','signout','notedel','restoreundo','rmcoach'].includes(a))S.confirm=null;
+  if(!['reset','del','finish','awdel','tdel','wipe','leave','clock0','subdel','signout','notedel','restoreundo','rmcoach','undo','newcode','mkmgr'].includes(a))S.confirm=null;
   switch(a){
     case'tab':if(b.dataset.t===S.tab&&S.game){S.game=null;S.fix=null;S.pick=null;render();break}
       S.tab=b.dataset.t;lastTab[secOf(S.tab)]=S.tab;S.pick=null;render();break;
@@ -1152,11 +1210,13 @@ document.addEventListener('click',e=>{
     case'reset':if(S.confirm==='reset'){S.confirm=null;gids().forEach(g=>{const o=G(g),n=blank(o.n);Object.assign(n,{opponent:o.opponent,time:o.time,pitch:o.pitch,team:o.team});S.games[g]=n;put('games/'+g,n)});toast('Scores, line-ups and subs cleared. Fixtures kept.');render()}else{S.confirm='reset';render()}break;
     case'score':{const k=b.dataset.k,d=+b.dataset.d;
       if(isRugby()){if(d>0){if(triesOnly())addScore(id,k,'try');else{S.rpick={g:id,k};S.scorer=null;render()}}else removeScore(id,k);break}
-      if(d>0)withUndo(id,k==='us'?'Goal':`Goal for ${G(id).opponent||'them'}`);
+      if(d>0){const g=G(id),sc={...g.score,[k]:g.score[k]+1};withUndo(id,`${k==='us'?'Goal for '+usName():'Goal for '+(g.opponent||'them')} · game ${g.n} now ${isAway(g)?sc.them+'–'+sc.us:sc.us+'–'+sc.them}`)}
       if(k==='us'&&d>0){let i=0;mut(id,g=>{g.goals=[...(g.goals||[]),{at:el(g),p:null}];i=g.goals.length-1;g.score.us++});S.scorer={g:id,i};render();break}
       if(k==='us'&&d<0){mut(id,g=>{if(g.score.us<=0)return;g.score.us--;const gs=g.goals||[];if(gs.length>g.score.us)g.goals=gs.slice(0,g.score.us)});S.scorer=null;render();break}
       mut(id,g=>{g.score[k]=Math.max(0,g.score[k]+d)});break}
-    case'scorer':{const sc=S.scorer;if(sc)mut(sc.g,g=>{if(g.goals&&g.goals[sc.i])g.goals[sc.i].p=b.dataset.p});S.scorer=null;render();break}
+    case'scorer':{const sc=S.scorer;if(sc){const u=S.undo; // naming the scorer is part of the same goal: Undo still takes both back
+        if(u&&u.g===sc.g&&u.after&&canon(G(sc.g))===u.after){u.armed=true;u.label+=` (${scorerName(b.dataset.p)})`}
+        mut(sc.g,g=>{if(g.goals&&g.goals[sc.i])g.goals[sc.i].p=b.dataset.p})}S.scorer=null;render();break}
     case'scorerskip':S.scorer=null;render();break;
     case'kick':tryKick(id,{nokeeper:!!b.dataset.nokeeper});break;
     case'sizeyes':{const a=S.askSize;S.askSize=null;if(!a)break;
@@ -1175,7 +1235,7 @@ document.addEventListener('click',e=>{
     case'ftyes':{const fid=S.askFt;S.askFt=null;if(!fid)break;const g=G(fid);
       withUndo(fid,`Full time · ${homeName(g)} ${scoreHA(g)} ${awayName(g)}`);mut(fid,g=>{g.clock.acc=el(g);g.clock.running=false;g.done=true});break}
     case'ftno':S.askFt=null;render();break;
-    case'undoact':{const u=S.undo;S.undo=null;if(u&&Date.now()-u.at<10500){S.games[u.g]=u.prev;put('games/'+u.g,u.prev);S.scorer=null;S.rpick=null;toast('Undone.')}render();break}
+    case'undoact':undoAction();break;
     case'reopen':mut(id,g=>{g.done=false});break;
     case'role':{const r=b.dataset.r,g=G(id);
       const startersAfter=g.starters.filter(x=>x!==p).length;
@@ -1193,7 +1253,7 @@ document.addEventListener('click',e=>{
     case'acctcancel':S.acct=null;render();break;
     case'acctforgot':resetPassword();break;
     case'google':b.disabled=true;googleSignIn().finally(()=>{b.disabled=false});break;
-    case'signout':if(S.confirm==='signout')signOutAccount();else{S.confirm='signout';render()}break;
+    case'signout':if(S.confirm==='signout-force'){S.confirm=null;signOutAccount(true)}else if(S.confirm==='signout'){b.disabled=true;b.textContent='Signing out…';signOutAccount()}else{S.confirm='signout';render()}break;
     case'side':mut(id,g=>{g.side=b.dataset.v==='away'?'away':'home'});break;
     case'fxside':mut(b.dataset.g,g=>{g.side=isAway(g)?'home':'away'});break;
     case'notedone':S.notes=S.notes.map(n=>n.id===b.dataset.id?{...n,done:!n.done}:n);saveNotes();break;
@@ -1217,6 +1277,9 @@ document.addEventListener('click',e=>{
     case'reqok':b.disabled=true;acceptRequest(b.dataset.id);break;
     case'reqno':b.disabled=true;declineRequest(b.dataset.id);break;
     case'reqcancel':cancelRequest(b.dataset.id);break;
+    case'reqagain':b.disabled=true;askAgain(b.dataset.id);break;
+    case'newcode':if(S.confirm==='newcode'){S.confirm=null;newInviteCode()}else{S.confirm='newcode';render()}break;
+    case'mkmgr':{const k='mg-'+b.dataset.id;if(S.confirm===k){S.confirm=null;handOver(b.dataset.id)}else{S.confirm=k;render()}break}
     case'rmcoach':{const k='rm-'+b.dataset.id;if(S.confirm===k){S.confirm=null;removeCoach(b.dataset.id)}else{S.confirm=k;render()}break}
     case'teams':S.teams=true;S.game=null;S.fix=null;render();window.scrollTo(0,0);break;
     case'teamsclose':S.teams=false;render();break;
@@ -1231,7 +1294,10 @@ document.addEventListener('click',e=>{
       if(at==null){toast('Type the time like 4:30.');break}if(!off||!on){toast('Pick who came off and who went on.');break}if(off===on){toast('Pick two different players.');break}
       tryFix(id,g=>{g.subs.push({at,off,on});if(!inGame(g).includes(on))g.bench.push(on)},`${nameOf(on)} on, ${nameOf(off)} off at ${fmt(at)}.`);break}
     case'subdel':{const i=+b.dataset.i,k='sd'+i;if(S.confirm===k){S.confirm=null;tryFix(id,g=>{g.subs.splice(i,1)},'Sub deleted.')}else{S.confirm=k;render()}break}
-    case'undo':mut(id,g=>{const last=[...g.subs].sort((a,b)=>b.at-a.at)[0];g.subs=g.subs.filter(x=>x!==last)});toast('Last sub removed.');break;
+    case'undo':{const g=G(id),last=[...g.subs].sort((a,b)=>b.at-a.at)[0];if(!last)break;
+      const what=`${nameOf(last.on)} on, ${nameOf(last.off)} off at ${tAt(last.at)}`;
+      if(S.confirm!=='undosub'){S.confirm='undosub';b.textContent=`Tap again to remove: ${what}`;break}
+      S.confirm=null;mut(id,g=>{g.subs=g.subs.filter(x=>!(x.at===last.at&&x.off===last.off&&x.on===last.on))});toast(`Sub removed: ${what}.`);break}
     case'late':S.addLate=!S.addLate;render();break;
     case'addbench':mut(id,g=>{if(!g.bench.includes(p))g.bench.push(p)});break;
     case'del':if(S.confirm===p){S.confirm=null;S.squad=S.squad.filter(x=>x.id!==p);saveSquad()}else{S.confirm=p;render()}break;
@@ -1269,7 +1335,14 @@ document.addEventListener('click',e=>{
     case'restoreok':applyRestore();break;
     case'restoreundo':if(S.confirm==='undo'){S.confirm=null;undoRestore()}else{S.confirm='undo';b.textContent='Tap again to undo the restore';}break;
     case'restorecancel':S.restore=null;render();break;
-    case'leave':if(S.confirm==='leave')leaveTeam();else{S.confirm='leave';render()}break;
+    case'rstateok':S.restoreState=null;render();break;
+    case'syncopen':S.syncOpen=!S.syncOpen;render();if(S.syncOpen)window.scrollTo(0,0);break;
+    case'syncclose':S.syncOpen=false;render();break;
+    case'syncretry':retryFailed(b.dataset.id);break;
+    case'syncdrop':dismissFailed(b.dataset.id);break;
+    case'leave':if(S.confirm==='leave-force'){S.confirm=null;leaveTeam(true,true)}else if(S.confirm==='leave'){b.disabled=true;b.textContent='Leaving…';leaveTeam()}else{S.confirm='leave';render()}break;
+    case'reportok':lsSet('matchday-report',null);render();break;
+    case'reload':location.reload();break;
   }
 });
 
@@ -1348,7 +1421,7 @@ setInterval(()=>{
 },1000);
 
 /* connect */
-function setSync(on,txt){const s=document.getElementById('sync');s.textContent=txt;s.classList.toggle('on',on===true);s.classList.toggle('wait',on==='wait');s.classList.toggle('bad',on==='bad')}
+function setSync(on,txt){const s=document.getElementById('sync');s.textContent=txt;s.dataset.act='syncopen';s.setAttribute('role','button');s.tabIndex=0;s.classList.toggle('on',on===true);s.classList.toggle('wait',on==='wait');s.classList.toggle('bad',on==='bad')}
 function subscribe(err){
   db.doc('club/settings').onSnapshot(s=>{S.cfg=s.exists?{...DEFAULT_CFG,...s.data()}:{...DEFAULT_CFG};S.cfgLoaded=true;render()},err);
   db.doc('club/squad').onSnapshot(s=>{S.squad=s.exists?alpha(s.data().players||[]):[];render()},err);
@@ -1369,17 +1442,58 @@ const lsSet=(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(
 // Writes go into the phone's offline copy at once (the screen updates straight away) and upload
 // when there's signal. A write isn't "saved" until the server confirms it: sync counts the ones
 // still waiting so the header can say Saving… / Waiting for signal / Not saved.
-const sync={pending:0,failed:0};
-function track(p,fail){
-  sync.pending++;liveLabel();
-  p.then(()=>{sync.failed=0},e=>{sync.failed++;if(fail)fail(e)}).finally(()=>{sync.pending--;liveLabel()});
+// Each write is tracked by the document it changes, so a failure stays listed until that same
+// document saves (a later change to it, or Try again) or the coach dismisses it: a success
+// elsewhere never hides it.
+const sync={pending:0,paths:{},failed:{},last:0}; // paths: doc -> writes waiting; failed: doc -> {what,why,at,retry}
+function whatIs(p){ // a coach-readable name for what a write was about
+  const m=/^games\/g(\d+)$/.exec(p);if(m){const g=S.games['g'+m[1]];return `Game ${m[1]}${g&&g.opponent?' v '+g.opponent:''}`}
+  return({'club/squad':'Squad','club/settings':'Team settings','club/tournament':'Tournament details','club/notes':'Notes',restore:'Restore from backup',join:'Join request',team:'Invite code or manager'})[p]
+    ||(p.startsWith('awards/')?'Awards':p.startsWith('archive/')?'Season record':p.startsWith('members/')?'Coach list':p.startsWith('requests/')?'Join request':'A change');
+}
+function track(p,fail,path,retry){
+  sync.pending++;if(path)sync.paths[path]=(sync.paths[path]||0)+1;liveLabel();
+  const was=Object.keys(sync.failed).length;
+  p.then(()=>{sync.last=Date.now();if(path)delete sync.failed[path]},e=>{if(path)sync.failed[path]={what:whatIs(path),why:e,at:Date.now(),retry};if(fail)fail(e,path)})
+    .finally(()=>{sync.pending--;if(path&&!--sync.paths[path])delete sync.paths[path];liveLabel();
+      if(S.syncOpen||Object.keys(sync.failed).length!==was||(path&&S.game&&path==='games/'+S.game))render()});
   return p;
+}
+const failedPaths=()=>Object.keys(sync.failed);
+function whyText(e){
+  const c=String(e&&e.code||'').replace('firestore/','');
+  return c==='permission-denied'?"The server refused it. This phone may have been removed from the team, or the change didn't pass the safety checks."
+    :c==='unauthenticated'?'This phone is signed out. Reload the app.'
+    :c==='resource-exhausted'?'The free daily limit for the app was reached. It works again tomorrow.'
+    :`It didn't go through (${errCode(e)}).`;
+}
+function retryFailed(path){const f=sync.failed[path];if(!f)return;delete sync.failed[path];if(f.retry)f.retry();liveLabel();render()}
+function dismissFailed(path){delete sync.failed[path];liveLabel();render()}
+function syncPanel(){ // tap the status pill: what's saved, what isn't, and what to do
+  const f=failedPaths(),n=sync.pending,on=navigator.onLine,waiting=Object.keys(sync.paths).filter(p=>!sync.failed[p]);
+  const t=ms=>new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  return `<div class="card syncp" role="region" aria-label="Saving"><h3>${f.length?'Not saved':n?(on?'Saving…':'Waiting for signal'):'All saved'}</h3>
+    ${f.length?`<p>${f.length===1?"This change hasn't":"These changes haven't"} reached the other coaches. Try again; if it fails again, check the team on another phone before changing anything else.</p>
+      <div class="rows">${f.map(p=>{const x=sync.failed[p];return `<div class="row failrow"><span class="who">${esc(x.what)} <span class="note">at ${t(x.at)}</span></span>
+        <span class="note">${esc(whyText(x.why))}</span>
+        <span class="cbtns">${x.retry?`<button class="btn small go" data-act="syncretry" data-id="${esc(p)}">Try again</button>`:''}<button class="btn small" data-act="syncdrop" data-id="${esc(p)}">Dismiss</button></span></div>`}).join('')}</div>`:''}
+    ${n&&!on?`<p>No signal. ${n} change${n>1?'s are':' is'} saved on this phone${waiting.length?` (${esc([...new Set(waiting.map(whatIs))].join(', '))})`:''} and will upload by themselves when there's signal. Keep the app open if you can, and don't sign out or leave the team until it says <b>All saved</b>.</p>`
+      :n?`<p>Uploading ${n} change${n>1?'s':''}${waiting.length?` (${esc([...new Set(waiting.map(whatIs))].join(', '))})`:''}…</p>`:''}
+    ${!f.length&&!n?`<p>${on?'Everything is saved and shared with the other coaches':'No signal, but everything was saved before it dropped'}${sync.last?` (last saved ${t(sync.last)})`:''}.</p>`:''}
+    <button class="btn small" data-act="syncclose" style="align-self:flex-start">Close</button></div>`;
+}
+function gameSaveLine(id){ // under the scoreboard: was the last goal / sub / clock change recorded?
+  const p='games/'+id;
+  if(sync.failed[p])return `<div class="saveline bad" role="alert"><span><b>Not saved:</b> the last change to this game didn't reach the other coaches.</span><span class="cbtns"><button class="btn small go" data-act="syncretry" data-id="${p}">Try again</button><button class="btn small" data-act="syncopen">Details</button></span></div>`;
+  if(sync.paths[p]&&!navigator.onLine)return `<div class="saveline wait" role="status">No signal: saved on this phone, uploads when there's signal.</div>`;
+  return'';
 }
 function fsAdapter(base){ // the small storage interface put()/remove()/subscribe() use
   const {F,fs}=FB,ref=p=>F.doc(fs,base+'/'+p);
-  const fail=e=>{if(e&&e.code==='permission-denied')toast("That change wasn't saved: the server refused it. If it keeps happening, reload the app or rejoin the team.");else toast(`That change wasn't saved (${errCode(e)}).`)};
+  const fail=(e,p)=>toast(`${whatIs(p)}: that change wasn't saved. Tap the red status at the top to try again.`);
   return{
-    doc:p=>({set:b=>{track(F.setDoc(ref(p),b),fail);return Promise.resolve()},delete:()=>{track(F.deleteDoc(ref(p)),fail);return Promise.resolve()},
+    doc:p=>({set:b=>{track(F.setDoc(ref(p),b),fail,p,()=>db.doc(p).set(b));return Promise.resolve()},
+      delete:()=>{track(F.deleteDoc(ref(p)),fail,p,()=>db.doc(p).delete());return Promise.resolve()},
       onSnapshot:(cb,err)=>F.onSnapshot(ref(p),s=>cb({exists:s.exists(),data:()=>s.data()}),err)}),
     collection:c=>({onSnapshot:(cb,err)=>F.onSnapshot(F.collection(fs,base+'/'+c),s=>cb({docs:s.docs.map(d=>({id:d.id,data:()=>d.data()}))}),err)})
   };
@@ -1405,9 +1519,9 @@ function switchTeam(t){ // a fresh page load keeps each team's live updates clea
 }
 function liveLabel(){
   if(!FB||!db)return;
-  const n=sync.pending,on=navigator.onLine;
-  if(sync.failed&&!n)setSync('bad','Some changes not saved');
-  else if(n&&!on)setSync('wait',`Waiting for signal · ${n} to upload`);
+  const n=sync.pending,on=navigator.onLine,f=failedPaths().length;
+  if(f)setSync('bad',`${f} change${f>1?'s':''} not saved · tap`);
+  else if(n&&!on)setSync('wait',`No signal · ${n} saved on phone`);
   else if(n)setSync('wait','Saving…');
   else setSync(on,on?'Shared · live':'Offline · all saved on this phone');
 }
@@ -1417,7 +1531,7 @@ async function connectFirebase(){
   if(!cfg||!cfg.apiKey)return false;
   if(env==='beta')document.body.classList.add('beta'); // beta has its own data and sign-ins
   setSync(false,'Connecting…');
-  const [{initializeApp},A,F]=await Promise.all(['app','auth','firestore'].map(m=>import(FB_SDK+'firebase-'+m+'.js')));
+  const [AppM,A,F]=await Promise.all(['app','auth','firestore'].map(m=>import(FB_SDK+'firebase-'+m+'.js'))),{initializeApp}=AppM;
   // Google's sign-in hand-off has to come back to the same address the app runs on, or iPhones
   // (which block cross-site storage) lose the result. Firebase Hosting serves it on every site address.
   if(/\.(web\.app|firebaseapp\.com)$/.test(location.hostname))cfg={...cfg,authDomain:location.hostname};
@@ -1426,14 +1540,15 @@ async function connectFirebase(){
   try{fs=F.initializeFirestore(app,{ignoreUndefinedProperties:true,experimentalAutoDetectLongPolling:true,localCache:F.persistentLocalCache({tabManager:F.persistentMultipleTabManager()})})}
   catch(_){fs=F.initializeFirestore(app,{ignoreUndefinedProperties:true,experimentalAutoDetectLongPolling:true,localCache:F.memoryLocalCache()})}
   if(lsGet('matchday-wipe')){ // a wipe that couldn't finish last time: do it before anything is loaded
-    try{await F.clearIndexedDbPersistence(fs);lsSet('matchday-wipe',null)}catch(_){}
+    try{await F.clearIndexedDbPersistence(fs);lsSet('matchday-wipe',null);const r=getReport();if(r){r.cache='cleared';lsSet('matchday-report',JSON.stringify(r))}}catch(_){}
   }
-  FB={A,F,auth:A.getAuth(app),fs};
+  FB={A,F,AppM,cfg,auth:A.getAuth(app),fs};
   // Each phone gets an anonymous sign-in: no passwords. Joining a team with its invite code is what grants access.
   await FB.auth.authStateReady();
   if(await finishGoogle())return true; // reloading into the coach's existing account
   await signedIn().catch(()=>{});
   await loadAccountTeams();
+  finishLeaves();addEventListener('online',finishLeaves);
   const t=lsGet(TEAM_KEY)||myTeams()[0];
   watchPending();
   if(t)openTeam(t);else{S.gate=true;setSync(false,'No team yet');render()}
@@ -1444,15 +1559,17 @@ function openTeam(t){
   if(S.teamId&&S.teamId!==t){switchTeam(t);return} // adding a second team: reload into it
   saveTeams([...myTeams(),t]);syncTeamList();
   lsSet(TEAM_KEY,t);S.gate=false;S.adding=false;S.teamId=t;db=fsAdapter('teams/'+t);liveLabel();watchTeams();
-  F.getDoc(F.doc(fs,'teams',t)).then(s=>{S.invite=s.data()?.code||'';S.createdBy=s.data()?.createdBy||null;render()}).catch(()=>{});
+  F.onSnapshot(F.doc(fs,'teams',t),s=>{S.invite=s.data()?.code||'';S.createdBy=s.data()?.createdBy||null;render()},()=>{});
   watchMembers(t);watchRequests(t);touchMember(t);
   subscribe(e=>{if(leaving)return; // we're leaving on purpose: let leaveTeam finish (and wipe)
-    if(e&&e.code==='permission-denied'){setSync(false,'Not a member');toast("This phone isn't a member of that team any more.");leaveTeam(false)}});
+    if(e&&e.code==='permission-denied'&&!removedCheck){removedCheck=true;leaveTeam(false)}});
   render();
 }
 const CODE_CHARS='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O or 1/I to misread
-const newCode=()=>Array.from(crypto.getRandomValues(new Uint8Array(6)),n=>CODE_CHARS[n%CODE_CHARS.length]).join('');
-const showCode=c=>c?c.slice(0,3)+'-'+c.slice(3):'';
+// 8 characters from 32 (about a trillion codes) so guessing one is impractical; teams made before
+// v0.23.0 keep their 6-character code until the manager makes a new one.
+const newCode=()=>Array.from(crypto.getRandomValues(new Uint8Array(8)),n=>CODE_CHARS[n%CODE_CHARS.length]).join('');
+const showCode=c=>c?(c.length===8?c.slice(0,4)+'-'+c.slice(4):c.slice(0,3)+'-'+c.slice(3)):'';
 const errCode=e=>String(e&&(e.code||e.name||e.message)||'unknown').replace(/^(auth|firestore)\//,'').slice(0,40);
 async function signedIn(){if(!FB.auth.currentUser)await FB.A.signInAnonymously(FB.auth);return FB.auth.currentUser.uid}
 async function createTeam(){
@@ -1470,46 +1587,82 @@ async function createTeam(){
   }
   toast(`Couldn't create the team (${errCode(last)}). Check your signal and try again.`);
 }
+// Asking to join: the request and this sign-in's short list of teams it's waiting on (at most 3,
+// enforced by the rules) are written together. A team drops off that list once its request has
+// gone (accepted, declined or cancelled).
+async function askToJoin(F,fs,u,t,code){
+  const jref=F.doc(fs,'joins',u.uid),j=await F.getDocFromServer(jref).catch(()=>null);
+  const old=j?.exists()?(j.data().teams||[]):[],keep=[];
+  for(const x of old){if(x===t)continue;const r=await F.getDocFromServer(F.doc(fs,'teams',x,'requests',u.uid)).catch(()=>null);if(!r||r.exists())keep.push(x)}
+  if(keep.length>=3)throw Object.assign(new Error('too-many'),{code:'too-many'});
+  const b=F.writeBatch(fs);
+  b.set(jref,{teams:[...keep,t]});
+  const via=u.providerData.some(p=>p.providerId==='google.com')?'google':u.email?'email':'phone';
+  b.set(F.doc(fs,'teams',t,'requests',u.uid),{code,name:myName(),via,at:Date.now(),...(u.email?{email:u.email}:{})});
+  await b.commit();
+}
+let joining=false;
 async function joinTeam(raw){
   const {F,fs,auth}=FB,code=String(raw||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
-  if(code.length!==6){toast('Invite codes are 6 letters and numbers, like ABC-234.');return}
-  if(!navigator.onLine){toast('You need a signal to join a team.');return}
+  if(joining)return;
+  S.joinCode=String(raw||'');
+  if(code.length!==6&&code.length!==8){toast('Invite codes are 8 letters and numbers, like ABCD-2345 (older teams have 6).');return}
+  if(!navigator.onLine){toast('You need a signal to ask to join a team.');return}
+  const nm=(document.getElementById('joinname')?.value||'').trim().slice(0,40);
+  if(nm)lsSet('matchday-name',nm);
+  if(!myName()){toast('Add your name first, so the coaches know who is asking.');document.getElementById('joinname')?.focus();return}
+  joining=true;render();
   try{
     await signedIn();
     const ref=F.doc(fs,'codes',code);
-    const s=await F.getDoc(ref).catch(()=>F.getDocFromServer(ref));
+    const s=await F.getDocFromServer(ref).catch(()=>F.getDoc(ref));
     if(!s.exists()){toast("That code didn't match a team. Check it with the coach who sent it.");return}
     const t=s.data().team,uid=auth.currentUser.uid;
-    const nm=(document.getElementById('joinname')?.value||'').trim().slice(0,40);
-    if(nm)lsSet('matchday-name',nm);
-    if(!myName()){toast('Add your name, so the coaches know who is asking.');return}
-    const already=await F.getDoc(F.doc(fs,'teams',t,'members',uid)).then(x=>x.exists()).catch(()=>false);
-    if(already){openTeam(t);toast('You were already in this team.');return}
-    await F.setDoc(F.doc(fs,'teams',t,'requests',uid),{code,name:myName(),via:signInVia(),at:Date.now()});
-    addPending(t,code);toast('Request sent. A coach needs to accept you.');render();
-  }catch(e){toast(`Couldn't send the request (${errCode(e)}). Check your signal and try again.`)}
+    const already=await F.getDocFromServer(F.doc(fs,'teams',t,'members',uid)).then(x=>x.exists()).catch(()=>false);
+    if(already){dropPending(t);openTeam(t);toast('You were already in this team.');return}
+    const again=getPending().some(x=>x.t===t&&!x.status);
+    await askToJoin(F,fs,auth.currentUser,t,code);
+    addPending(t,code);
+    toast(again?"You'd already asked: your request is still waiting for a coach.":'Request sent. A coach in the team needs to accept you.');
+    S.joinCode='';
+  }catch(e){toast(e.code==='too-many'?"You're already waiting to join 3 teams. Cancel one of those requests first."
+    :`Couldn't send the request (${errCode(e)}). Check your signal and try again.`)}
+  finally{joining=false;render()}
 }
 /* ---------- join requests: waiting to be accepted ---------- */
+// Requests this phone is waiting on (and the code each used), kept until a coach answers and the
+// answer has been seen. status: undefined = waiting, 'declined', 'unsent' (needs asking again), 'removed'.
 function getPending(){try{return JSON.parse(lsGet('matchday-pending')||'[]').filter(x=>x&&x.t&&x.code)}catch(_){return[]}}
-function addPending(t,code){const l=getPending().filter(x=>x.t!==t);l.push({t,code,at:Date.now()});lsSet('matchday-pending',JSON.stringify(l));S.pending=l;watchPending()}
-function dropPending(t){const l=getPending().filter(x=>x.t!==t);lsSet('matchday-pending',l.length?JSON.stringify(l):null);S.pending=l}
+function setPending(l){lsSet('matchday-pending',l.length?JSON.stringify(l):null);S.pending=l}
+function addPending(t,code,extra={}){const l=getPending().filter(x=>x.t!==t);l.push({t,code,at:Date.now(),...extra});setPending(l);watchPending()}
+function markPending(t,status){setPending(getPending().map(x=>x.t===t?{...x,status}:x))}
+function dropPending(t){setPending(getPending().filter(x=>x.t!==t))}
 const pendingWatch={};
 function watchPending(){
   const {F,fs,auth}=FB,uid=auth.currentUser?.uid;if(!uid)return;S.pending=getPending();
-  S.pending.forEach(({t})=>{if(pendingWatch[t])return;
+  S.pending.filter(x=>!x.status).forEach(({t})=>{if(pendingWatch[t])return;
     pendingWatch[t]=[
       F.onSnapshot(F.doc(fs,'teams',t,'members',uid),m=>{if(!m.exists())return; // accepted
         stopPending(t);dropPending(t);saveTeams([...myTeams(),t]);syncTeamList();
-        if(!S.teamId)openTeam(t);else{toast("You've been accepted. Open the team from My teams.");render()}},()=>{}),
-      F.onSnapshot(F.doc(fs,'teams',t,'requests',uid),r=>{if(r.exists()||r.metadata.hasPendingWrites)return;
-        F.getDoc(F.doc(fs,'teams',t,'members',uid)).then(m=>{if(!m.exists()&&getPending().some(x=>x.t===t)){ // declined
-          stopPending(t);dropPending(t);toast("Your request to join wasn't accepted.");render()}}).catch(()=>{})},()=>{})];
+        if(!S.teamId)openTeam(t);else{toast("A coach accepted you. Open the team from My teams.");render()}},()=>{}),
+      F.onSnapshot(F.doc(fs,'teams',t,'requests',uid),r=>{if(r.exists()||r.metadata.hasPendingWrites||r.metadata.fromCache)return;
+        F.getDocFromServer(F.doc(fs,'teams',t,'members',uid)).then(m=>{if(!m.exists()&&getPending().some(x=>x.t===t&&!x.status)){ // declined
+          stopPending(t);markPending(t,'declined');toast("Your request to join wasn't accepted.");render()}}).catch(()=>{})},()=>{})];
   });
 }
 function stopPending(t){(pendingWatch[t]||[]).forEach(u=>{try{u()}catch(_){}});delete pendingWatch[t]}
 async function cancelRequest(t){
-  const {F,fs,auth}=FB;stopPending(t);dropPending(t);
-  await F.deleteDoc(F.doc(fs,'teams',t,'requests',auth.currentUser.uid)).catch(()=>{});render();
+  const {F,fs,auth}=FB,p=getPending().find(x=>x.t===t);stopPending(t);dropPending(t);render();
+  if(p&&!p.status)await F.deleteDoc(F.doc(fs,'teams',t,'requests',auth.currentUser.uid)).catch(()=>{});
+}
+async function askAgain(t){ // after a decline, a lost request or being removed: send it again with the same code
+  const p=getPending().find(x=>x.t===t);if(!p)return;
+  if(!navigator.onLine){toast('You need a signal to ask again.');return}
+  if(!myName()){toast('Add your name first (☰ menu or the Join form).');return}
+  try{await signedIn();await askToJoin(FB.F,FB.fs,FB.auth.currentUser,t,p.code);addPending(t,p.code);toast('Request sent again. A coach needs to accept you.')}
+  catch(e){toast(e.code==='too-many'?"You're already waiting to join 3 teams. Cancel one of those requests first."
+    :e.code==='permission-denied'?"That code doesn't work any more: the team has a new one. Ask a coach for it.":`Couldn't send it (${errCode(e)}).`)}
+  render();
 }
 
 /* ---------- the team side: requests to accept, new coaches, removing a coach ---------- */
@@ -1517,18 +1670,44 @@ function watchRequests(t){
   const {F,fs}=FB;
   F.onSnapshot(F.collection(fs,'teams',t,'requests'),s=>{S.requests=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.at||0)-(b.at||0));render()},()=>{});
 }
+const reqBusy={}; // request id -> 'accept' | 'decline' while it's being sent (no double taps)
 async function acceptRequest(id){
-  const {F,fs}=FB,r=S.requests.find(x=>x.id===id);if(!r)return;
-  if(!S.invite){const t=await F.getDoc(F.doc(fs,'teams',S.teamId)).catch(()=>null);S.invite=t?.data()?.code||''}
-  try{const b=F.writeBatch(fs);
+  const {F,fs}=FB,r=S.requests.find(x=>x.id===id);if(!r||reqBusy[id])return;
+  if(!navigator.onLine){toast('You need a signal to accept someone.');return}
+  reqBusy[id]='accept';render();
+  try{const t=await F.getDocFromServer(F.doc(fs,'teams',S.teamId));S.invite=t.data()?.code||S.invite;
+    const b=F.writeBatch(fs);
     b.set(F.doc(fs,'teams',S.teamId,'members',id),{code:S.invite,joined:F.serverTimestamp(),name:r.name||'',via:r.via||'phone',by:myName()});
     b.delete(F.doc(fs,'teams',S.teamId,'requests',id));
-    await track(b.commit());toast(`${r.name||'The new coach'} is in the team.`)}
-  catch(e){toast(`Couldn't accept (${errCode(e)}).`)}
+    await track(within(b.commit(),10000).then(x=>{if(x===null)throw Object.assign(new Error('timeout'),{code:'no signal'})}));
+    toast(`${r.name||'The new coach'} is in the team.`)}
+  catch(e){toast(`Couldn't accept ${r.name||'them'} (${errCode(e)}). Try again.`)}
+  finally{delete reqBusy[id];render()}
 }
 async function declineRequest(id){
-  const {F,fs}=FB,r=S.requests.find(x=>x.id===id);
-  await track(F.deleteDoc(F.doc(fs,'teams',S.teamId,'requests',id))).then(()=>toast(`Declined ${r?.name||'the request'}.`)).catch(e=>toast(`Couldn't decline (${errCode(e)}).`));
+  const {F,fs}=FB,r=S.requests.find(x=>x.id===id);if(!r||reqBusy[id])return;
+  reqBusy[id]='decline';render();
+  try{await track(F.deleteDoc(F.doc(fs,'teams',S.teamId,'requests',id)));toast(`Declined ${r.name||'the request'}. They're told it wasn't accepted.`)}
+  catch(e){toast(`Couldn't decline (${errCode(e)}).`)}
+  finally{delete reqBusy[id];render()}
+}
+async function newInviteCode(){ // manager: the old code stops working at once; coaches already in stay in
+  const {F,fs}=FB,old=S.invite;
+  if(!navigator.onLine){toast('You need a signal to make a new code.');return}
+  for(let i=0;i<3;i++){ // a new random code could (very rarely) be taken already
+    const code=newCode(),b=F.writeBatch(fs);
+    b.update(F.doc(fs,'teams',S.teamId),{code});
+    b.set(F.doc(fs,'codes',code),{team:S.teamId});
+    if(old)b.delete(F.doc(fs,'codes',old));
+    try{await track(within(b.commit(),10000).then(x=>{if(x===null)throw Object.assign(new Error('timeout'),{code:'no signal'})}),null,'team');
+      toast(`New invite code ${showCode(code)}. The old code ${showCode(old)} no longer works.`);return}
+    catch(e){if(e.code!=='permission-denied'||i===2){toast(`Couldn't make a new code (${errCode(e)}).`);return}}
+  }
+}
+async function handOver(id){ // manager: make another coach the manager (they can then remove coaches and make codes)
+  const {F,fs}=FB,m=S.members.find(x=>x.id===id);
+  try{await track(F.updateDoc(F.doc(fs,'teams',S.teamId),{createdBy:id}),null,'team');toast(`${m?.name||'That coach'} is now the manager.`)}
+  catch(e){toast(`Couldn't change the manager (${errCode(e)}).`)}
 }
 async function removeCoach(id){
   const {F,fs}=FB,m=S.members.find(x=>x.id===id);
@@ -1536,39 +1715,81 @@ async function removeCoach(id){
 }
 function requestsBanner(){
   if(!S.requests.length)return'';
-  const via={google:'Google',email:'email',phone:'no account'};
-  return `<section class="reqs" aria-label="Join requests">${S.requests.map(r=>`<div class="req" role="alert">
-    <span><b>${esc(r.name||'Someone')}</b> wants to join the team <span class="note">(${via[r.via]||'no account'})</span></span>
-    <span class="cbtns"><button class="btn go small" data-act="reqok" data-id="${esc(r.id)}">Accept</button>
-    <button class="btn small" data-act="reqno" data-id="${esc(r.id)}">Decline</button></span></div>`).join('')}</section>`;
+  const how=r=>r.via==='google'?`Signed in with Google${r.email?' as <b>'+esc(r.email)+'</b>':''}`:r.via==='email'?`Signed in with email${r.email?' as <b>'+esc(r.email)+'</b>':''}`:'No account: just a name typed on their phone';
+  const when=at=>{const m=Math.round((Date.now()-(at||0))/60000);return !at?'':m<1?'just now':m<60?`${m} min ago`:m<1440?`${Math.round(m/60)} hr ago`:nice(new Date(at).toISOString().slice(0,10))};
+  return `<section class="reqs" aria-label="Join requests"><p class="note">Anyone with the invite code can ask; the code alone doesn't let them in. Only accept people you know: they'll see and change the squad (children's names) and games.</p>
+    ${S.requests.map(r=>{const busy=reqBusy[r.id];return `<div class="req" role="alert">
+    <span><b>${esc(r.name||'Someone')}</b> wants to join the team${when(r.at)?` <span class="note">· asked ${esc(when(r.at))}</span>`:''}</span>
+    <span class="note">${how(r)}</span>
+    <span class="cbtns"><button class="btn go small" data-act="reqok" data-id="${esc(r.id)}" ${busy?'disabled':''}>${busy==='accept'?'Accepting…':'Accept'}</button>
+    <button class="btn small" data-act="reqno" data-id="${esc(r.id)}" ${busy?'disabled':''}>${busy==='decline'?'Declining…':'Decline'}</button></span></div>`}).join('')}</section>`;
 }
 
-async function wipeLocalData(){ // shared phones: nothing from the team stays on the device
-  const {F,fs}=FB;
-  try{await F.terminate(fs);await F.clearIndexedDbPersistence(fs)}
-  catch(_){ // usually another Match Day window still has it open: finish the job when the app next starts
-    lsSet('matchday-wipe','1');toast("Close any other Match Day windows. This phone's copy of the team is cleared next time the app opens.");
-    await new Promise(r=>setTimeout(r,2500));
+// Other Match Day windows on this phone: when one leaves a team or signs out, the others let go of
+// the phone's copy (so it can be cleared) and say why.
+const chan=('BroadcastChannel' in self)?new BroadcastChannel('matchday'):null;
+if(chan)chan.onmessage=e=>{if(e.data?.type!=='wipe'||!FB)return;
+  leaving=true;try{FB.F.terminate(FB.fs)}catch(_){}
+  S.closed=e.data.why||'This phone left a team or signed out in another Match Day window.';render()};
+async function wipeLocalData(){ // shared phones: nothing from the team stays on the device. Returns 'cleared' or 'later'.
+  const {F,fs}=FB;let done=false;
+  chan?.postMessage({type:'wipe',why:'You left a team or signed out in another Match Day window, so this window has closed its copy of the team.'});
+  try{await F.terminate(fs)}catch(_){}
+  for(let i=0;i<3&&!done;i++){ // other windows need a moment to let go
+    try{await F.clearIndexedDbPersistence(fs);done=true}catch(_){await new Promise(r=>setTimeout(r,700))}
   }
+  if(!done)lsSet('matchday-wipe','1'); // finish the job when the app next starts
   ['matchday-name','matchday-seen','matchday-google'].forEach(k=>lsSet(k,null));
   Object.keys(localStorage).filter(k=>k.startsWith('matchday-undo-')).forEach(k=>lsSet(k,null));
+  return done?'cleared':'later';
 }
-async function uploadedFirst(){ // don't throw away changes that haven't reached the server yet
-  if(!sync.pending)return true;
-  const ok=await within(FB.F.waitForPendingWrites(FB.fs).then(()=>true).catch(()=>false),4000);
-  if(!ok)toast("Some changes haven't uploaded yet. Get a signal first, then try again.");
-  return !!ok;
+async function uploadedFirst(force){ // don't throw away changes that haven't reached the server yet
+  const ok=await within(FB.F.waitForPendingWrites(FB.fs).then(()=>true).catch(()=>false),sync.pending?5000:1500);
+  if(ok||force)return true;
+  toast(`${sync.pending||'Some'} change${sync.pending===1?" hasn't":"s haven't"} uploaded yet, so nothing was changed. Get a signal and wait for "All saved", then try again.`);
+  return false;
 }
-let leaving=false;
-async function leaveTeam(remote=true){
-  const {F,fs,auth}=FB,t=S.teamId;
-  if(remote&&!(await uploadedFirst()))return;
-  if(remote)leaving=true;
-  if(remote&&t)await Promise.race([Promise.all([
-    F.deleteDoc(F.doc(fs,'teams',t,'members',auth.currentUser.uid)).catch(()=>{}),
-    F.updateDoc(F.doc(fs,'users',auth.currentUser.uid),{['teams.'+t]:F.deleteField()}).catch(()=>{})]),new Promise(r=>setTimeout(r,2500))]);
+// What happened when leaving or signing out, shown when the app reopens.
+const settle=(p,ms)=>within(p.then(()=>'ok',e=>e?.code==='not-found'?'ok':errCode(e)),ms).then(x=>x??'no signal');
+const leaveTodo=()=>{try{return JSON.parse(lsGet('matchday-leave-todo')||'[]')}catch(_){return[]}};
+async function finishLeaves(){ // removing this phone from a team's coach list, if that couldn't finish before
+  const {F,fs,auth}=FB,l=leaveTodo(),uid=auth.currentUser?.uid;if(!l.length||!uid||!navigator.onLine)return;
+  const left=[];
+  for(const t of l){const r=await settle(F.deleteDoc(F.doc(fs,'teams',t,'members',uid)),5000);if(r!=='ok'&&r!=='permission-denied')left.push(t)}
+  lsSet('matchday-leave-todo',left.length?JSON.stringify(left):null);
+  const rep=getReport();if(rep&&rep.member&&rep.member!=='ok'&&!left.length){rep.member='ok';rep.later=true;lsSet('matchday-report',JSON.stringify(rep));render()}
+}
+const getReport=()=>{try{return JSON.parse(lsGet('matchday-report')||'null')}catch(_){return null}};
+function reportCard(){
+  const r=getReport();if(!r)return'';
+  const ok=(good,text)=>`<li class="${good?'ok':'no'}">${good?'✓':'✗'} ${text}</li>`;
+  return `<div class="card report" role="status"><h3>${r.kind==='signout'?`Signed out${r.email?' of '+esc(r.email):''}`:`You left ${esc(r.team||'the team')}`}</h3><ul class="checks">
+    ${r.kind==='leave'?ok(r.member==='ok',r.member==='ok'?`Removed from the team's coach list${r.later?' (finished once there was signal)':''}.`
+      :`Not yet removed from the team's coach list (${esc(r.member)}). The app tries again whenever it opens with a signal; or ask the manager to remove you.`):''}
+    ${r.kind==='signout'?ok(true,'Signed out on this phone. Your teams stay saved to your account.'):''}
+    ${ok(r.cache==='cleared',r.cache==='cleared'?"This phone's copy of the team data was deleted.":"This phone's copy couldn't be deleted yet because another Match Day window was open. Close every Match Day window: it's deleted when the app next opens.")}
+    ${r.pending?ok(false,`${r.pending} change${r.pending>1?'s':''} that hadn't uploaded were left behind.`):''}
+  </ul><button class="btn small" data-act="reportok" style="align-self:flex-start">OK</button></div>`;
+}
+let leaving=false,removedCheck=false;
+async function leaveTeam(remote=true,force=false){
+  const {F,fs,auth}=FB,t=S.teamId,uid=auth.currentUser?.uid;
+  if(!remote){ // a coach removed this phone: keep a note of the team and its code, so it can ask to rejoin
+    const left=await F.getDocFromServer(F.doc(fs,'teams',t,'members',uid)).then(m=>!m.exists()).catch(e=>e?.code==='permission-denied');
+    if(!left){removedCheck=false;setSync('bad','Not connected to the team');toast("Couldn't load the team just now. Nothing was removed from this phone; reload to try again.");return} // a glitch, not a removal: keep everything
+    setSync(false,'Not a member');toast("This phone isn't a member of that team any more.");
+    if(S.invite)addPending(t,S.invite,{status:'removed',name:S.cfg.team||''});
+    await new Promise(r=>setTimeout(r,1500));
+  }
+  if(remote&&!(await uploadedFirst(force))){S.confirm='leave-force';render();return}
+  const rep={kind:'leave',team:S.cfg.team||'the team',at:Date.now(),pending:force?sync.pending:0};
+  if(remote){leaving=true;setSync('wait','Leaving…');
+    rep.member=t?await settle(F.deleteDoc(F.doc(fs,'teams',t,'members',uid)),6000):'ok';
+    if(rep.member!=='ok'&&t)lsSet('matchday-leave-todo',JSON.stringify([...new Set([...leaveTodo(),t])]));
+    await settle(F.updateDoc(F.doc(fs,'users',uid),{['teams.'+t]:F.deleteField()}),3000);
+  }
   const rest=myTeams().filter(x=>x!==t);saveTeams(rest);lsSet(TEAM_KEY,rest[0]||null);
-  if(remote)await wipeLocalData(); // other teams download again next time there's signal
+  if(remote){rep.cache=await wipeLocalData();lsSet('matchday-report',JSON.stringify(rep))} // other teams download again next time there's signal
   location.reload();
 }
 /* accounts: optional email + password, so a coach's teams follow them to a new phone.
@@ -1607,24 +1828,64 @@ async function createAccount(){
   catch(e){toast(authMsg(e))}
 }
 async function signInAccount(){
-  const {A,auth}=FB,{email,pw}=acctVals();
+  const {A}=FB,{email,pw}=acctVals();
   if(!email||!pw){toast('Type your email and password.');return}
-  await moveTeamsTo(()=>A.signInWithEmailAndPassword(auth,email,pw));
+  await moveTeamsTo(a=>A.signInWithEmailAndPassword(a,email,pw));
 }
+/* Signing into an account that already exists, on a phone that has teams under its own sign-in.
+   The phone's sign-in is the only key to those teams, so it isn't given up until the account is
+   safely in each one: the account signs in on the side first and asks to join each team, the
+   phone (still a member) accepts it and hands over the manager role if it had it, all in one
+   step per team. Only when every team has moved does the phone switch to the account. If any
+   team can't be moved, nothing switches and the phone keeps its teams. */
 async function moveTeamsTo(signIn){
-  const {F,fs,auth}=FB;
-  // Teams already on this phone move onto the account: note their invite codes before switching sign-in.
-  const codes={};
-  for(const t of myTeams()){const s=await within(F.getDoc(F.doc(fs,'teams',t)).catch(()=>null),3000);if(s?.exists())codes[t]=s.data().code}
-  try{await signIn()}catch(e){toast(authMsg(e));return}
-  const uid=auth.currentUser.uid;
-  // Teams this phone was in under its old sign-in: the account is already in some of them; for the
-  // rest, ask again (a coach accepts, as for anyone joining).
-  const acc=await within(F.getDoc(F.doc(fs,'users',uid)).catch(()=>null),3000),theirs=Object.keys(acc?.data?.()?.teams||{});
-  const ask=Object.entries(codes).filter(([t])=>!theirs.includes(t));
-  await Promise.all(ask.map(([t,code])=>F.setDoc(F.doc(fs,'teams',t,'requests',uid),{code,name:myName(),via:signInVia(),at:Date.now()}).then(()=>addPending(t,code)).catch(()=>{})));
-  if(ask.length)saveTeams(myTeams().filter(t=>!ask.some(([x])=>x===t)));
-  await loadAccountTeams();syncTeamList();
+  const {A,F,AppM,fs,auth,cfg}=FB,old=auth.currentUser;
+  if(!navigator.onLine){toast('You need a signal to sign in, so your teams can move to the account.');return}
+  if(!(await uploadedFirst()))return;
+  setSync('wait','Signing in…');
+  // 1. Which teams this phone is in now, with each one's code and manager.
+  const mine=[];
+  for(const t of myTeams()){
+    const s=await within(F.getDocFromServer(F.doc(fs,'teams',t)).catch(e=>e),6000);
+    if(s===null){toast("Couldn't reach one of your teams, so nothing changed. Try again with a better signal.");liveLabel();return}
+    if(s instanceof Error||!s.exists())continue; // not a member any more: nothing to move
+    mine.push({t,code:s.data().code,mgr:s.data().createdBy===old.uid});
+  }
+  // 2. The account signs in on the side (the phone stays signed in as itself meanwhile).
+  const app2=AppM.initializeApp(cfg,'switch'+Date.now()),auth2=A.initializeAuth(app2,{persistence:A.inMemoryPersistence});
+  const fs2=F.initializeFirestore(app2,{localCache:F.memoryLocalCache()}),done=async()=>{try{await AppM.deleteApp(app2)}catch(_){}};
+  let u2;try{u2=(await signIn(auth2)).user}catch(e){await done();toast(authMsg(e));liveLabel();return}
+  if(u2.uid===old.uid){await done();toast('That is already the account on this phone.');liveLabel();return}
+  // 3. Move each team: the account asks, the phone accepts (and hands over manager) in one write.
+  for(const {t,code,mgr} of mine){
+    try{
+      const inAlready=await F.getDoc(F.doc(fs2,'teams',t,'members',u2.uid)).then(x=>x.exists()).catch(()=>false);
+      const b=F.writeBatch(fs);
+      if(!inAlready){
+        await askToJoin(F,fs2,u2,t,code);
+        b.set(F.doc(fs,'teams',t,'members',u2.uid),{code,joined:F.serverTimestamp(),name:myName(),via:u2.providerData.some(p=>p.providerId==='google.com')?'google':'email',by:myName()});
+        b.delete(F.doc(fs,'teams',t,'requests',u2.uid));
+      }
+      if(mgr)b.update(F.doc(fs,'teams',t),{createdBy:u2.uid});
+      b.delete(F.doc(fs,'teams',t,'members',old.uid)); // the phone's own entry: the account replaces it
+      const ok=await within(b.commit().then(()=>true),10000);
+      if(!ok)throw Object.assign(new Error('timeout'),{code:'no signal'});
+    }catch(e){
+      await done();liveLabel();
+      toast(`Couldn't move ${teamInfo[t]?.name||'one of your teams'} to the account (${errCode(e)}). You're still signed in as before${mine[0].t!==t?'; teams already moved are in both':''}. Try again.`);
+      return;
+    }
+  }
+  // 4. Requests this phone was still waiting on are sent again from the account.
+  for(const p of getPending().filter(x=>!x.status)){
+    await F.deleteDoc(F.doc(fs,'teams',p.t,'requests',old.uid)).catch(()=>{});stopPending(p.t);
+    try{await askToJoin(F,fs2,u2,p.t,p.code)}catch(_){markPending(p.t,'unsent')}
+  }
+  // 5. Every team has moved: the phone switches to the account.
+  try{await A.updateCurrentUser(auth,u2)}
+  catch(e){await done();toast(`Your teams are on the account, but this phone didn't finish signing in (${errCode(e)}). Sign in again.`);liveLabel();return}
+  await done();
+  await loadAccountTeams();syncTeamList();myTeams().forEach(t=>touchMember(t,true));
   if(!lsGet(TEAM_KEY))lsSet(TEAM_KEY,myTeams()[0]||null);
   location.reload();
 }
@@ -1646,7 +1907,7 @@ async function finishGoogle(){ // runs at start-up after Google sends the coach 
   try{const r=await A.getRedirectResult(auth);if(r){syncTeamList();setTimeout(()=>myTeams().forEach(t=>touchMember(t,true)),1500);toast(`Signed in as ${r.user.email}.`)}return false}
   catch(e){
     const cred=A.GoogleAuthProvider.credentialFromError(e);
-    if(cred&&/credential-already-in-use|email-already-in-use/.test(e.code||'')){await moveTeamsTo(()=>A.signInWithCredential(auth,cred));return true}
+    if(cred&&/credential-already-in-use|email-already-in-use/.test(e.code||'')){await moveTeamsTo(a=>A.signInWithCredential(a,cred));return false}
     toast(authMsg(e));return false;
   }
 }
@@ -1656,9 +1917,12 @@ async function resetPassword(){
   try{await A.sendPasswordResetEmail(auth,email);toast("If there's an account for that email, a reset link is on its way. Check spam too.")}
   catch(e){toast(authMsg(e))}
 }
-async function signOutAccount(){
-  if(!(await uploadedFirst()))return;
-  await FB.A.signOut(FB.auth);saveTeams([]);lsSet(TEAM_KEY,null);await wipeLocalData();location.reload();
+async function signOutAccount(force=false){
+  if(!(await uploadedFirst(force))){S.confirm='signout-force';render();return}
+  const rep={kind:'signout',email:FB.auth.currentUser?.email||'',at:Date.now(),pending:force?sync.pending:0};
+  leaving=true;
+  try{await FB.A.signOut(FB.auth)}catch(e){leaving=false;toast(`Couldn't sign out (${errCode(e)}). Nothing was changed.`);return}
+  saveTeams([]);lsSet(TEAM_KEY,null);rep.cache=await wipeLocalData();lsSet('matchday-report',JSON.stringify(rep));location.reload();
 }
 const googleBtn=()=>`<button class="btn gbtn" data-act="google"><svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 6.9-10.3 6.9-17.7z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.1 1.4-4.9 2.3-8.2 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>Continue with Google</button>`;
 function acctForm(mode){
@@ -1675,28 +1939,40 @@ function accountCard(){
   if(isAccount())return `<div class="card"><h3>Your account</h3>
     <p>Signed in as <b>${esc(u.email)}</b>.</p>
     <p class="note">Your teams are saved to this account. On a new phone, open the app and tap <b>Sign in</b> to get them all back.</p>
-    <button class="x ${S.confirm==='signout'?'sure':''}" data-act="signout">${S.confirm==='signout'?'Tap again to sign out on this phone':'Sign out on this phone'}</button></div>`;
+    ${signoutBtn()}</div>`;
   return `<div class="card"><h3>Keep your teams safe</h3>
     <p class="note">Right now your teams are only on this phone. Sign in with Google or make a free email account, and you can get all your teams back on a new phone. Optional.</p>
     ${S.acct?acctForm(S.acct):`${googleBtn()}<div class="cbtns"><button class="btn" data-act="acctcreate">Create an account with email</button><button class="btn" data-act="acctsignin">Sign in with email</button></div>`}</div>`;
 }
+const signoutBtn=()=>`<button class="x ${S.confirm&&S.confirm.startsWith('signout')?'sure':''}" data-act="signout">${S.confirm==='signout-force'?`Not uploaded: tap again to sign out anyway and lose ${sync.pending||'some'} change${sync.pending===1?'':'s'}`:S.confirm==='signout'?'Tap again to sign out on this phone':'Sign out on this phone'}</button>`;
+const leaveBtn=()=>`<button class="x ${S.confirm&&S.confirm.startsWith('leave')?'sure':''}" data-act="leave">${S.confirm==='leave-force'?`Not uploaded: tap again to leave anyway and lose ${sync.pending||'some'} change${sync.pending===1?'':'s'}`:S.confirm==='leave'?'Tap again to leave this team on this phone':'Leave this team on this phone'}</button>`;
 function pendingCard(){
   if(!S.pending.length)return'';
-  return `<div class="card"><h3>Waiting to be accepted</h3>
-    ${S.pending.map(p=>`<div class="row" style="padding:6px 0;border:0"><span>Request sent with code <b class="num">${esc(showCode(p.code))}</b>. A coach in that team needs to accept you; this updates by itself.</span>
-      <button class="x" data-act="reqcancel" data-id="${esc(p.t)}">Cancel</button></div>`).join('')}</div>`;
+  const sent=p=>new Date(p.at||Date.now()).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+  return `<div class="card"><h3>Your requests to join</h3>
+    ${S.pending.map(p=>{const c=`<b class="num">${esc(showCode(p.code))}</b>`;
+      return `<div class="pend ${p.status||'wait'}">${
+      p.status==='declined'?`<span><b>Not accepted.</b> Your request with code ${c} wasn't accepted by the team's coaches. If that's a mistake, talk to them, then ask again.</span>
+        <span class="cbtns"><button class="btn small" data-act="reqagain" data-id="${esc(p.t)}">Ask again</button><button class="x" data-act="reqcancel" data-id="${esc(p.t)}">OK</button></span>`
+      :p.status==='unsent'?`<span><b>Not sent yet.</b> Your request for the team with code ${c} didn't go through when you signed in.</span>
+        <span class="cbtns"><button class="btn small go" data-act="reqagain" data-id="${esc(p.t)}">Send it</button><button class="x" data-act="reqcancel" data-id="${esc(p.t)}">Forget it</button></span>`
+      :p.status==='removed'?`<span><b>No longer in ${esc(p.name||'a team')}.</b> A coach removed this phone from the team (code ${c}).</span>
+        <span class="cbtns"><button class="btn small" data-act="reqagain" data-id="${esc(p.t)}">Ask to rejoin</button><button class="x" data-act="reqcancel" data-id="${esc(p.t)}">OK</button></span>`
+      :`<span><b>Waiting for a coach to accept you.</b> Sent ${esc(sent(p))} with code ${c}. A coach in that team sees your name and accepts or declines; this updates by itself, and you'll see the team as soon as you're in.</span>
+        <button class="x" data-act="reqcancel" data-id="${esc(p.t)}">Cancel request</button>`}</div>`}).join('')}</div>`;
 }
 function gateView(){
   return `<div class="sec" style="gap:14px">
+  ${reportCard()}
   ${pendingCard()}
   ${S.adding?`<button class="back" data-act="gateback">← My teams</button><h2>Add a team</h2>`:''}
   <div class="card"><h3>Start a new team</h3>
     <p class="note">You'll get an invite code to give the other coaches.</p>
     <button class="btn go" data-act="mkteam">Create a team</button></div>
   <div class="card"><h3>Join a team</h3>
-    <p class="note">Ask a coach for the team's invite code. It's on their Squad tab.</p>
+    <p class="note">Ask a coach for the team's invite code (in their ☰ menu). The code sends a request: a coach in the team then accepts you.${FB?.auth?.currentUser?.email?' They also see the email you signed in with, so they know it\'s you.':''}</p>
     <label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">Your name (the coaches see this)</span><input id="joinname" value="${esc(myName())}" placeholder="e.g. Sam (coach)" maxlength="40" autocomplete="name"></label>
-    <form class="addf" id="joinf"><input id="joincode" placeholder="e.g. ABC-234" autocomplete="off" autocapitalize="characters" aria-label="Invite code"><button class="btn go" data-act="join" type="submit">Join</button></form></div>
+    <form class="addf" id="joinf"><input id="joincode" value="${esc(S.joinCode||'')}" placeholder="e.g. ABCD-2345" autocomplete="off" autocapitalize="characters" aria-label="Invite code"><button class="btn go" type="submit" ${joining?'disabled':''}>${joining?'Sending…':'Ask to join'}</button></form></div>
   ${FB&&!isAccount()?`<div class="card"><h3>Your account</h3>
     <p class="note">Optional. Sign in with Google or a free email account and your teams are saved to you, so you can get them all back on a new phone.</p>
     ${S.acct?acctForm(S.acct):`${googleBtn()}<div class="cbtns"><button class="btn" data-act="acctsignin">Sign in with email</button><button class="btn" data-act="acctcreate">Create an account</button></div>`}</div>`:''}
@@ -1780,7 +2056,7 @@ function membersList(){
   return `<div class="rows">${l.map(m=>`<div class="row member"><span class="who">${esc(m.name||(m.via==='phone'||!m.via?'Coach (no account)':'Coach'))}
       ${m.id===S.createdBy?'<span class="tag mgr">Manager</span>':''}${m.id===me?'<span class="tag">you</span>':''}</span>
     <span class="note">${via[m.via]||'No account'}${ago(m.seen)?' · '+ago(m.seen):''}</span>
-    ${S.createdBy===me&&m.id!==me?`<button class="x ${S.confirm==='rm-'+m.id?'sure':''}" data-act="rmcoach" data-id="${esc(m.id)}">${S.confirm==='rm-'+m.id?'Tap to remove':'Remove'}</button>`:''}</div>`).join('')||'<p class="note">Loading…</p>'}</div>`;
+    ${S.createdBy===me&&m.id!==me?`<span class="cbtns"><button class="x ${S.confirm==='mg-'+m.id?'sure':''}" data-act="mkmgr" data-id="${esc(m.id)}">${S.confirm==='mg-'+m.id?'Tap to make manager':'Make manager'}</button><button class="x ${S.confirm==='rm-'+m.id?'sure':''}" data-act="rmcoach" data-id="${esc(m.id)}">${S.confirm==='rm-'+m.id?'Tap to remove':'Remove'}</button></span>`:''}</div>`).join('')||'<p class="note">Loading…</p>'}</div>`;
 }
 function menuView(){
   const u=FB.auth.currentUser;
@@ -1790,7 +2066,7 @@ function menuView(){
     <label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">Your name (other coaches see this)</span>
       <input id="myname" value="${esc(myName())}" placeholder="e.g. Sam (coach)" maxlength="40" autocomplete="name"></label>
     ${isAccount()?`<p class="note">Signed in with ${signInVia()==='google'?'Google':'email'} as <b>${esc(u.email)}</b>. Only you see your email.</p>
-      <button class="x ${S.confirm==='signout'?'sure':''}" data-act="signout">${S.confirm==='signout'?'Tap again to sign out on this phone':'Sign out on this phone'}</button>`
+      ${signoutBtn()}`
     :`<p class="note">Not signed in: your teams are only on this phone. Sign in to get them back on a new phone.</p>
       ${S.acct?acctForm(S.acct):`${googleBtn()}<div class="cbtns"><button class="btn" data-act="acctcreate">Create an account with email</button><button class="btn" data-act="acctsignin">Sign in with email</button></div>`}`}
   </div>
@@ -1802,11 +2078,13 @@ function menuView(){
   ${pendingCard()}
   <div class="card"><h3>${esc(S.cfg.team||'This team')}</h3>
     <p>Invite code: <b class="num" style="font-family:var(--display);font-size:26px;letter-spacing:.06em">${esc(showCode(S.invite))||'…'}</b></p>
-    <p class="note">Other coaches open the app, tap <b>Join a team</b> and enter this code.</p>
+    <p class="note">Other coaches open the app, tap <b>Join a team</b> and enter this code. The code only sends a request: someone in the team has to accept each person.</p>
+    ${S.createdBy===FB.auth.currentUser?.uid?`<button class="x ${S.confirm==='newcode'?'sure':''}" data-act="newcode" style="align-self:flex-start">${S.confirm==='newcode'?'Tap again: the old code stops working at once':'Make a new invite code'}</button>
+      <p class="note">${S.invite&&S.invite.length<8?'Your code is the older, shorter kind: a new one is 8 characters and much harder to guess. ':''}Use this if the code has been shared too widely. Coaches already in the team stay in.</p>`:''}
     ${requestsBanner()}
     <span class="lbl">Team members</span>
     ${membersList()}
-    <button class="x ${S.confirm==='leave'?'sure':''}" data-act="leave">${S.confirm==='leave'?'Tap again to leave this team on this phone':'Leave this team on this phone'}</button></div>
+    ${leaveBtn()}</div>
   ${backupCard()}
   ${S.owner?'<button class="btn" data-act="admin">Admin: all teams</button>':''}
   <p class="note num" style="text-align:center">Match Day v${APP_VERSION}</p>
@@ -1816,8 +2094,8 @@ function teamCard(){
   if(!FB||!S.teamId)return'';
   return `<div class="card"><h3>Invite other coaches</h3>
     <p>Invite code: <b class="num" style="font-family:var(--display);font-size:26px;letter-spacing:.06em">${esc(showCode(S.invite))||'…'}</b></p>
-    <p class="note">Other coaches open the app, tap <b>Join a team</b> and enter this code. Everyone who joins can see and change this team's squad and games.</p>
-    <button class="x ${S.confirm==='leave'?'sure':''}" data-act="leave">${S.confirm==='leave'?'Tap again to leave this team on this phone':'Leave this team on this phone'}</button></div>`;
+    <p class="note">Other coaches open the app, tap <b>Join a team</b> and enter this code. That sends a request, and someone in the team accepts it in the ☰ menu: the code alone doesn't let anyone in. Everyone accepted can see and change this team's squad and games.</p>
+    ${leaveBtn()}</div>`;
 }
 
 render();
