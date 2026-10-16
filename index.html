@@ -317,6 +317,7 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 .gate .trow,.gate #tabs{display:none}
 .sc .plus.notyet{opacity:.4} /* scoring waits for kick-off */
 .chip .gl{position:absolute;top:-9px;right:-6px;background:var(--gold);color:var(--gold-ink);border-radius:999px;font-size:11px;font-weight:700;padding:1px 6px;line-height:1.4}
+.tsum{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
 .benchask{border-color:var(--grass);box-shadow:inset 3px 0 0 var(--grass)}
 /* Parent view: the live score only, big enough to read across a pitch */
 body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
@@ -355,7 +356,7 @@ body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.24.5';
+const APP_VERSION='0.24.6';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,benchAsk:null,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
@@ -1385,11 +1386,47 @@ function savedPop(){
   return `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="svq"><div class="box">
     <h3 id="svq">Tournament saved ✓</h3>
     <p><b>${esc(x.name||'Tournament')}</b> · ${esc(nice(x.date))}<br><span class="num">W${x.r.W} D${x.r.D} L${x.r.L} · ${Words().goals} ${x.r.F}–${x.r.A}</span></p>
-    <p class="note">Here it is in <b>Season → Results</b>. Tap it any time to check it, or Edit to correct it. The games are cleared, ready for the next tournament.</p>
+    <p class="note">Its summary (scorers, playing time and a message to share) is in <b>Season → Results</b>, open below. Tap it any time to check it, or Edit to correct it. The games are cleared, ready for the next tournament.</p>
     <div class="cbtns"><button class="btn go" data-act="savedok">OK</button><button class="btn" data-act="backtogames">Back to games</button></div>
   </div></div>`;
 }
 function record(games){let W=0,D=0,L=0,F=0,A=0;games.filter(g=>g.played||g.done).forEach(g=>{F+=g.score.us;A+=g.score.them;g.score.us>g.score.them?W++:g.score.us<g.score.them?L++:D++});return{W,D,L,F,A}}
+/* ---------- tournament summary: record, scorers, playing time, and a message to share ---------- */
+const usOf=(t,g)=>g.team||t.short||S.cfg.short||'Us';
+const gameLine=(t,g)=>{const h=isAway(g)?(g.opponent||'?'):usOf(t,g),a=isAway(g)?usOf(t,g):(g.opponent||'?');return `${h} ${g.played||g.done?scoreHA(g):'v'} ${a}`};
+function tSummary(t){
+  const gs=(t.games||[]).filter(g=>g.played||g.done),r=record(t.games||[]),gl=goalTally(gs);
+  const tot={},gp={};gs.forEach(g=>Object.entries(g.mins||{}).forEach(([p,ms])=>{tot[p]=(tot[p]||0)+ms;gp[p]=(gp[p]||0)+1}));
+  const rows=Object.keys(tot).map(p=>({p,t:tot[p],n:gp[p]})).sort((a,b)=>a.t-b.t||nameOf(a.p).localeCompare(nameOf(b.p)));
+  const max=Math.max(1,...rows.map(x=>x.t)),avg=rows.length?rows.reduce((a,x)=>a+x.t,0)/rows.length:0;
+  const scorers=Object.entries(gl).filter(([,n])=>n>0).sort((a,b)=>b[1]-a[1]||nameOf(a[0]).localeCompare(nameOf(b[0])));
+  if(!gs.length)return'';
+  return `<div class="tsum">
+    <div class="summary num"><span>Played <b>${gs.length}</b></span><span>W <b>${r.W}</b> · D <b>${r.D}</b> · L <b>${r.L}</b></span><span>${Words().goals} <b>${r.F}–${r.A}</b></span></div>
+    ${scorers.length?`<span class="lbl">${Words().scorers}</span><div class="rows">${scorers.map(([p,n])=>`<div class="row"><span class="who">${esc(nameOf(p))}</span><b class="num">${n}</b></div>`).join('')}</div>`:''}
+    ${rows.length?`<span class="lbl">Playing time, least first</span><div class="rows">${rows.map(x=>{const low=avg>0&&x.t<avg*0.8;
+      return `<div class="mrow ${low?'low':''}"><span class="who">${esc(nameOf(x.p))}${low?'<span class="flag">Less time</span>':''}</span><span class="m num">${fmtM(x.t)}</span>
+      <span class="bar"><i style="width:${(x.t/max*100).toFixed(1)}%"></i></span><span class="brk num">${x.n} game${x.n===1?'':'s'}${gl[x.p]?` · ${gl[x.p]} ${gl[x.p]>1?Words().goals.toLowerCase():Words().goal}`:''}</span></div>`}).join('')}</div>`:''}
+    <div class="cbtns"><button class="btn" data-act="tshare" data-id="${t.id}">Share results</button>${scorers.length?`<button class="btn" data-act="tshare" data-id="${t.id}" data-names="1">Share with scorers</button>`:''}</div>
+    <p class="note">Share results sends scores only. Share with scorers adds players' first names, so only use it where your club is happy for children to be named.</p>
+  </div>`;
+}
+function summaryText(t,names){
+  const gs=t.games||[],r=record(gs),gl=goalTally(gs.filter(g=>g.played||g.done));
+  const lines=[`${isRugby()?'🏉':'⚽'} *${S.cfg.short||S.cfg.team||'Our team'}${t.name?' – '+t.name:''}*${t.date?', '+nice(t.date):''}`,
+    `W${r.W} D${r.D} L${r.L} · ${Words().goals} ${r.F}–${r.A}`,''];
+  gs.forEach(g=>lines.push(`${g.time?g.time+'  ':''}${gameLine(t,g)}${g.played||g.done?'':' (not played)'}`));
+  const sc=Object.entries(gl).filter(([,n])=>n>0).sort((a,b)=>b[1]-a[1]);
+  if(names&&sc.length)lines.push('',`${Words().scorers}: ${sc.map(([p,n])=>nameOf(p)+(n>1?' '+n:'')).join(', ')}`);
+  lines.push('','Match Day · '+location.origin+location.pathname.replace(/index\.html$/,''));
+  return lines.join('\n');
+}
+async function shareSummary(id,names){
+  const t=S.archive.find(x=>x.id===id);if(!t)return;
+  const text=summaryText(t,names);
+  if(navigator.share){try{await navigator.share({text});return}catch(e){if(e.name==='AbortError')return}}
+  try{await navigator.clipboard.writeText(text);toast('Summary copied. Paste it into your group chat.')}catch(_){toast("Couldn't copy the summary on this phone.")}
+}
 function seasonView(){
   const ts=[...S.archive].sort((a,b)=>(b.date||'').localeCompare(a.date||'')||b.savedAt-a.savedAt);
   const all=record(ts.flatMap(t=>t.games||[]));
@@ -1411,7 +1448,7 @@ function seasonView(){
   ${ts.length?`<section class="sec"><h3>Tournaments</h3>${ts.map(t=>{const r=record(t.games||[]),open=S.openT===t.id;
     return `<div class="tcard"><button data-act="topen" data-id="${t.id}"><span><span class="tn">${esc(t.name||'Tournament')}</span><span class="ts" style="display:block">${esc(nice(t.date))}</span></span>
       <span class="num" style="text-align:right"><b>W${r.W} D${r.D} L${r.L}</b><span class="ts" style="display:block">${Words().goals} ${r.F}–${r.A}</span></span></button>
-      ${open?`<div class="tb">${(t.games||[]).map(g=>`<div class="gl"><span>${esc(g.time||'G'+g.n)} ${esc(isAway(g)?(g.opponent||'?'):(g.team||t.short||S.cfg.short||'Us'))} v ${esc(isAway(g)?(g.team||t.short||S.cfg.short||'Us'):(g.opponent||'?'))}</span><b class="num">${g.played||g.done?scoreHA(g):'not played'}</b></div>${(g.goals||[]).length?`<div class="gls">${isRugby()?'🏉':'⚽'} ${(g.goals||[]).map(x=>esc(scorerName(x.p))+(isRugby()?' ('+evLabel(x).toLowerCase()+')':'')).join(', ')}</div>`:''}`).join('')}
+      ${open?`<div class="tb">${tSummary(t)}<span class="lbl">Games</span>${(t.games||[]).map(g=>`<div class="gl"><span>${esc(g.time||'G'+g.n)} ${esc(isAway(g)?(g.opponent||'?'):(g.team||t.short||S.cfg.short||'Us'))} v ${esc(isAway(g)?(g.team||t.short||S.cfg.short||'Us'):(g.opponent||'?'))}</span><b class="num">${g.played||g.done?scoreHA(g):'not played'}</b></div>${(g.goals||[]).length?`<div class="gls">${isRugby()?'🏉':'⚽'} ${(g.goals||[]).map(x=>esc(scorerName(x.p))+(isRugby()?' ('+evLabel(x).toLowerCase()+')':'')).join(', ')}</div>`:''}`).join('')}
         ${S.editT===t.id?tEdit(t):`<div class="cbtns"><button class="btn small" data-act="tedit" data-id="${t.id}">Edit</button>
         <button class="x ${S.confirm==='t-'+t.id?'sure':''}" data-act="tdel" data-id="${t.id}">${S.confirm==='t-'+t.id?'Tap to delete this tournament':'Delete this tournament'}</button></div>`}</div>`:''}</div>`}).join('')}</section>`:''}
   ${ts.length||S.awards.length?`<div class="danger"><button class="btn warn" data-act="wipe">${S.confirm==='wipe'?'Tap again to delete all season data':'Delete all season data'}</button>
@@ -1553,6 +1590,7 @@ document.addEventListener('click',e=>{
     case'tsave':{const id=S.editT,d=S.draft;if(!id||!d)break;put('archive/'+id,d);S.archive=S.archive.map(t=>t.id===id?{id,...d}:t);S.editT=null;S.draft=null;toast('Tournament updated.');render();break}
     case'backtogames':S.saved=null;S.tab='games';lastTab.tournament='games';S.game=null;render();window.scrollTo(0,0);break;
     case'savedok':S.saved=null;render();break;
+    case'tshare':shareSummary(b.dataset.id,b.dataset.names==='1');break;
     case'topen':S.openT=S.openT===b.dataset.id?null:b.dataset.id;if(S.editT&&S.openT!==S.editT){S.editT=null;S.draft=null}render();break;
     case'tdel':{const k='t-'+b.dataset.id;if(S.confirm===k){S.confirm=null;S.archive=S.archive.filter(x=>x.id!==b.dataset.id);remove('archive/'+b.dataset.id);render()}else{S.confirm=k;render()}break}
     case'wipe':if(S.confirm==='wipe'){S.confirm=null;S.archive.forEach(t=>remove('archive/'+t.id));S.awards.forEach(x=>remove('awards/'+x.id));S.archive=[];S.awards=[];toast('Season data deleted.');render()}else{S.confirm='wipe';render()}break;
