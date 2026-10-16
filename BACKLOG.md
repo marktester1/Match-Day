@@ -41,6 +41,12 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
      overseas VAT/sales tax is handled; app stores later as in-app purchase.
    - Security rule so only unlocked teams get the paid features.
    - The user sets up the payment account and bank details themselves.
+   - Sell on the web first (decided direction); app stores later once coaches are paying.
+   - **Founding club:** Winscombe team(s) flagged as unlocked for good in the database, so the
+     loyal testers never see a paywall on any device.
+   - **Voucher codes** (e.g. WINSCOMBE): unlock a team free, with a use limit and optional
+     expiry. Web: merchant-of-record discount codes, or codes stored in the app's database.
+     iPhone app: must use Apple offer codes instead of our own (store rule).
 
 3. **Privacy policy and terms page** (needed before taking any money). First names only, adult
    coaches as users, UK/EU GDPR. Host alongside the app (README plans Cloudflare Pages).
