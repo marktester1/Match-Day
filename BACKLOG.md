@@ -119,6 +119,19 @@ closed are under Notifications.
 - Before wider release: dependency check, security headers on Firebase Hosting (CSP, HSTS,
   X-Content-Type-Options, Referrer-Policy), and Firebase usage limits / budget alert.
 
+## Should everyone log in? (question to decide)
+Today a phone can use the app with no account (anonymous sign-in); Google or email is optional.
+- For requiring it: team data and access survive a lost or reset phone; the Admin page shows
+  real people; join requests show a verified name; payments (team unlock, parent subscription)
+  need an account to attach the purchase to; removing a coach is clear-cut; App Store review
+  expects account deletion if accounts exist (add "Delete my account").
+- Against: friction on a cold touchline for helpers who only need to tap subs once; parents
+  and assistants may not want to share an email; more support ("I forgot which email").
+- Middle ground: required for the manager (who pays and approves) and anyone who wants their
+  teams on another phone; optional for helper coaches, who still need accepting by a coach.
+- Needs: "Delete my account" in ☰ (also an app store rule), privacy policy wording, and a
+  nudge for anonymous coaches before they lose access (e.g. when a team has games saved).
+
 ## Usability on the touchline (from review)
 - Large tap targets with good spacing (check every button against ~44px).
 - High contrast in bright sunlight; works in the dark.

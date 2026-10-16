@@ -16,6 +16,9 @@ README.md has the setup and release commands.
   clone isn't possible, deploy the same commit with `firebase deploy --only hosting --project live`
   and check live's index.html matches beta's byte for byte.
 - Each release: bump `APP_VERSION` in index.html and `CACHE` in sw.js, merge to `main`, tag `vX.Y.Z`.
+- Release checks: run `node tools/release-check.cjs pre` before promoting (all PASS except the
+  expected "live rules differ" when the release changes rules), then rules to live, then
+  `hosting:clone`, then `node tools/release-check.cjs post` (must be all PASS).
 - Rules changes go to beta first too (and a release that needs a new rule must not reach live before the rule does): `firebase deploy --only firestore:rules --project beta`, then
   `--project live` with the user's go-ahead.
 - The Beta Test Team (code `L9J-Q7H`) is the user's to play with: don't change its data. Claude's own
