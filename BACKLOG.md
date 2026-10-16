@@ -43,6 +43,14 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 4. **Selling internationally.** Local prices (£3.99 / €4.49 / $4.99 / A$6.99) via the merchant
    of record. Only if those markets show interest: US wording switch (soccer, field, US dates)
    and rugby league scoring (try 4, conversion 2, penalty 2, drop goal 1) next to union.
+   - **App stores (international):** Apple and Google act as seller and handle VAT/sales tax in
+     every country, with local prices from the £3.99 tier. Needs: Apple Developer Program (£79/yr,
+     Paid Apps agreement, bank and tax forms, Small Business Program for 15%), Google Play ($25,
+     closed test with ~12–20 testers for 14 days for new personal accounts). Build: Capacitor wrap
+     of the same code, £3.99 unlock as an in-app purchase (store rules), Sign in with Apple
+     alongside Google, store listing (screenshots, privacy label, privacy policy link, age
+     rating), full Xcode on the Mac. Risk: Apple may reject thin web wrappers; offline use, live
+     sync and push notifications help.
 
 ## Later
 
