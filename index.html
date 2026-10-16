@@ -285,7 +285,12 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 .empty{text-align:center;padding:26px 16px;color:var(--muted);background:var(--surface);border:1px dashed var(--line);border-radius:12px}
 .empty b{display:block;color:var(--ink);font-family:var(--display);font-size:22px;margin-bottom:4px}
 .note{font-size:13px;color:var(--muted);margin:0}
-.ro [data-act]:not([data-act="tab"]):not([data-act="open"]):not([data-act="back"]){pointer-events:none;opacity:.45}
+.ro [data-act]:not([data-act="tab"]):not([data-act="open"]):not([data-act="back"]):not([data-act="section"]):not([data-act="menu"]):not([data-act="teams"]):not([data-act^="unlock"]):not([data-act="tdetail"]){pointer-events:none;opacity:.45}
+.ro #view input,.ro #view select,.ro #view textarea{pointer-events:none;opacity:.6}
+.plan{border-color:var(--live);background:var(--live-bg)}
+.plan.ok{border-color:var(--line);background:var(--surface)}
+.plan h3{margin:0}
+.price{font-family:var(--display);font-size:44px;font-weight:700;line-height:1}
 .ro .chip{pointer-events:none}
 .gate .trow,.gate #tabs{display:none}
 /* Parent view: the live score only, big enough to read across a pitch */
@@ -329,7 +334,7 @@ const APP_VERSION='0.22.0';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
-  feed:null,pfeed:undefined,pgames:[],pbanner:null,awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
+  bill:null,billLoaded:false,teamCreated:0,unlockOpen:false,feed:null,pfeed:undefined,pgames:[],pbanner:null,awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const nice=d=>{if(!d)return'';const t=new Date(d+'T12:00');return isNaN(t)?d:t.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})};
 let db=null,pending=false,suppressClick=false;
@@ -399,6 +404,7 @@ function mins(g){
 /* ---------- saving ---------- */
 function put(path,body){
   if(!db)return;
+  if(locked()){lockedToast();return}
   if(/^games\/g\d+$/.test(path))feedGame=path.slice(6);
   if(/^(games\/|club\/(tournament|settings)$)/.test(path))schedulePublish();
   queues[path]=(queues[path]||Promise.resolve()).then(()=>db.doc(path).set(body)).catch(e=>{
@@ -409,11 +415,70 @@ function put(path,body){
 }
 function remove(path){
   if(!db)return;
+  if(locked()){lockedToast();return}
   queues[path]=(queues[path]||Promise.resolve()).then(()=>db.doc(path).delete()).catch(()=>toast("Couldn't delete that. Check your connection and try again."));
 }
-function mut(id,fn){const g=structuredClone(G(id));fn(g);S.games[id]=g;put('games/'+id,g);render()}
+function mut(id,fn){if(locked()){lockedToast();render();return}const g=structuredClone(G(id));fn(g);S.games[id]=g;put('games/'+id,g);render()}
 function saveSquad(){S.squad=alpha(S.squad);put('club/squad',{players:S.squad});render()}
 function saveTour(){put('club/tournament',S.tour)}
+
+/* ---------- paying for a team: 30-day free trial, then view-only until unlocked (£3.99 once) ---------- */
+const PRICE='£3.99',TRIAL_DAYS=30;
+const PLAN_FROM=Date.UTC(2026,9,16); // teams made before the paywall started get their 30 days from here (set the real launch date at release)
+function plan(){
+  if(!FB||!S.teamId||!S.billLoaded)return{state:'unknown'};
+  const b=S.bill||{};if(b.unlocked)return{state:'unlocked',source:b.source||'purchase'};
+  const end=b.trialEnds||Math.max(S.teamCreated||0,PLAN_FROM)+TRIAL_DAYS*864e5;
+  return Date.now()<end?{state:'trial',left:Math.max(1,Math.ceil((end-Date.now())/864e5)),end}:{state:'expired',end};
+}
+const gameOn=()=>gids().some(id=>{const g=G(id);return started(g)&&!g.done}); // a game under way can always be finished
+const locked=()=>plan().state==='expired'&&!gameOn();
+let lockT=0;
+function lockedToast(){if(Date.now()-lockT<1500)return;lockT=Date.now();toast('This team is view-only until it is unlocked. Tap ☰ → Unlock.')}
+function watchBilling(t){
+  const {F,fs}=FB;
+  F.onSnapshot(F.doc(fs,'teams',t,'billing','state'),s=>{S.bill=s.exists()?s.data():null;S.billLoaded=true;render()},()=>{S.billLoaded=true;render()});
+}
+function planBanner(){
+  const p=plan(),t=esc(S.cfg.team||'this team');
+  if(p.state==='trial'&&p.left<=7)return `<div class="card plan"><h3>Free trial: ${p.left} day${p.left>1?'s':''} left</h3>
+    <p class="note">Unlock ${t} for ${PRICE} (once, not a subscription) to keep using everything after the trial. Nothing is lost either way.</p>
+    <button class="btn go" data-act="unlock">Unlock for ${PRICE}</button></div>`;
+  if(p.state==='expired')return `<div class="card plan"><h3>The free trial has ended</h3>
+    <p class="note">${t} is view-only: you can still see every game, result and award, and save a backup. Nothing has been deleted.${gameOn()?' You can finish the game that is under way.':''}</p>
+    <button class="btn go" data-act="unlock">Unlock for ${PRICE}</button></div>`;
+  return '';
+}
+function planCard(){ // in the ☰ menu
+  const p=plan();if(p.state==='unknown')return'';
+  const src={founding:'Founding club: free for good',voucher:'Unlocked with a voucher',purchase:'Unlocked',test:'Unlocked (test)'};
+  return `<div class="card ${p.state==='unlocked'?'plan ok':'plan'}"><h3>${p.state==='unlocked'?esc(src[p.source]||'Unlocked'):p.state==='trial'?`Free trial: ${p.left} day${p.left>1?'s':''} left`:'Free trial ended: view-only'}</h3>
+    ${p.state==='unlocked'?`<p class="note">Every coach in this team has everything, for good.</p>`
+      :`<p class="note">${p.state==='trial'?`Trial ends ${esc(nice(new Date(p.end).toISOString().slice(0,10)))}. `:''}One payment of ${PRICE} unlocks this team for every coach in it.</p>
+        <button class="btn go" data-act="unlock">Unlock for ${PRICE}</button>`}</div>`;
+}
+function unlockView(){
+  const p=plan(),t=esc(S.cfg.team||'this team');
+  return `<div class="sec" style="gap:14px">
+  <button class="back" data-act="unlockclose">← Back</button>
+  <h2>Unlock ${t}</h2>
+  ${p.state==='unlocked'?`<div class="card plan ok"><h3>${t} is unlocked</h3><p class="note">Nothing more to pay. Thank you!</p></div>`:`
+  <div class="card"><span class="price">${PRICE}</span><span class="note">Once, for this team. Not a subscription.</span>
+    <ul class="note" style="margin:0;padding-left:18px">
+      <li>Line-ups, subs, scores and playing time for every game</li>
+      <li>Tournaments, season results, awards and notes</li>
+      <li>Every coach in the team, on any phone</li>
+      <li>Nothing you've already entered is lost</li></ul>
+    <button class="btn go" data-act="unlockbuy">Unlock for ${PRICE}</button>
+    <p class="note">${p.state==='trial'?`Your free trial has ${p.left} day${p.left>1?'s':''} left.`:p.state==='expired'?'The free trial has ended, so the team is view-only for now.':''}</p></div>
+  ${S.owner?`<div class="card"><h3>Owner only</h3><p class="note">Try the unlock without paying. Undo it from Admin → Reset.</p>
+    <button class="btn" data-act="unlocktest">Test unlock this team</button></div>`:''}`}
+  </div>`;
+}
+async function setBilling(t,data){ // owner only (the rules refuse anyone else)
+  const {F,fs}=FB,ref=F.doc(fs,'teams',t,'billing','state');
+  try{await (data?F.setDoc(ref,data):F.deleteDoc(ref));return true}catch(e){toast(`Couldn't change that (${errCode(e)}).`);return false}
+}
 
 /* ---------- parent link: a live score for parents, with no players' names ---------- */
 // The team's feeds/{id} record holds team names, score, clock and status only. Coaches' phones
@@ -790,7 +855,7 @@ function render(){
   pending=false;
   if(FOLLOW){document.getElementById('hteam').textContent='';document.getElementById('view').innerHTML=parentView();return}
   syncHeader(true);
-  document.body.classList.toggle('ro',S.readOnly);
+  document.body.classList.toggle('ro',S.readOnly||(locked()&&!(S.menu||S.adminOpen||S.teams||S.gate||S.unlockOpen)));
   document.body.classList.toggle('gate',!!(S.gate||S.teams||S.menu||S.adminOpen||(S.cfgLoaded&&!S.cfg.team))); // set-up screen stands alone
   const mb=document.getElementById('menubtn');if(mb){mb.hidden=!(FB&&S.teamId&&!S.gate);mb.classList.toggle('dot',S.requests.length>0);mb.setAttribute('aria-label',S.requests.length?`Menu, ${S.requests.length} join request${S.requests.length>1?'s':''}`:'Menu')}
   const sec=secOf(S.tab);document.body.classList.toggle('sec-season',sec==='season');
@@ -804,9 +869,10 @@ function render(){
   if(S.gate){v.innerHTML=gateView();return}
   if(S.teams){v.innerHTML=teamsView();return}
   if(S.adminOpen){v.innerHTML=adminView();return}
+  if(S.unlockOpen){v.innerHTML=unlockView();return}
   if(S.menu){v.innerHTML=menuView();return}
   if(S.cfgLoaded&&!S.cfg.team){v.innerHTML=setupView();return}
-  v.innerHTML=S.tab==='games'&&S.fx&&!S.game?fixturesView():S.tab==='games'?(S.game?gameView(S.game):gamesList()):S.tab==='minutes'?minutesView():S.tab==='notes'?notesView():S.tab==='awards'?awardsView():S.tab==='season'?seasonView():squadView();
+  v.innerHTML=(S.game?'':planBanner())+(S.tab==='games'&&S.fx&&!S.game?fixturesView():S.tab==='games'?(S.game?gameView(S.game):gamesList()):S.tab==='minutes'?minutesView():S.tab==='notes'?notesView():S.tab==='awards'?awardsView():S.tab==='season'?seasonView():squadView());
   if(S.saved)v.insertAdjacentHTML('beforeend',savedPop());
 }
 function syncHeader(force){
@@ -1375,6 +1441,12 @@ document.addEventListener('click',e=>{
     case'adminload':loadAdmin();break;
     case'adminclose':S.adminOpen=false;render();break;
     case'menu':checkOwner();S.menu=true;S.teams=false;S.game=null;S.fix=null;render();window.scrollTo(0,0);break;
+    case'unlock':checkOwner();S.unlockOpen=true;S.game=null;render();window.scrollTo(0,0);break;
+    case'unlockclose':S.unlockOpen=false;render();break;
+    case'unlockbuy':toast("Payments aren't switched on in this test version yet.");break;
+    case'unlocktest':b.disabled=true;setBilling(S.teamId,{unlocked:true,source:'test',at:Date.now()}).then(ok=>{if(ok){S.unlockOpen=false;toast('Unlocked (test).')}render()});break;
+    case'billset':{const t=b.dataset.id,k=b.dataset.v,now=Date.now();b.disabled=true;
+      setBilling(t,k==='test'||k==='founding'?{unlocked:true,source:k,at:now}:k==='end'?{unlocked:false,trialEnds:now}:null).then(()=>loadAdmin());break}
     case'pmake':makeFeed();break;
     case'pnew':if(S.confirm==='pnew')makeFeed();else{S.confirm='pnew';render()}break;
     case'pshare':shareFeed(false);break;
@@ -1613,7 +1685,8 @@ function openTeam(t){
   if(S.teamId&&S.teamId!==t){switchTeam(t);return} // adding a second team: reload into it
   saveTeams([...myTeams(),t]);syncTeamList();
   lsSet(TEAM_KEY,t);S.gate=false;S.adding=false;S.teamId=t;db=fsAdapter('teams/'+t);liveLabel();watchTeams();
-  F.getDoc(F.doc(fs,'teams',t)).then(s=>{S.invite=s.data()?.code||'';S.createdBy=s.data()?.createdBy||null;render()}).catch(()=>{});
+  F.getDoc(F.doc(fs,'teams',t)).then(s=>{S.invite=s.data()?.code||'';S.createdBy=s.data()?.createdBy||null;S.teamCreated=s.data()?.created?.toMillis?.()||0;render()}).catch(()=>{});
+  watchBilling(t);
   watchMembers(t);watchRequests(t);touchMember(t);
   subscribe(e=>{if(leaving)return; // we're leaving on purpose: let leaveTeam finish (and wipe)
     if(e&&e.code==='permission-denied'){setSync(false,'Not a member');toast("This phone isn't a member of that team any more.");leaveTeam(false)}});
@@ -1907,13 +1980,19 @@ async function loadAdmin(){
     const ts=await F.getDocs(F.collection(fs,'teams'));
     const rows=await Promise.all(ts.docs.map(async d=>{
       const [st,ms]=await Promise.all([F.getDoc(F.doc(fs,'teams',d.id,'club','settings')).catch(()=>null),F.getDocs(F.collection(fs,'teams',d.id,'members')).catch(()=>null)]);
+      const bl=await F.getDoc(F.doc(fs,'teams',d.id,'billing','state')).catch(()=>null);
       const cfg=st?.data?.()||{},mem=ms?ms.docs.map(m=>m.data()):[];
       const seen=Math.max(0,...mem.map(m=>m.seen?.toMillis?.()||m.joined?.toMillis?.()||0));
-      return{id:d.id,name:cfg.team||'',sport:cfg.sport||'football',created:d.data().created?.toMillis?.()||0,coaches:mem.length,seen};
+      return{id:d.id,name:cfg.team||'',sport:cfg.sport||'football',created:d.data().created?.toMillis?.()||0,coaches:mem.length,seen,bill:bl?.data?.()||null};
     }));
     S.admin={loading:false,teams:rows.sort((a,b)=>b.seen-a.seen)};
   }catch(e){S.admin={loading:false,error:errCode(e),teams:[]}}
   render();
+}
+function adminPlan(t){
+  const b=t.bill||{};if(b.unlocked)return({founding:'Founding club',voucher:'Unlocked (voucher)',purchase:'Unlocked (paid)',test:'Unlocked (test)'})[b.source]||'Unlocked';
+  const end=b.trialEnds||Math.max(t.created||0,PLAN_FROM)+TRIAL_DAYS*864e5,left=Math.ceil((end-Date.now())/864e5);
+  return left>0?`Free trial · ${left} day${left>1?'s':''} left`:'Trial ended · view-only';
 }
 function adminView(){
   const A=S.admin||{teams:[]},T=A.teams,day=864e5,now=Date.now();
@@ -1927,6 +2006,8 @@ function adminView(){
   <div class="summary num"><span>Teams <b>${T.length}</b></span><span>Active this week <b>${week}</b></span><span>Football <b>${T.length-rug}</b> · Rugby <b>${rug}</b></span></div>
   <div class="rows">${T.map(t=>`<div class="row adm"><div class="who">${esc(t.name||'(not set up yet)')}<span class="tag">${t.sport==='rugby'?'Rugby':'Football'}</span></div>
     <div class="note">${t.coaches} coach${t.coaches===1?'':'es'} · last active ${esc(when(t.seen))} · created ${esc(when(t.created))}</div>
+    <div class="note">${esc(adminPlan(t))}</div>
+    <div class="cbtns">${['test','founding','end','reset'].map(k=>`<button class="x" data-act="billset" data-id="${esc(t.id)}" data-v="${k}">${{test:'Test unlock',founding:'Founding club',end:'End trial now',reset:'Reset'}[k]}</button>`).join('')}</div>
     <div class="note num admid">${esc(t.id)}</div></div>`).join('')}</div>
   <button class="btn small" data-act="adminload" style="align-self:flex-start">Refresh</button>`}
   </div>`;
@@ -1976,6 +2057,7 @@ function menuView(){
     <span class="lbl">Team members</span>
     ${membersList()}
     <button class="x ${S.confirm==='leave'?'sure':''}" data-act="leave">${S.confirm==='leave'?'Tap again to leave this team on this phone':'Leave this team on this phone'}</button></div>
+  ${planCard()}
   ${parentCard()}
   ${backupCard()}
   ${S.owner?'<button class="btn" data-act="admin">Admin: all teams</button>':''}

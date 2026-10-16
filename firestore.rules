@@ -47,6 +47,11 @@ service cloud.firestore {
         && fInt(d, 'n', 1, 10) && fStr(d, 'home', 40) && fStr(d, 'away', 40) && fOneOf(d, 'us', ['home', 'away'])
         && fStr(d, 'time', 10) && fStr(d, 'pitch', 10) && validScore(d) && fOneOf(d, 'status', ['pre', 'live', 'paused', 'break', 'ft']);
     }
+    function validBilling(d) {
+      return d.keys().hasOnly(['unlocked', 'source', 'at', 'trialEnds'])
+        && fBool(d, 'unlocked') && fOneOf(d, 'source', ['purchase', 'voucher', 'founding', 'test'])
+        && fNum(d, 'at', 0, 9000000000000000) && fNum(d, 'trialEnds', 0, 9000000000000000);
+    }
     function validSquad(d) { return d.keys().hasOnly(['players']) && fList(d, 'players', 80); }
     function validNotes(d) { return d.keys().hasOnly(['items']) && fList(d, 'items', 300); }
     function validTournament(d) {
@@ -142,6 +147,13 @@ service cloud.firestore {
           || (doc == 'tournament' && validTournament(request.resource.data))
           || (doc == 'notes'      && validNotes(request.resource.data))
           || (doc == 'feed'       && validFeedRef(request.resource.data)));
+      }
+      // Whether the team has paid: coaches can see it, never change it. Only the owner (Admin page)
+      // sets it for now; later the payment provider's confirmation (server) and vouchers.
+      match /billing/{doc} {
+        allow get: if member(t) || isOwner();
+        allow create, update: if isOwner() && doc == 'state' && validBilling(request.resource.data);
+        allow delete: if isOwner();
       }
       match /games/{g} {
         allow read: if member(t);

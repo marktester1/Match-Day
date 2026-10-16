@@ -67,6 +67,18 @@ same server function (Blaze). On iPhone, parents must add the app to the home sc
 **Payment**: £1/year subscription through the same provider; the parent link checks the parent's
 subscription before showing live updates. Prototype first without payment.
 
+## Progress
+- **Step 1 done**: parent link (☰ → Parent link), `feeds/{id}` + `feeds/{id}/games/g1..g10`, parent
+  scoreboard with Played / Still to play. Current tournament only (earlier tournaments: not wanted for now).
+- **Step 2 done**: 30-day trial from `teams/{t}.created` (or `PLAN_FROM` in index.html for older teams:
+  **set the real launch date before release**), reminder banner in the last 7 days, view-only after
+  (a game already under way can be finished), unlock screen (payment button is a placeholder),
+  ☰ plan card, owner-only Test unlock, Admin buttons per team: Test unlock, Founding club, End trial
+  now, Reset. `teams/{t}/billing/state` is written by the owner only (rules + tests).
+- **Before launch**: view-only is enforced by the app only. Also enforce it in the rules (writes to
+  club/games/awards/archive need an unlocked team or an unexpired trial), allowing for writes queued
+  offline just before the trial ended.
+
 ## Build order on this branch
 1. Parent view prototype (feeds + follow link + parent screen), free, on the test address.
 2. Paywall and unlock screens with owner-only "Test unlock"; founding-club switch on Admin.

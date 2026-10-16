@@ -173,6 +173,25 @@ test('owner access needs a verified email', async () => {
   await assertFails(getDocs(collection(owner(false), 'teams')));
 });
 
+// ---- paying for a team ----
+test('coaches can see whether their team has paid but never mark it paid', async () => {
+  const f = alice();
+  await assertFails(setDoc(d(f, 'billing', 'state'), {unlocked: true, source: 'purchase', at: 1}));
+  await env.withSecurityRulesDisabled(async ctx => { await setDoc(doc(ctx.firestore(), 'teams', T, 'billing', 'state'), {unlocked: true, source: 'founding', at: 1}); });
+  await assertSucceeds(getDoc(d(f, 'billing', 'state')));
+  await assertFails(setDoc(d(f, 'billing', 'state'), {unlocked: false}));
+  await assertFails(deleteDoc(d(f, 'billing', 'state')));
+  await assertFails(getDoc(d(mallory(), 'billing', 'state')));
+});
+test('the owner can unlock a team or end its trial from the Admin page', async () => {
+  const o = env.authenticatedContext('owner', {email: 'markdavidmiles@gmail.com', email_verified: true}).firestore();
+  await assertSucceeds(setDoc(d(o, 'billing', 'state'), {unlocked: true, source: 'test', at: 1}));
+  await assertSucceeds(setDoc(d(o, 'billing', 'state'), {unlocked: false, trialEnds: 1792000000000}));
+  await assertFails(setDoc(d(o, 'billing', 'state'), {unlocked: true, source: 'free'}));
+  await assertFails(setDoc(d(o, 'billing', 'other'), {unlocked: true}));
+  await assertSucceeds(deleteDoc(d(o, 'billing', 'state')));
+});
+
 // ---- the parents' live score ----
 const FEED = 'Abcdefghijklmnopqrstuvwx';
 const feed = {team: T, home: 'Example Team', away: 'Riverside', us: 'home', score: {us: 2, them: 1}, status: 'live',
