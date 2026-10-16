@@ -39,6 +39,7 @@ service cloud.firestore {
     function okSub(e) {
       return e.size() <= 6 && upTo(e.get('at', 0), 36000000) && pid(e.get('off', null)) && pid(e.get('on', null)) && e.get('gk', false) is bool;
     }
+    function okCard(e) { return e.size() <= 4 && upTo(e.get('at', 0), 36000000) && pid(e.get('p', null)) && e.get('c', 'y') in ['y', 'r']; }
     function okGk(e) { return e.size() <= 4 && upTo(e.get('at', 0), 36000000) && pid(e.get('p', null)); }
     function okScore(e) {
       return e.size() <= 5 && upTo(e.get('at', 0), 36000000) && (e.get('p', null) == 'og' || pid(e.get('p', null)))
@@ -108,14 +109,15 @@ service cloud.firestore {
     function ids(l, max) { return l is list && l.size() <= max && l.join(',').matches('^([A-Za-z0-9_-]{1,40}(,[A-Za-z0-9_-]{1,40})*)?$'); }
     function subs(l)   { return l is list && l.size() <= 300 && (l.size() == 0 || okSub(l[l.size() - 1])); }
     function gks(l)    { return l is list && l.size() <= 100 && (l.size() == 0 || okGk(l[l.size() - 1])); }
+    function cards(l)  { return l is list && l.size() <= 60 && (l.size() == 0 || (okCard(l[0]) && okCard(l[l.size() - 1]))); }
     function scores(l) { return l is list && l.size() <= 200 && (l.size() == 0 || okScore(l[l.size() - 1])); }
     function validGame(d) {
       return d.keys().hasOnly(['n', 'opponent', 'team', 'time', 'pitch', 'gk', 'starters', 'bench', 'subs',
-          'gkChanges', 'goals', 'opp', 'clock', 'score', 'done', 'side', 'size'])
+          'gkChanges', 'goals', 'opp', 'clock', 'score', 'done', 'side', 'size', 'cards'])
         && intIn(d.get('n', 1), 1, 10) && strMax(d.get('opponent', ''), 40) && strMax(d.get('team', ''), 40)
         && strMax(d.get('time', ''), 10) && strMax(d.get('pitch', ''), 10) && pid(d.get('gk', null))
         && ids(d.get('starters', []), 15) && ids(d.get('bench', []), 80)
-        && subs(d.get('subs', [])) && gks(d.get('gkChanges', [])) && scores(d.get('goals', [])) && scores(d.get('opp', []))
+        && subs(d.get('subs', [])) && gks(d.get('gkChanges', [])) && scores(d.get('goals', [])) && scores(d.get('opp', [])) && cards(d.get('cards', []))
         && clockMap(d.get('clock', {})) && scoreMap(d.get('score', {})) && d.get('done', false) is bool
         && d.get('side', 'home') in ['home', 'away'] && intIn(d.get('size', 5), 3, 11);
     }
@@ -125,8 +127,8 @@ service cloud.firestore {
         && (!('winners' in d) || winnersOk(d.winners));
     }
     function validArchive(d) {
-      return d.keys().hasOnly(['name', 'date', 'savedAt', 'games', 'players'])
-        && strMax(d.get('name', ''), 60) && strMax(d.get('date', ''), 10) && upTo(d.get('savedAt', 0), 9000000000000000)
+      return d.keys().hasOnly(['name', 'date', 'savedAt', 'games', 'players', 'report'])
+        && strMax(d.get('report', ''), 3000) && strMax(d.get('name', ''), 60) && strMax(d.get('date', ''), 10) && upTo(d.get('savedAt', 0), 9000000000000000)
         && d.get('games', []) is list && d.get('games', []).size() <= 10 && archGamesOk(d.get('games', []))
         && d.get('players', []) is list && d.get('players', []).size() <= 80
         && (d.get('players', []).size() == 0 || (okPlayer(d.players[0]) && okPlayer(d.players[d.players.size() - 1])));

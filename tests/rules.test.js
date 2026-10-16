@@ -234,6 +234,20 @@ test('games: realistic long games save, including every shape older versions wro
   await assertSucceeds(setDoc(d(f, 'games', 'g3'), {...blankGame(3), subs: [sub(1, 'p1', 'p2')], goals: [{at: 1, p: null, type: 'try'}], opp: [{at: 2, type: 'con'}]}));
   await assertSucceeds(setDoc(d(f, 'games', 'g4'), {...blankGame(4), subs: [{at: 1, off: 'p1', on: null}]})); // injured, nobody on
 });
+test('games: yellow and red cards save; junk cards are refused', async () => {
+  const f = alice(), g = {n: 1, starters: ['p1', 'p2'], subs: [{at: 300000, off: 'p2', on: null}], clock: {running: true, startedAt: 1, acc: 0}};
+  await assertSucceeds(setDoc(d(f, 'games', 'g1'), {...g, cards: [{at: 120000, p: 'p1', c: 'y'}, {at: 300000, p: 'p2', c: 'r'}]}));
+  await assertFails(setDoc(d(f, 'games', 'g1'), {...g, cards: [{at: 1, p: 'p1', c: 'blue'}]}));
+  await assertFails(setDoc(d(f, 'games', 'g1'), {...g, cards: [{at: 1, p: 'p1', c: 'y', reason: 'x', who: 'y', why: 'z'}]}));
+  await assertFails(setDoc(d(f, 'games', 'g1'), {...g, cards: [{at: 1, p: 'not a player id!', c: 'y'}]}));
+  await assertFails(setDoc(d(f, 'games', 'g1'), {...g, cards: 'yellow'}));
+});
+test('a saved tournament can have a match report, within a sensible length', async () => {
+  const f = alice(), t = {name: 'Autumn Cup', date: '2026-10-17', savedAt: 1, games: [], players: []};
+  await assertSucceeds(setDoc(d(f, 'archive', 't1792000000001'), {...t, report: 'Great passing in the second game.'}));
+  await assertFails(setDoc(d(f, 'archive', 't1792000000001'), {...t, report: 'x'.repeat(3001)}));
+  await assertFails(setDoc(d(f, 'archive', 't1792000000001'), {...t, report: 42}));
+});
 test('games: junk inside lists is refused', async () => {
   const f = alice(), g = blankGame(1);
   await assertFails(setDoc(d(f, 'games', 'g1'), {...g, starters: ['p1', 'two words']}));
