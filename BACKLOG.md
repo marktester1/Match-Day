@@ -5,6 +5,14 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Waiting on testing
 
+- **v0.23.0 on beta (review fixes), rules on beta only; live rules need the go-ahead.**
+  To try: join a team (coach sees name, sign-in and email, Accept/Decline; asker sees waiting /
+  not accepted); ☰ → Make a new invite code; Make manager; tap the save status; Undo after a
+  goal, and after a later change; restore preview; leave with flight mode on, then reopen;
+  **Google sign-in on beta** (the new enforced security policy must not block it) and
+  **signing into an existing account on a phone that already has teams** (teams move across,
+  the phone accepts the account; can't be tested by Claude because it needs a password).
+
 - **v0.22.0 live:** data safety, join requests, one-tap subs, undo bar, release checks; earlier: Admin page, owner Admin page (☰ → Admin: all teams); rugby, set-up journey, home/away swap, save confirmation, edit saved
   tournaments, sections, game strip, notes, players a side, ☰ menu.
   Beta: https://match-day-beta-17b23.web.app (Beta Test Team code `L9J-Q7H`).
@@ -27,10 +35,41 @@ request; any coach accepts or declines (banner + ☰ dot); "X joined the team" n
 manager can remove a coach. Rules enforce it (14 emulator tests). Push alerts when the app is
 closed are under Notifications.
 
-**Step 2: Invite codes**
-- Firebase App Check against scripted guessing; 8-character codes; manager can make a new code
-  (old one stops working) and remove a coach. Real rate limiting needs Cloud Functions (paid
-  Blaze plan); revisit then. Optional: approval to join.
+**Step 2: Invite codes and review findings: done on beta (v0.23.0).** 8-character codes for
+new teams; manager makes a new code (old one deleted at once) and can hand over the manager
+role; a sign-in can have requests waiting in at most 3 teams (joins/{uid}); requests carry the
+real sign-in email; entries inside lists (subs, goals, keeper changes, squad, notes, awards,
+saved games) are checked by the rules; enforced Content-Security-Policy (script hash, no
+unsafe-inline scripts: tools/csp.cjs); saves tracked per document with Try again / Dismiss;
+undo names the action and refuses if the game changed since; restore preview and status;
+leave / sign-out report what happened and finish removals later; switching to an existing
+account moves each team before switching. 31 emulator tests.
+
+**Deferred: needs the Blaze plan (server code) or console set-up**
+- **Real rate limiting** of code look-ups and join requests (per IP / per device), e.g. a
+  Cloud Function that does the code → team look-up and counts attempts, with `codes/` made
+  unreadable to the app. Today: 8-character codes (~1 trillion), ≤3 waiting requests per
+  sign-in, a coach must accept, but anyone can make new anonymous sign-ins (Firebase limits
+  those per IP) and a team can still be sent many requests from many sign-ins.
+- **Firebase App Check** (works on Spark): the user registers a reCAPTCHA v3 / Enterprise site
+  key for each project in the console (Build → App Check), we add `initializeAppCheck` to the
+  app (plus `https://www.google.com/recaptcha/` and `https://www.gstatic.com/recaptcha/` to the
+  security policy), watch the metrics on beta for a week, then turn on enforcement for Firestore
+  (beta first). Blocks scripted guessing from outside the app; not a substitute for rate limits.
+- **Checking every entry of long lists**: rules can't loop, so a long list (e.g. 30 subs) is
+  checked at its newest entry (squad at 7 spread-out places); a tampered app could still hide
+  junk in the middle. Fix with a Cloud Function validator, or by storing subs/goals as one
+  document each (a bigger change: needs a migration that keeps old backups loading).
+- **Drop 6-character codes** once every team has made a new code (or after a season): then
+  only 8 are accepted for new teams and joins.
+- **Lost manager phone with no account**: if the manager's phone is lost and it had no
+  account, nobody can remove coaches or make a new code. Options: any coach can take over when
+  the manager has been inactive for N weeks (needs server time checks), or the owner's Admin
+  page can reassign. For now: encourage managers to sign in (Google/email), and "Make manager".
+- **style-src 'unsafe-inline'** stays (the app builds screens with style="" attributes; styles
+  can't run code). Remove by moving those to classes if ever needed.
+- Account switching: if moving one team fails part-way, teams already moved are in both
+  sign-ins; the user just tries again. A server function could make it one step.
 
 **Step 3: Tests and structure**
 - Account recovery tests (anonymous → account, lost phone). Automated tests for subs, minutes,

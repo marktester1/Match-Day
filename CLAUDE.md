@@ -16,6 +16,8 @@ README.md has the setup and release commands.
   clone isn't possible, deploy the same commit with `firebase deploy --only hosting --project live`
   and check live's index.html matches beta's byte for byte.
 - Each release: bump `APP_VERSION` in index.html and `CACHE` in sw.js, merge to `main`, tag `vX.Y.Z`.
+- After editing index.html, run `node tools/csp.cjs`: the enforced Content-Security-Policy in
+  firebase.json allows only the current inline script (by hash). Publishing refuses if it's out of date.
 - Release checks: run `node tools/release-check.cjs pre` before promoting (all PASS except the
   expected "live rules differ" when the release changes rules), then rules to live, then
   `hosting:clone`, then `node tools/release-check.cjs post` (must be all PASS).

@@ -13,6 +13,7 @@ youth 5-a-side tournaments of 6 games; works for any team size from 3 to 11.
 | `firestore.rules` | Who can read and write what (published to both projects) |
 | `sw.js`, `manifest.webmanifest`, `icons/` | Home-screen app: offline opening, name and whistle icon |
 | `tools/build_public.sh` | The list of files that get published (runs before every publish) |
+| `tools/csp.cjs` | Keeps the security policy in `firebase.json` matching index.html's script: run `node tools/csp.cjs` after editing index.html |
 | `tools/make_icons.mjs` | Draws the icon and renders its sizes |
 
 ## Running it on your Mac
@@ -30,14 +31,15 @@ On localhost the app uses the **beta** project, so local testing never touches l
 Match Day is a web app on Firebase (free Spark plan). Every coach on a team sees the same
 squad and games live, and it keeps working with no signal (changes upload when it's back).
 Each phone signs in anonymously; coaches can add Google or email sign-in so their teams
-follow them to a new phone. A coach creates a team and gets a 6-character invite code, and
-other coaches join with it. Teams can't see each other's data.
+follow them to a new phone. A coach creates a team and gets an 8-character invite code; other
+coaches ask to join with it and a coach in the team accepts them. Teams can't see each other's data.
 
 Firestore layout:
 
 - `teams/{teamId}`: invite code and creator; `teams/{teamId}/members/{uid}`: who's in the team
 - `teams/{teamId}/club/settings|squad|tournament`, `games/g1..g10`, `awards/<id>`, `archive/<id>`
 - `codes/{CODE}`: invite code → team id
+- `joins/{uid}`: the teams a sign-in is waiting to join (at most 3)
 - `users/{uid}`: the teams each sign-in belongs to
 
 ## Setting up a Firebase project from scratch
