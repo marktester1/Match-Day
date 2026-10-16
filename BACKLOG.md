@@ -23,8 +23,11 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
      (security rule to match).
    - Notifications: web push via the app's service worker (works on Android, and on iPhone
      once the app is added to the home screen). Parents choose which alerts they want.
+   - Price: free, or 99p. At 99p the website keeps ~61p after VAT and card fees (~70p via the
+     app stores at 15%). Alternatives: free for parents as part of the team's £3.99 unlock, or
+     99p per parent as a season pass.
    - Questions: one link for the whole season or per tournament? Show our goals as "Goal!"
-     with no scorer name? Include the opponent's name? Is it part of the paid unlock?
+     with no scorer name? Include the opponent's name?
 
 ## Later
 
