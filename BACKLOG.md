@@ -47,6 +47,12 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
    - **Voucher codes** (e.g. WINSCOMBE): unlock a team free, with a use limit and optional
      expiry. Web: merchant-of-record discount codes, or codes stored in the app's database.
      iPhone app: must use Apple offer codes instead of our own (store rule).
+     - Abuse safeguards: prefer unique single-use codes per invited team (e.g. WIN-U10-7KQ3);
+       shared codes only with a small use cap and an end-of-season expiry, and a limited reward
+       (e.g. this season free); redeeming needs a Google/email account and works once per team;
+       random 8+ character codes plus Firebase App Check against guessing; security rules enforce
+       expiry, uses left, one use per team and team membership, and count down by exactly one;
+       an admin list of codes and redemptions with a switch-off.
 
 3. **Privacy policy and terms page** (needed before taking any money). First names only, adult
    coaches as users, UK/EU GDPR. Host alongside the app (README plans Cloudflare Pages).
