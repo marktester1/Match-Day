@@ -352,7 +352,7 @@ body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.24.1';
+const APP_VERSION='0.24.2';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
@@ -487,14 +487,14 @@ function publishFeed(){ // sends parents the changes made on this phone (only wh
   Object.keys(feedGamesLast).filter(g=>!ids.includes(g)).forEach(g=>{delete feedGamesLast[g];track(F.deleteDoc(F.doc(fs,'feeds',id,'games',g)),()=>{})});
 }
 function makeFeed(){
-  if(!navigator.onLine){toast('You need a signal to create the parent link.');return}
+  if(!navigator.onLine){toast('You need a signal to create the follower link.');return}
   const old=S.feed&&S.feed.id,id=newFeedId();
   S.feed={id,season:seasonNow()};put('club/feed',S.feed);feedLast='';feedGamesLast={};
   // the new link starts with the team name; fixtures follow once a tournament is set up
   if(tourReady())publishFeed();else track(FB.F.setDoc(FB.F.doc(FB.fs,'feeds',id),{...feedBody(null),updatedAt:Date.now()}),()=>{});
   if(old){const {F,fs}=FB,b=F.writeBatch(fs); // the old link stops working
     for(let i=1;i<=10;i++)b.delete(F.doc(fs,'feeds',old,'games','g'+i));b.delete(F.doc(fs,'feeds',old));track(b.commit(),()=>{})}
-  S.confirm=null;render();toast('Parent link ready. Share it with your parents.');
+  S.confirm=null;render();toast('Follower link ready. Share it with parents, family and friends.');
 }
 async function shareFeed(copyOnly){
   const url=feedUrl(S.feed.id),title=`${S.cfg.team||'Our team'}: live scores`;
@@ -504,14 +504,14 @@ async function shareFeed(copyOnly){
 function parentCard(){
   if(!FB||!S.teamId)return'';
   const cur=feedOn();
-  return `<div class="card"><h3>Parent link</h3>
-    <p class="note">Parents open the link to follow the score live: team names, score, clock, half time and full time. They never see players' names, line-ups or minutes, and they can't change anything.</p>
+  return `<div class="card"><h3>Followers</h3>
+    <p class="note">Anyone with this link can follow the score live: parents, grandparents, friends. They see team names, the score, clock, half time and full time, and the day's games. They never see players' names, line-ups or minutes, and they can't change anything.</p>
     ${cur?`<div class="plink">${esc(feedUrl(S.feed.id))}</div>
       <div class="cbtns"><button class="btn go" data-act="pshare">Share link</button><button class="btn" data-act="pcopy">Copy</button></div>
       <p class="note">This link works for the ${esc(S.feed.season)} season.</p>
       <button class="x ${S.confirm==='pnew'?'sure':''}" data-act="pnew">${S.confirm==='pnew'?'Tap again: the old link stops working':'Make a new link'}</button>`
     :`${S.feed?`<p class="note">Last season's link (${esc(S.feed.season)}) has stopped updating.</p>`:''}
-      <button class="btn go" data-act="pmake">Create a parent link for ${seasonNow()}</button>`}</div>`;
+      <button class="btn go" data-act="pmake">Create a follower link for ${seasonNow()}</button>`}</div>`;
 }
 
 /* ---------- the parent's screen ---------- */
@@ -530,7 +530,7 @@ const pScore=(f,side)=>(f.us===side)?f.score.us:f.score.them;
 function parentView(){
   const f=S.pfeed;
   if(f===undefined)return `<div class="empty"><b>Loading the score…</b></div>`;
-  if(f===null)return `<div class="empty"><b>This link isn't working</b>It may be from last season. Ask the coach for the new parent link.</div>`;
+  if(f===null)return `<div class="empty"><b>This link isn't working</b>It may be from last season. Ask the coach for the new follower link.</div>`;
   const st=f.status==='none'?'':`<span class="pst ${f.status==='live'?'live':''}">${esc(pStatus(f))}</span>`;
   return `<div class="sec" style="gap:14px">
   <div class="pboard" aria-live="polite">
