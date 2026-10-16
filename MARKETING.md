@@ -1,6 +1,6 @@
 # Match Day: marketing blurb
 
-WhatsApp-ready (`*bold*` shows as bold). Updated for v0.24.1.
+WhatsApp-ready (`*bold*` shows as bold). Updated for v0.25.1.
 
 ```
 ⚽🏉 *Match Day – a free touchline app for grassroots coaches*
@@ -13,6 +13,7 @@ I've built an app to take the stress out of match days and tournaments, and I'd 
 • *Scores & match clock* for every game – one period, halves or quarters
 • *Football or rugby* – goals, or tries, conversions and penalties
 • *Tournaments* – set up the day's games, then save the results to your season record
+• *Match report & summary* – when you save a tournament, write a match report there and then or come back to it later. The summary shows the results, scorers and cards with their times, and everyone's playing time, ready to share with your group
 • *Season record, awards and notes* – results, scorers, player of the match, and notes to pick up with a player
 • *Followers* – one link for family, carers and friends: the live score, match clock and a *Goal!* alert, plus the day's results and kick-off times. Followers can't change anything, and players' names are never shown
 • *Shared between coaches* – everyone on your team sees the same line-up and subs live. New coaches ask to join and you approve them
