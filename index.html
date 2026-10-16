@@ -277,7 +277,7 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.16.1';
+const APP_VERSION='0.16.2';
 /*CFG*/const DEFAULT_CFG={team:'Example FC U10s',short:'Example FC',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,teams:false,adding:false,acct:null,
@@ -539,7 +539,7 @@ function render(){
   if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA')&&a.type!=='file'&&a.closest('#view, .top')){pending=true;syncHeader(false);return}
   pending=false;syncHeader(true);
   document.body.classList.toggle('ro',S.readOnly);
-  document.body.classList.toggle('gate',!!(S.gate||S.teams||S.menu));
+  document.body.classList.toggle('gate',!!(S.gate||S.teams||S.menu||(S.cfgLoaded&&!S.cfg.team))); // set-up screen stands alone
   const mb=document.getElementById('menubtn');if(mb)mb.hidden=!(FB&&S.teamId&&!S.gate);
   const sec=secOf(S.tab);document.body.classList.toggle('sec-season',sec==='season');
   document.body.classList.toggle('ingame',!(S.tab==='games'&&!S.game&&!S.fx)); // name/date only on the Games list
@@ -547,7 +547,7 @@ function render(){
   document.getElementById('subtabs').innerHTML=SECTIONS[sec].tabs.map(([k,l])=>`<button class="${k===S.tab?'on':''}" data-act="tab" data-t="${k}">${l}</button>`).join('');
   const v=document.getElementById('view');
   const h=document.getElementById('hteam');h.textContent=S.gate?'':S.cfg.team||'';
-  const sw=!!(FB&&S.teamId&&!S.gate);h.classList.toggle('teamsw',sw);if(sw)h.dataset.act='teams';else delete h.dataset.act;
+  const sw=!!(FB&&S.teamId&&!S.gate&&S.cfg.team);h.classList.toggle('teamsw',sw);if(sw)h.dataset.act='teams';else delete h.dataset.act;
   h.classList.toggle('others',sw&&myTeams().some(t=>t!==S.teamId&&teamInfo[t]?.running?.length));
   if(S.gate){v.innerHTML=gateView();return}
   if(S.teams){v.innerHTML=teamsView();return}
@@ -684,14 +684,15 @@ function squadView(){
 function settingsCard(first){
   const c=S.cfg;
   return `<div class="card"><h3>${first?'Set up your team':'Team settings'}</h3>
-    <label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">Team name</span><input id="cfg-team" data-cfg="team" value="${esc(c.team)}" placeholder="e.g. Example FC U10s"></label>
-    <div class="meta">
-      <label><span class="lbl">Name on the scoreboard</span><input id="cfg-short" data-cfg="short" value="${esc(c.short)}" placeholder="e.g. Example FC"></label>
-      <label><span class="lbl">Players a side</span><input id="cfg-size" class="num" type="number" min="3" max="11" data-cfg="size" value="${c.size||5}"></label>
-    </div>
     <div class="weare"><span class="lbl">Sport</span><span class="seg fill">${[['football','Football'],['rugby','Rugby']].map(([v,l])=>`<button type="button" class="${(c.sport||'football')===v?'on':''}" data-act="sport" data-v="${v}">${l}</button>`).join('')}</span></div>
     ${c.sport==='rugby'?`<div class="weare"><span class="lbl">Rugby scoring</span><span class="seg fill">${[['points','Points'],['tries','Tries only']].map(([v,l])=>`<button type="button" class="${(c.rscore||'points')===v?'on':''}" data-act="rscore" data-v="${v}">${l}</button>`).join('')}</span>
       <p class="note">${c.rscore==='tries'?'Each try counts 1.':'Try 5, conversion 2, penalty 3, drop goal 3.'}</p></div>`:''}
+    <label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">Team name</span><input id="cfg-team" data-cfg="team" value="${esc(c.team)}" placeholder="${c.sport==='rugby'?'e.g. Example RFC U10s':'e.g. Example FC U10s'}"></label>
+    <div class="meta">
+      <label><span class="lbl">Name on the scoreboard</span><input id="cfg-short" data-cfg="short" value="${esc(c.short)}" placeholder="${c.sport==='rugby'?'e.g. Example RFC':'e.g. Example FC'}"></label>
+      <label><span class="lbl">Players a side</span><input id="cfg-size" class="num" type="number" min="3" max="11" data-cfg="size" value="${c.size||5}"></label>
+    </div>
+
     ${first?'':'<p class="note">Changes apply straight away for every coach.</p>'}</div>`;
 }
 function setupView(){
@@ -980,7 +981,10 @@ document.addEventListener('click',e=>{
     case'notedone':S.notes=S.notes.map(n=>n.id===b.dataset.id?{...n,done:!n.done}:n);saveNotes();break;
     case'notedel':{const k='nd-'+b.dataset.id;if(S.confirm===k){S.confirm=null;S.notes=S.notes.filter(n=>n.id!==b.dataset.id);saveNotes()}else{S.confirm=k;render()}break}
     case'notesdone':S.showDone=!S.showDone;render();break;
-    case'sport':case'rscore':{const k=a==='sport'?'sport':'rscore';S.cfg={...S.cfg,[k]:b.dataset.v};if(S.cfgLoaded&&S.cfg.team)put('club/settings',S.cfg);render();break}
+    case'sport':case'rscore':{const k=a==='sport'?'sport':'rscore';
+      const keep={};['cfg-team','cfg-short','cfg-size','bulknames'].forEach(x=>{const e=document.getElementById(x);if(e)keep[x]=e.value}); // set-up form: keep what's typed
+      S.cfg={...S.cfg,[k]:b.dataset.v};if(S.cfgLoaded&&S.cfg.team)put('club/settings',S.cfg);render();
+      Object.entries(keep).forEach(([x,v])=>{const e=document.getElementById(x);if(e)e.value=v});break}
     case'rtype':{const r=S.rpick;S.rpick=null;if(r)addScore(r.g,r.k,b.dataset.type);break}
     case'rcancel':S.rpick=null;render();break;
     case'periods':S.tour={...S.tour,periods:+b.dataset.v};saveTour();render();break;
