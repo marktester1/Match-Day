@@ -85,12 +85,43 @@ subscription before showing live updates. Prototype first without payment.
   club/games/awards/archive need an unlocked team or an unexpired trial), allowing for writes queued
   offline just before the trial ended.
 
+- **Step 4a built (team unlock payments)**: `functions/` holds the `lemonSqueezy` webhook (London
+  region). It checks Lemon Squeezy's signature, the product variant and test/live mode, then writes
+  `billing/state {unlocked, source: 'purchase', at, order}`; a refund of that order re-locks the team.
+  Only the order number is stored (no names, emails or card details). Tests: `cd functions && npm test`.
+  The Unlock button opens the checkout link from `SHOP.checkout` in firebase-config.js with the team
+  ID attached; the app thanks the coach when the unlock arrives. Not deployed yet: needs the setup below.
+- **Step 4b (next)**: parent £1/year subscription and push notifications.
+
+## Payment setup (you do these; about 20 minutes)
+
+1. **Switch beta to Blaze** (pay-as-you-go; at this size it should cost pennies or nothing):
+   https://console.firebase.google.com/project/match-day-beta-17b23/usage/details → Modify plan →
+   Blaze → choose or create a billing account. Then Google Cloud console → Billing → Budgets & alerts
+   → create a **£1 budget** with email alerts. Leave live on the free plan for now.
+2. **Lemon Squeezy** (https://app.lemonsqueezy.com): create the account and a store, and keep
+   **Test mode** switched on (toggle at the bottom left).
+3. **Product**: Products → New product → "Match Day team unlock", single payment, **£3.99**.
+   - Under the product's options, set the confirmation **button link / redirect** to
+     https://match-day-beta-17b23--monetise-86lnqmwh.web.app/ (the test address).
+   - Publish it, then copy two things: the **variant ID** (number) and the **checkout link**
+     (Share → "Checkout URL", like `https://yourstore.lemonsqueezy.com/buy/…`).
+4. **Webhook**: Settings → Webhooks → +. Callback URL: I'll give you the function's address after the
+   first deploy. Signing secret: make up a long random string (keep it somewhere safe). Events:
+   `order_created` and `order_refunded`.
+5. Tell me the variant ID and checkout link (neither is secret). Set the signing secret yourself so it
+   never passes through chat:
+   `firebase functions:secrets:set LEMONSQUEEZY_SIGNING_SECRET --project beta` (paste it when asked).
+6. I then fill in `functions/.env.match-day-beta-17b23` and `SHOP.checkout` (beta), deploy the function
+   to beta (`firebase deploy --only functions --project beta`), and we test with Lemon Squeezy's test
+   card on the test address, including a refund.
+
 ## Build order on this branch
 1. Parent view prototype (feeds + follow link + parent screen), free, on the test address.
 2. Paywall and unlock screens with owner-only "Test unlock"; founding-club switch on Admin.
 3. Vouchers with the atomic redeem rule and emulator tests.
-4. Blaze on beta, payment provider in test mode, webhook function; then parent subscription
-   and push notifications.
+4. Blaze on beta, payment provider in test mode, webhook function (4a); then parent subscription
+   and push notifications (4b).
 5. Review together, then merge into main and release through beta as usual.
 
 ## Needed from you

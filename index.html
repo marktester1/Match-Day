@@ -424,6 +424,17 @@ function saveTour(){put('club/tournament',S.tour)}
 
 /* ---------- paying for a team: 30-day free trial, then view-only until unlocked (£3.99 once) ---------- */
 const PRICE='£3.99',TRIAL_DAYS=30;
+let SHOP={}; // from firebase-config.js: the checkout link for this project (test mode on beta)
+function buyUnlock(){
+  if(!SHOP.checkout){toast("Payments aren't switched on in this version yet.");return}
+  if(!navigator.onLine){toast('You need a signal to pay.');return}
+  // Lemon Squeezy's own checkout page takes the payment; the team's ID rides along so its
+  // confirmation to our server knows which team to unlock. Match Day never sees card details.
+  const u=new URL(SHOP.checkout);u.searchParams.set('checkout[custom][team]',S.teamId);
+  lsSet('matchday-paying',JSON.stringify({t:S.teamId,at:Date.now()}));
+  location.href=u.toString();
+}
+const paying=()=>{try{const p=JSON.parse(lsGet('matchday-paying')||'null');return p&&p.t===S.teamId&&Date.now()-p.at<30*60000}catch(_){return false}};
 const PLAN_FROM=Date.UTC(2026,9,16); // teams made before the paywall started get their 30 days from here (set the real launch date at release)
 function plan(){
   if(!FB||!S.teamId||!S.billLoaded)return{state:'unknown'};
@@ -437,7 +448,9 @@ let lockT=0;
 function lockedToast(){if(Date.now()-lockT<1500)return;lockT=Date.now();toast('This team is view-only until it is unlocked. Tap ☰ → Unlock.')}
 function watchBilling(t){
   const {F,fs}=FB;
-  F.onSnapshot(F.doc(fs,'teams',t,'billing','state'),s=>{S.bill=s.exists()?s.data():null;S.billLoaded=true;render()},()=>{S.billLoaded=true;render()});
+  F.onSnapshot(F.doc(fs,'teams',t,'billing','state'),s=>{const was=S.bill&&S.bill.unlocked;S.bill=s.exists()?s.data():null;S.billLoaded=true;
+    if(S.bill&&S.bill.unlocked&&!was&&S.bill.source==='purchase'&&paying()){lsSet('matchday-paying',null);S.unlockOpen=false;toast(`Thank you! ${S.cfg.team||'Your team'} is unlocked for good.`)}
+    render()},()=>{S.billLoaded=true;render()});
 }
 function planBanner(){
   const p=plan(),t=esc(S.cfg.team||'this team');
@@ -470,6 +483,7 @@ function unlockView(){
       <li>Every coach in the team, on any phone</li>
       <li>Nothing you've already entered is lost</li></ul>
     <button class="btn go" data-act="unlockbuy">Unlock for ${PRICE}</button>
+    ${paying()?'<p class="note"><b>Paid already?</b> The unlock arrives within a minute of paying. Keep this screen open.</p>':''}
     <form class="addf" id="vouchf"><input id="vcode" placeholder="Voucher code" autocomplete="off" autocapitalize="characters" aria-label="Voucher code" maxlength="20"><button class="btn" type="submit">Redeem</button></form>
     <p class="note">${p.state==='trial'?`Your free trial has ${p.left} day${p.left>1?'s':''} left.`:p.state==='expired'?'The free trial has ended, so the team is view-only for now.':''}</p></div>
   ${S.owner?`<div class="card"><h3>Owner only</h3><p class="note">Try the unlock without paying. Undo it from Admin → Reset.</p>
@@ -1489,7 +1503,7 @@ document.addEventListener('click',e=>{
     case'vdel':{const k='vdel-'+b.dataset.id;if(S.confirm!==k){S.confirm=k;render();break}S.confirm=null;
       FB.F.deleteDoc(FB.F.doc(FB.fs,'vouchers',b.dataset.id)).then(()=>{toast('Voucher deleted.');loadAdmin()}).catch(e=>toast(`Couldn't delete it (${errCode(e)}).`));break}
     case'unlockclose':S.unlockOpen=false;render();break;
-    case'unlockbuy':toast("Payments aren't switched on in this test version yet.");break;
+    case'unlockbuy':buyUnlock();break;
     case'unlocktest':b.disabled=true;setBilling(S.teamId,{unlocked:true,source:'test',at:Date.now()}).then(ok=>{if(ok){S.unlockOpen=false;toast('Unlocked (test).')}render()});break;
     case'billset':{const t=b.dataset.id,k=b.dataset.v,now=Date.now();b.disabled=true;
       setBilling(t,k==='test'||k==='founding'?{unlocked:true,source:k,at:now}:k==='end'?{unlocked:false,trialEnds:now}:null).then(()=>loadAdmin());break}
@@ -1701,7 +1715,7 @@ function liveLabel(){
 }
 addEventListener('online',liveLabel);addEventListener('offline',liveLabel);
 async function connectFirebase(){
-  let cfg=null,env='live';try{const m=await import('./firebase-config.js');cfg=m.default;env=m.ENV||'live'}catch(_){}
+  let cfg=null,env='live';try{const m=await import('./firebase-config.js');cfg=m.default;env=m.ENV||'live';SHOP=m.SHOP||{}}catch(_){}
   if(!cfg||!cfg.apiKey)return false;
   if(env==='beta')document.body.classList.add('beta'); // beta has its own data and sign-ins
   setSync(false,'Connecting…');

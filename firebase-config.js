@@ -26,4 +26,8 @@ const BETA = {
 const LIVE_HOSTS = ["match-day-17b23.web.app", "match-day-17b23.firebaseapp.com"];
 
 export const ENV = LIVE_HOSTS.includes(location.hostname) ? "live" : "beta";
+
+// Where the Unlock button sends coaches to pay (Lemon Squeezy's hosted checkout for the £3.99 team
+// unlock). Beta uses the test-mode link, so no real money moves. Empty = payments not switched on.
+export const SHOP = ENV === "live" ? {checkout: ""} : {checkout: ""};
 export default ENV === "live" ? LIVE : BETA;

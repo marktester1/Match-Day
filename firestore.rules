@@ -48,7 +48,7 @@ service cloud.firestore {
         && fStr(d, 'time', 10) && fStr(d, 'pitch', 10) && validScore(d) && fOneOf(d, 'status', ['pre', 'live', 'paused', 'break', 'ft']);
     }
     function validBilling(d) {
-      return d.keys().hasOnly(['unlocked', 'source', 'at', 'trialEnds', 'voucher'])
+      return d.keys().hasOnly(['unlocked', 'source', 'at', 'trialEnds', 'voucher', 'order', 'refunded'])
         && fBool(d, 'unlocked') && fOneOf(d, 'source', ['purchase', 'voucher', 'founding', 'test'])
         && fNum(d, 'at', 0, 9000000000000000) && fNum(d, 'trialEnds', 0, 9000000000000000);
     }

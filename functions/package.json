@@ -1,0 +1,12 @@
+{
+  "name": "match-day-functions",
+  "private": true,
+  "description": "Server functions for Match Day: the payment provider's confirmation unlocks a team.",
+  "main": "index.js",
+  "engines": { "node": "22" },
+  "scripts": { "test": "node --test webhook.test.js" },
+  "dependencies": {
+    "firebase-admin": "^13.4.0",
+    "firebase-functions": "^6.4.0"
+  }
+}
