@@ -678,7 +678,7 @@ function render(){
   if(S.cfgLoaded&&!S.cfg.team){v.innerHTML=setupView();return}
   v.innerHTML=S.tab==='games'&&S.fx&&!S.game?fixturesView():S.tab==='games'?(S.game?gameView(S.game):gamesList()):S.tab==='minutes'?minutesView():S.tab==='notes'?notesView():S.tab==='awards'?awardsView():S.tab==='season'?seasonView():squadView();
   if(S.saved)v.insertAdjacentHTML('beforeend',savedPop());
-  if(S.requests.length)v.insertAdjacentHTML('afterbegin',`<button class="reqnote" data-act="menu">${esc(S.requests.map(r=>r.name||'Someone').join(', '))} ${S.requests.length>1?'want':'wants'} to join the team. Tap to see who and accept or decline.</button>`);
+  if(S.requests.length&&!v.querySelector('.reqs'))v.insertAdjacentHTML('afterbegin',`<button class="reqnote" data-act="menu">${esc(S.requests.map(r=>r.name||'Someone').join(', '))} ${S.requests.length>1?'want':'wants'} to join the team. Tap to see who and accept or decline.</button>`);
   if(S.syncOpen)v.insertAdjacentHTML('afterbegin',syncPanel());
   if(getReport())v.insertAdjacentHTML('afterbegin',reportCard());
   if(S.pending.some(p=>p.status))v.insertAdjacentHTML('afterbegin',pendingCard());
@@ -979,9 +979,10 @@ function restoreDiff(r){ // what the restore will add, change or remove
     `Awards: ${r.awards.length} (${plus(aw1,aw0)} added, ${plus(aw0,aw1)} removed)`,
     ...(r.hasNotes?[`Notes: ${r.notes.length}`]:[]),...(r.cfg&&r.cfg.team?[`Team settings from the backup (${r.cfg.team})`]:[])];
 }
-function backupWhen(iso){const t=new Date(iso);return iso&&!isNaN(t)?t.toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):''}
+function backupWhen(iso){const t=new Date(iso);if(!iso||isNaN(t))return'';
+  return t.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})+(t.getFullYear()!==new Date().getFullYear()?' '+t.getFullYear():'')+' at '+t.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
 function restoreCounts(r){ // side by side: the team now, and the backup
-  const played=gs=>Object.values(gs).filter(g=>g&&(g.done||(g.clock&&g.clock.acc>0))).length;
+  const played=gs=>Object.values(gs).filter(g=>g&&(g.done||(g.clock&&(g.clock.running||g.clock.acc>0)))).length;
   return[['Players',S.squad.length,r.squad.length],['Games',`${Object.keys(S.games).length} (${played(S.games)} played)`,`${Object.keys(r.games).length} (${played(r.games)} played)`],
     ['Saved tournaments',S.archive.length,r.archive.length],['Awards',S.awards.length,r.awards.length],...(r.hasNotes?[['Notes',S.notes.length,r.notes.length]]:[])];
 }
@@ -1548,7 +1549,7 @@ async function connectFirebase(){
   if(await finishGoogle())return true; // reloading into the coach's existing account
   await signedIn().catch(()=>{});
   await loadAccountTeams();
-  finishLeaves();addEventListener('online',finishLeaves);
+  await within(finishLeaves(),8000);addEventListener('online',finishLeaves);
   const t=lsGet(TEAM_KEY)||myTeams()[0];
   watchPending();
   if(t)openTeam(t);else{S.gate=true;setSync(false,'No team yet');render()}
@@ -1755,7 +1756,9 @@ const leaveTodo=()=>{try{return JSON.parse(lsGet('matchday-leave-todo')||'[]')}c
 async function finishLeaves(){ // removing this phone from a team's coach list, if that couldn't finish before
   const {F,fs,auth}=FB,l=leaveTodo(),uid=auth.currentUser?.uid;if(!l.length||!uid||!navigator.onLine)return;
   const left=[];
-  for(const t of l){const r=await settle(F.deleteDoc(F.doc(fs,'teams',t,'members',uid)),5000);if(r!=='ok'&&r!=='permission-denied')left.push(t)}
+  for(const t of l){const r=await settle(F.deleteDoc(F.doc(fs,'teams',t,'members',uid)),5000);
+    const r2=await settle(F.updateDoc(F.doc(fs,'users',uid),{['teams.'+t]:F.deleteField()}),3000);
+    if((r!=='ok'&&r!=='permission-denied')||r2!=='ok')left.push(t)}
   lsSet('matchday-leave-todo',left.length?JSON.stringify(left):null);
   const rep=getReport();if(rep&&rep.member&&rep.member!=='ok'&&!left.length){rep.member='ok';rep.later=true;lsSet('matchday-report',JSON.stringify(rep));render()}
 }
@@ -1779,14 +1782,17 @@ async function leaveTeam(remote=true,force=false){
     if(!left){removedCheck=false;setSync('bad','Not connected to the team');toast("Couldn't load the team just now. Nothing was removed from this phone; reload to try again.");return} // a glitch, not a removal: keep everything
     setSync(false,'Not a member');toast("This phone isn't a member of that team any more.");
     if(S.invite)addPending(t,S.invite,{status:'removed',name:S.cfg.team||''});
+    // off this sign-in's saved team list too, or the team would come back (and be refused) at every start
+    await settle(F.updateDoc(F.doc(fs,'users',uid),{['teams.'+t]:F.deleteField()}),4000);
     await new Promise(r=>setTimeout(r,1500));
   }
   if(remote&&!(await uploadedFirst(force))){S.confirm='leave-force';render();return}
   const rep={kind:'leave',team:S.cfg.team||'the team',at:Date.now(),pending:force?sync.pending:0};
   if(remote){leaving=true;setSync('wait','Leaving…');
     rep.member=t?await settle(F.deleteDoc(F.doc(fs,'teams',t,'members',uid)),6000):'ok';
-    if(rep.member!=='ok'&&t)lsSet('matchday-leave-todo',JSON.stringify([...new Set([...leaveTodo(),t])]));
-    await settle(F.updateDoc(F.doc(fs,'users',uid),{['teams.'+t]:F.deleteField()}),3000);
+    const listed=t?await settle(F.updateDoc(F.doc(fs,'users',uid),{['teams.'+t]:F.deleteField()}),3000):'ok';
+    // not confirmed (no signal): finish at the next start with signal, and keep the team out of the list meanwhile
+    if((rep.member!=='ok'||listed!=='ok')&&t)lsSet('matchday-leave-todo',JSON.stringify([...new Set([...leaveTodo(),t])]));
   }
   const rest=myTeams().filter(x=>x!==t);saveTeams(rest);lsSet(TEAM_KEY,rest[0]||null);
   if(remote){rep.cache=await wipeLocalData();lsSet('matchday-report',JSON.stringify(rep))} // other teams download again next time there's signal
@@ -1799,7 +1805,7 @@ const within=(p,ms)=>Promise.race([p,new Promise(r=>setTimeout(()=>r(null),ms))]
 async function loadAccountTeams(){
   const {F,fs,auth}=FB,u=auth.currentUser;if(!u)return;
   const s=await within(F.getDoc(F.doc(fs,'users',u.uid)).catch(()=>null),3000);
-  const theirs=Object.keys(s?.data?.()?.teams||{});
+  const gone=leaveTodo(),theirs=Object.keys(s?.data?.()?.teams||{}).filter(t=>!gone.includes(t)); // teams being left stay left
   if(theirs.length)saveTeams([...myTeams(),...theirs]);
 }
 function syncTeamList(){
