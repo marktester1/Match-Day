@@ -360,7 +360,7 @@ body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.26.1';
+const APP_VERSION='0.26.2';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,benchAsk:null,rptEdit:null,fpush:undefined,fpushEdit:false,fkinds:null,dpush:undefined,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
@@ -608,6 +608,7 @@ function pGamesList(f){
 }
 /* ---------- push notifications (followers' alerts; coaches' join requests) ---------- */
 const isIOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const inApp=/MatchDayApp\//.test(navigator.userAgent); // the native iPhone app (ios-app/) adds this to its user agent
 const standalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
 let MSG=null;
 async function pushToken(){ // asks permission (straight after a tap) and returns this phone's push address
@@ -622,7 +623,7 @@ const pushWhy=e=>({'ios-home':'On iPhone, first add this page to your Home Scree
   unsupported:"This browser can't get notifications. Try Chrome on Android, or the Home Screen app on iPhone."})[e&&e.message]||`Couldn't turn on notifications (${errCode(e)}).`;
 const KINDS=[['kick','Kick-off'],['goal','Goals'],['card','Cards'],['ht','Half time'],['ft','Full time']];
 function followPushCard(f){
-  if(S.fpush===undefined)return'';
+  if(S.fpush===undefined||inApp)return''; // web push doesn't work inside the iPhone app yet
   const on=S.fpush,kl=k=>k==='goal'&&f.sport==='rugby'?'Scores':(KINDS.find(x=>x[0]===k)||[])[1];
   if(on&&!S.fpushEdit)return `<div class="card"><h3>🔔 Notifications on</h3><p class="note">For: ${on.kinds.map(kl).join(', ')||'nothing'}. They arrive even when this page is closed.</p>
     <div class="cbtns"><button class="btn" data-act="fpushedit">Change</button><button class="btn" data-act="fpushoff">Turn off</button></div></div>`;
@@ -653,7 +654,7 @@ async function devicePush(on){
   render();
 }
 function devicePushCard(){
-  if(S.dpush===undefined)return'';
+  if(S.dpush===undefined||inApp)return'';
   return `<div class="card"><h3>${S.dpush?'🔔 ':''}Notifications on this phone</h3>
     <p class="note">${S.dpush?'On: you get':'Get'} a notification when someone asks to join a team you coach, and when a coach is accepted, even when the app is closed.</p>
     ${!S.dpush&&isIOS&&!standalone()?'<p class="warnline">On iPhone, open Match Day from your Home Screen first (Share → Add to Home Screen).</p>':''}
@@ -2367,7 +2368,7 @@ async function signOutAccount(force=false){
   try{await FB.A.signOut(FB.auth)}catch(e){leaving=false;toast(`Couldn't sign out (${errCode(e)}). Nothing was changed.`);return}
   saveTeams([]);lsSet(TEAM_KEY,null);rep.cache=await wipeLocalData();lsSet('matchday-report',JSON.stringify(rep));location.reload();
 }
-const googleBtn=()=>`<button class="btn gbtn" data-act="google"><svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 6.9-10.3 6.9-17.7z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.1 1.4-4.9 2.3-8.2 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>Continue with Google</button>`;
+const googleBtn=()=>inApp?'<p class="note">Google sign-in isn\'t in the iPhone app yet. Use email here, or sign in with Google on the website.</p>':`<button class="btn gbtn" data-act="google"><svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 6.9-10.3 6.9-17.7z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.1 1.4-4.9 2.3-8.2 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>Continue with Google</button>`;
 function acctForm(mode){
   return `<form class="acctf" id="acctf" data-mode="${mode}">
     <input id="acctemail" type="email" autocomplete="username" placeholder="Email address" aria-label="Email address">
