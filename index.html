@@ -470,6 +470,7 @@ function unlockView(){
       <li>Every coach in the team, on any phone</li>
       <li>Nothing you've already entered is lost</li></ul>
     <button class="btn go" data-act="unlockbuy">Unlock for ${PRICE}</button>
+    <form class="addf" id="vouchf"><input id="vcode" placeholder="Voucher code" autocomplete="off" autocapitalize="characters" aria-label="Voucher code" maxlength="20"><button class="btn" type="submit">Redeem</button></form>
     <p class="note">${p.state==='trial'?`Your free trial has ${p.left} day${p.left>1?'s':''} left.`:p.state==='expired'?'The free trial has ended, so the team is view-only for now.':''}</p></div>
   ${S.owner?`<div class="card"><h3>Owner only</h3><p class="note">Try the unlock without paying. Undo it from Admin → Reset.</p>
     <button class="btn" data-act="unlocktest">Test unlock this team</button></div>`:''}`}
@@ -478,6 +479,49 @@ function unlockView(){
 async function setBilling(t,data){ // owner only (the rules refuse anyone else)
   const {F,fs}=FB,ref=F.doc(fs,'teams',t,'billing','state');
   try{await (data?F.setDoc(ref,data):F.deleteDoc(ref));return true}catch(e){toast(`Couldn't change that (${errCode(e)}).`);return false}
+}
+
+/* ---------- vouchers: the owner makes codes; a coach redeems one to unlock their team ---------- */
+const newVoucherCode=()=>Array.from(crypto.getRandomValues(new Uint8Array(10)),n=>CODE_CHARS[n%CODE_CHARS.length]).join('');
+const showVoucher=c=>c.length===10?c.slice(0,5)+'-'+c.slice(5):c;
+let redeeming=false;
+async function redeemVoucher(raw){
+  const {F,fs}=FB,code=String(raw||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(code.length<8){toast('Voucher codes are 10 letters and numbers, like ABCDE-23456.');return}
+  if(!/^[A-Z2-9]+$/.test(code)){toast("That code has a letter or number vouchers never use (0, 1, I or O). Check it and try again.");return}
+  if(!navigator.onLine){toast('You need a signal to redeem a voucher.');return}
+  if(redeeming)return;redeeming=true;
+  try{
+    const b=F.writeBatch(fs); // one write: a use comes off the voucher and the team unlocks, or neither happens
+    b.update(F.doc(fs,'vouchers',code),{usesLeft:F.increment(-1),lastTeam:S.teamId});
+    b.set(F.doc(fs,'teams',S.teamId,'billing','state'),{unlocked:true,source:'voucher',at:Date.now(),voucher:code});
+    await b.commit();
+    S.unlockOpen=false;render();toast(`${S.cfg.team||'Your team'} is unlocked. Enjoy the season!`);
+  }catch(e){toast(e&&(e.code==='permission-denied'||e.code==='not-found')?"That code isn't valid, has expired or has been used up.":`Couldn't redeem it (${errCode(e)}). Try again.`)}
+  finally{redeeming=false}
+}
+async function makeVoucher(){
+  const {F,fs}=FB,uses=Math.min(1000,Math.max(1,parseInt(document.getElementById('vuses').value)||1)),
+    days=Math.min(730,Math.max(1,parseInt(document.getElementById('vdays').value)||90)),note=document.getElementById('vnote').value.trim().slice(0,60);
+  const code=newVoucherCode();
+  try{await F.setDoc(F.doc(fs,'vouchers',code),{usesLeft:uses,expires:Date.now()+days*864e5,reward:'unlock',note,createdAt:Date.now()});
+    document.activeElement?.blur();toast(`Voucher ${showVoucher(code)} made.`);loadAdmin()}
+  catch(e){toast(`Couldn't make the voucher (${errCode(e)}).`)}
+}
+function vouchersCard(){
+  const l=(S.admin&&S.admin.vouchers)||[],day=864e5,now=Date.now();
+  return `<div class="card"><h3>Vouchers</h3>
+    <p class="note">Each code unlocks one team per use. Coaches type it on the Unlock screen. Codes can't be listed or read by anyone but you.</p>
+    <form id="vmakef" class="sec" style="gap:8px">
+      <div class="meta"><label><span class="lbl">Uses</span><input id="vuses" type="number" min="1" max="1000" value="1"></label>
+        <label><span class="lbl">Valid for (days)</span><input id="vdays" type="number" min="1" max="730" value="90"></label></div>
+      <label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">Note (only you see it)</span><input id="vnote" maxlength="60" placeholder="e.g. Club launch evening"></label>
+      <button class="btn go" type="submit">Make a voucher</button></form>
+    ${l.length?`<div class="rows">${l.map(v=>{const exp=v.expires<now,left=Math.ceil((v.expires-now)/day);
+      return `<div class="row adm"><div class="who num" style="font-family:var(--display);font-size:20px;letter-spacing:.05em;user-select:all">${esc(showVoucher(v.id))}</div>
+        <div class="note">${v.usesLeft} use${v.usesLeft===1?'':'s'} left · ${exp?'expired':`expires in ${left} day${left===1?'':'s'}`}${v.note?' · '+esc(v.note):''}${v.lastTeam?' · last used by '+esc(S.admin.teams.find(t=>t.id===v.lastTeam)?.name||v.lastTeam):''}</div>
+        <div class="cbtns"><button class="x ${S.confirm==='vdel-'+v.id?'sure':''}" data-act="vdel" data-id="${esc(v.id)}">${S.confirm==='vdel-'+v.id?'Tap to delete':'Delete'}</button></div></div>`}).join('')}</div>`:'<p class="note">No vouchers yet.</p>'}
+  </div>`;
 }
 
 /* ---------- parent link: a live score for parents, with no players' names ---------- */
@@ -1442,6 +1486,8 @@ document.addEventListener('click',e=>{
     case'adminclose':S.adminOpen=false;render();break;
     case'menu':checkOwner();S.menu=true;S.teams=false;S.game=null;S.fix=null;render();window.scrollTo(0,0);break;
     case'unlock':checkOwner();S.unlockOpen=true;S.game=null;render();window.scrollTo(0,0);break;
+    case'vdel':{const k='vdel-'+b.dataset.id;if(S.confirm!==k){S.confirm=k;render();break}S.confirm=null;
+      FB.F.deleteDoc(FB.F.doc(FB.fs,'vouchers',b.dataset.id)).then(()=>{toast('Voucher deleted.');loadAdmin()}).catch(e=>toast(`Couldn't delete it (${errCode(e)}).`));break}
     case'unlockclose':S.unlockOpen=false;render();break;
     case'unlockbuy':toast("Payments aren't switched on in this test version yet.");break;
     case'unlocktest':b.disabled=true;setBilling(S.teamId,{unlocked:true,source:'test',at:Date.now()}).then(ok=>{if(ok){S.unlockOpen=false;toast('Unlocked (test).')}render()});break;
@@ -1540,6 +1586,8 @@ document.addEventListener('pointerup',e=>endDrag(e,false));
 document.addEventListener('pointercancel',e=>endDrag(e,true));
 
 document.addEventListener('submit',e=>{
+  if(e.target.id==='vouchf'){e.preventDefault();redeemVoucher(document.getElementById('vcode').value);return}
+  if(e.target.id==='vmakef'){e.preventDefault();makeVoucher();return}
   if(e.target.id==='notef'){e.preventDefault();const p=document.getElementById('notep').value,t=document.getElementById('notet').value.trim().slice(0,300);
     if(!p){toast('Choose a player first.');return}if(!t){toast('Write the note first.');return}
     S.notes=[...S.notes,{id:'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),p,text:t,at:Date.now(),done:false,by:FB?myName():''}];S.noteFor=p;
@@ -1985,7 +2033,8 @@ async function loadAdmin(){
       const seen=Math.max(0,...mem.map(m=>m.seen?.toMillis?.()||m.joined?.toMillis?.()||0));
       return{id:d.id,name:cfg.team||'',sport:cfg.sport||'football',created:d.data().created?.toMillis?.()||0,coaches:mem.length,seen,bill:bl?.data?.()||null};
     }));
-    S.admin={loading:false,teams:rows.sort((a,b)=>b.seen-a.seen)};
+    const vs=await F.getDocs(F.collection(fs,'vouchers')).catch(()=>null);
+    S.admin={loading:false,teams:rows.sort((a,b)=>b.seen-a.seen),vouchers:vs?vs.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)):[]};
   }catch(e){S.admin={loading:false,error:errCode(e),teams:[]}}
   render();
 }
@@ -2009,7 +2058,8 @@ function adminView(){
     <div class="note">${esc(adminPlan(t))}</div>
     <div class="cbtns">${['test','founding','end','reset'].map(k=>`<button class="x" data-act="billset" data-id="${esc(t.id)}" data-v="${k}">${{test:'Test unlock',founding:'Founding club',end:'End trial now',reset:'Reset'}[k]}</button>`).join('')}</div>
     <div class="note num admid">${esc(t.id)}</div></div>`).join('')}</div>
-  <button class="btn small" data-act="adminload" style="align-self:flex-start">Refresh</button>`}
+  <button class="btn small" data-act="adminload" style="align-self:flex-start">Refresh</button>
+  ${vouchersCard()}`}
   </div>`;
 }
 function watchMembers(t){

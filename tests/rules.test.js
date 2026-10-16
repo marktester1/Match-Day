@@ -3,7 +3,7 @@
 import {readFileSync} from 'node:fs';
 import {test, before, after, beforeEach} from 'node:test';
 import {initializeTestEnvironment, assertSucceeds, assertFails} from '@firebase/rules-unit-testing';
-import {doc, getDoc, getDocs, setDoc, deleteDoc, collection, writeBatch, serverTimestamp} from 'firebase/firestore';
+import {doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, writeBatch, serverTimestamp, increment} from 'firebase/firestore';
 
 const OWNER = 'markdavidmiles@gmail.com';
 let env;
@@ -190,6 +190,52 @@ test('the owner can unlock a team or end its trial from the Admin page', async (
   await assertFails(setDoc(d(o, 'billing', 'state'), {unlocked: true, source: 'free'}));
   await assertFails(setDoc(d(o, 'billing', 'other'), {unlocked: true}));
   await assertSucceeds(deleteDoc(d(o, 'billing', 'state')));
+});
+
+// ---- vouchers ----
+const V = 'WINSCOMBE2';
+const redeem = (f, code, team = T) => { const b = writeBatch(f);
+  b.update(doc(f, 'vouchers', code), {usesLeft: increment(-1), lastTeam: team});
+  b.set(doc(f, 'teams', team, 'billing', 'state'), {unlocked: true, source: 'voucher', at: 1, voucher: code});
+  return b.commit(); };
+async function freshVoucher(v) {
+  await env.withSecurityRulesDisabled(async ctx => {
+    await deleteDoc(doc(ctx.firestore(), 'teams', T, 'billing', 'state'));
+    await setDoc(doc(ctx.firestore(), 'vouchers', V), {usesLeft: 2, expires: Date.now() + 864e5, reward: 'unlock', createdAt: 1, ...v});
+  });
+}
+test('the owner makes vouchers; coaches cannot read or list them', async () => {
+  await assertSucceeds(setDoc(doc(owner(), 'vouchers', 'ABCDEFGH'), {usesLeft: 5, expires: Date.now() + 864e5, reward: 'unlock', note: 'Winscombe', createdAt: 1}));
+  await assertFails(setDoc(doc(owner(), 'vouchers', 'abc'), {usesLeft: 5, expires: 1, reward: 'unlock'}));
+  await assertFails(setDoc(doc(alice(), 'vouchers', 'ZZZZZZZZ'), {usesLeft: 5, expires: Date.now() + 864e5, reward: 'unlock'}));
+  await assertFails(getDoc(doc(alice(), 'vouchers', 'ABCDEFGH')));
+  await assertFails(getDocs(collection(alice(), 'vouchers')));
+  await assertSucceeds(getDocs(collection(owner(), 'vouchers')));
+});
+test('a coach redeems a voucher: the team unlocks and exactly one use comes off', async () => {
+  await freshVoucher();
+  await assertSucceeds(redeem(alice(), V));
+  await env.withSecurityRulesDisabled(async ctx => {
+    const v = (await getDoc(doc(ctx.firestore(), 'vouchers', V))).data();
+    if (v.usesLeft !== 1 || v.lastTeam !== T) throw new Error('voucher not decremented: ' + JSON.stringify(v));
+  });
+  await assertFails(redeem(alice(), V));                                    // already unlocked
+});
+test('vouchers cannot be abused', async () => {
+  const f = alice();
+  await freshVoucher();
+  await assertFails(setDoc(d(f, 'billing', 'state'), {unlocked: true, source: 'voucher', at: 1, voucher: V}));  // unlock without using it up
+  await assertFails(updateDoc(doc(f, 'vouchers', V), {usesLeft: increment(-1), lastTeam: T}));                   // use without unlocking
+  { const b = writeBatch(f); b.update(doc(f, 'vouchers', V), {usesLeft: 50, lastTeam: T});                          // top it up
+    b.set(d(f, 'billing', 'state'), {unlocked: true, source: 'voucher', at: 1, voucher: V}); await assertFails(b.commit()); }
+  { const b = writeBatch(f); b.update(doc(f, 'vouchers', V), {usesLeft: increment(-1), lastTeam: T});              // claim it was a purchase
+    b.set(d(f, 'billing', 'state'), {unlocked: true, source: 'purchase', at: 1, voucher: V}); await assertFails(b.commit()); }
+  await assertFails(redeem(mallory(), V, T));                               // not a coach in that team
+  await freshVoucher({expires: Date.now() - 1000});
+  await assertFails(redeem(f, V));                                          // expired
+  await freshVoucher({usesLeft: 0});
+  await assertFails(redeem(f, V));                                          // used up
+  await assertFails(redeem(f, 'NOSUCHCODE'));                               // made up
 });
 
 // ---- the parents' live score ----

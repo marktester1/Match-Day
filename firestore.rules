@@ -48,9 +48,36 @@ service cloud.firestore {
         && fStr(d, 'time', 10) && fStr(d, 'pitch', 10) && validScore(d) && fOneOf(d, 'status', ['pre', 'live', 'paused', 'break', 'ft']);
     }
     function validBilling(d) {
-      return d.keys().hasOnly(['unlocked', 'source', 'at', 'trialEnds'])
+      return d.keys().hasOnly(['unlocked', 'source', 'at', 'trialEnds', 'voucher'])
         && fBool(d, 'unlocked') && fOneOf(d, 'source', ['purchase', 'voucher', 'founding', 'test'])
         && fNum(d, 'at', 0, 9000000000000000) && fNum(d, 'trialEnds', 0, 9000000000000000);
+    }
+    // Vouchers: vouchers/{CODE} = {usesLeft, expires, reward, note, createdAt, lastTeam}. The owner makes
+    // them; coaches can't read or list them, only redeem one. Redeeming is one atomic write that
+    // unlocks the team AND takes exactly one use off the voucher; each half checks the other.
+    function voucherPath(c) { return /databases/$(database)/documents/vouchers/$(c); }
+    function billingPath(t) { return /databases/$(database)/documents/teams/$(t)/billing/state; }
+    function validVoucher(d) {
+      return d.keys().hasOnly(['usesLeft', 'expires', 'reward', 'note', 'createdAt', 'lastTeam'])
+        && d.usesLeft is int && fInt(d, 'usesLeft', 0, 1000) && d.expires is number && fNum(d, 'expires', 0, 9000000000000000)
+        && fOneOf(d, 'reward', ['unlock']) && fStr(d, 'note', 60) && fNum(d, 'createdAt', 0, 9000000000000000) && fStr(d, 'lastTeam', 40);
+    }
+    function redeemsVoucher(t, d) {
+      return d.keys().hasOnly(['unlocked', 'source', 'at', 'voucher'])
+        && d.unlocked == true && d.source == 'voucher' && fNum(d, 'at', 0, 9000000000000000)
+        && d.voucher is string && d.voucher.matches('^[A-Z2-9]{8,16}$')
+        && (resource == null || resource.data.get('unlocked', false) != true)         // not already unlocked
+        && getAfter(voucherPath(d.voucher)).data.usesLeft == get(voucherPath(d.voucher)).data.usesLeft - 1
+        && getAfter(voucherPath(d.voucher)).data.lastTeam == t;
+    }
+    function voucherUse(c, before, after) {
+      return before.usesLeft > 0 && before.expires > request.time.toMillis() && before.get('reward', 'unlock') == 'unlock'
+        && after.diff(before).affectedKeys().hasOnly(['usesLeft', 'lastTeam'])
+        && after.usesLeft == before.usesLeft - 1 && after.lastTeam is string
+        && exists(/databases/$(database)/documents/teams/$(after.lastTeam)/members/$(request.auth.uid))
+        && getAfter(billingPath(after.lastTeam)).data.get('voucher', '') == c
+        && getAfter(billingPath(after.lastTeam)).data.get('unlocked', false) == true
+        && !(exists(billingPath(after.lastTeam)) && get(billingPath(after.lastTeam)).data.get('unlocked', false) == true);
     }
     function validSquad(d) { return d.keys().hasOnly(['players']) && fList(d, 'players', 80); }
     function validNotes(d) { return d.keys().hasOnly(['items']) && fList(d, 'items', 300); }
@@ -153,6 +180,8 @@ service cloud.firestore {
       match /billing/{doc} {
         allow get: if member(t) || isOwner();
         allow create, update: if isOwner() && doc == 'state' && validBilling(request.resource.data);
+        // a coach redeeming a voucher: only in the same write that takes one use off the voucher
+        allow create, update: if member(t) && doc == 'state' && redeemsVoucher(t, request.resource.data);
         allow delete: if isOwner();
       }
       match /games/{g} {
@@ -198,6 +227,12 @@ service cloud.firestore {
         allow delete: if signedIn()
           && exists(/databases/$(database)/documents/teams/$(get(/databases/$(database)/documents/feeds/$(f)).data.team)/members/$(request.auth.uid));
       }
+    }
+
+    match /vouchers/{code} {
+      allow get, list, delete: if isOwner();
+      allow create, update: if isOwner() && code.matches('^[A-Z2-9]{8,16}$') && validVoucher(request.resource.data);
+      allow update: if signedIn() && voucherUse(code, resource.data, request.resource.data);
     }
 
     // Everything else is closed.

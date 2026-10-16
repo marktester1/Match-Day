@@ -75,6 +75,12 @@ subscription before showing live updates. Prototype first without payment.
   (a game already under way can be finished), unlock screen (payment button is a placeholder),
   ☰ plan card, owner-only Test unlock, Admin buttons per team: Test unlock, Founding club, End trial
   now, Reset. `teams/{t}/billing/state` is written by the owner only (rules + tests).
+- **Step 3 done**: vouchers. Admin → Vouchers makes 10-character codes (uses, days valid, private
+  note), lists them with uses left and last team, deletes them. Coaches redeem on the Unlock screen.
+  Redeeming is one atomic write (voucher use −1 and team unlocked; each half checks the other).
+  Coaches can't read or list vouchers. Rules tests cover expired, used up, made up, topping up,
+  claiming a purchase, using without unlocking, unlocking without using, other teams.
+  Still to add before launch: App Check (stops scripted guessing; codes are ~10^15 combinations).
 - **Before launch**: view-only is enforced by the app only. Also enforce it in the rules (writes to
   club/games/awards/archive need an unlocked team or an unexpired trial), allowing for writes queued
   offline just before the trial ended.
