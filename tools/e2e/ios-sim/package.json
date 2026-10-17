@@ -1,11 +1,12 @@
 {
   "name": "match-day-ios-sim",
   "private": true,
-  "description": "Match Day journeys in real Safari on the iOS Simulator (beta only), via Appium. Run: npm test",
+  "description": "Match Day journeys in real iPhone Safari on the iOS Simulator (beta), via Appium; and a read-only check of live. See README.",
   "scripts": {
     "setup": "APPIUM_HOME=./.appium appium driver install xcuitest",
     "appium": "APPIUM_HOME=./.appium appium --port 4723 --log-level warn",
-    "test": "node --test --test-concurrency=1 *.test.mjs"
+    "test": "node --test --test-concurrency=1 *.test.mjs",
+    "smoke:live": "node --test live-smoke.mjs"
   },
   "devDependencies": {
     "appium": "3.8.0",
