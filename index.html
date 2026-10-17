@@ -366,7 +366,7 @@ body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.27.0';
+const APP_VERSION='0.27.1';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,benchAsk:null,rptEdit:null,fpush:undefined,fpushEdit:false,fkinds:null,dpush:undefined,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,managers:[],askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
@@ -2209,7 +2209,7 @@ async function claimManager(){ // the manager's sign-in has left the team: take 
 }
 async function addManager(id){ // a manager makes another coach a manager too
   const {F,fs}=FB,m=S.members.find(x=>x.id===id),list=[...new Set([...(S.managers||[]),id])];
-  if(list.length>10){toast('A team can have up to 10 managers.');return}
+  if(list.filter(x=>x!==S.createdBy).length>4){toast('A team can have up to 5 managers. Remove one first.');return}
   try{await track(F.updateDoc(F.doc(fs,'teams',S.teamId),{managers:list}),null,'team');toast(`${m?.name||'That coach'} is now a manager.`)}
   catch(e){toast(`Couldn't make them a manager (${errCode(e)}).`)}
 }
@@ -2565,7 +2565,7 @@ async function loadAdmin(){
 async function adminMakeManager(t,id){ // owner: make a coach in any team a manager, or stop them being one
   const {F,fs}=FB,row=(S.admin?.teams||[]).find(x=>x.id===t);if(!row)return;
   const c=row.list.find(m=>m.id===id),patch={};
-  if(!c?.mgr)patch.managers=[...new Set([...row.managers,id])].slice(0,10);
+  if(!c?.mgr){patch.managers=[...new Set([...row.managers,id])];if(patch.managers.length>4){toast('That team already has 5 managers. Remove one first.');return}}
   else{patch.managers=row.managers.filter(x=>x!==id);
     if(row.createdBy===id){const next=row.list.find(m=>m.mgr&&m.id!==id);if(!next){toast("They're the only manager. Make someone else a manager first.");return}
       patch.createdBy=next.id;patch.managers=patch.managers.filter(x=>x!==next.id)}}

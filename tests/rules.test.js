@@ -369,7 +369,8 @@ test('several managers: a manager adds and removes managers; listed managers who
   await assertFails(updateDoc(doc(db('carol'), 'teams', T), {managers: ['dave']}));        // carol isn't a coach any more: no powers
   await assertSucceeds(updateDoc(doc(db('dave'), 'teams', T), {managers: []}));            // managers can remove managers
   await assertFails(updateDoc(doc(db('dave'), 'teams', T), {managers: ['dave']}));         // and then dave isn't one
-  await assertFails(updateDoc(doc(alice(), 'teams', T), {managers: Array.from({length: 11}, (_, i) => 'm' + i)})); // at most 10
+  await assertSucceeds(updateDoc(doc(alice(), 'teams', T), {managers: ['m1', 'm2', 'm3', 'm4']}));                // alice + 4 = 5 managers
+  await assertFails(updateDoc(doc(alice(), 'teams', T), {managers: ['m1', 'm2', 'm3', 'm4', 'm5']}));               // not 6
 });
 test('a listed manager can make a new invite code', async () => {
   await env.withSecurityRulesDisabled(async ctx => {

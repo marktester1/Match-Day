@@ -154,7 +154,8 @@ service cloud.firestore {
       return d.createdBy == request.auth.uid
         || (request.auth.uid in d.get('managers', []) && exists(memberPath(t)));
     }
-    function managersOk(d) { return d.get('managers', []) is list && d.get('managers', []).size() <= 10; }
+    // At most 5 managers: whoever holds createdBy plus up to 4 on the list.
+    function managersOk(d) { return d.get('managers', []) is list && d.get('managers', []).size() <= 4; }
     function codeDoc(c) { return /databases/$(database)/documents/codes/$(c); }
 
     // Invite code -> team id. Readable one code at a time, never listable. Codes are 8 characters
