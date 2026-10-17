@@ -102,7 +102,7 @@ async function main() {
     else if (!fs.existsSync(path.join(E2E, 'node_modules/@playwright/test'))) out('FAIL', 'end-to-end journey on beta', 'set up first: cd tools/e2e && npm install && npm run setup');
     else try {
       execSync('npx playwright test', {cwd: E2E, stdio: 'pipe', timeout: 10 * 60 * 1000});
-      out('PASS', 'end-to-end journey on beta', 'WebKit (iPhone) and Chromium');
+      out('PASS', 'end-to-end journeys on beta', 'coach, joining coach and follower, in WebKit (iPhone) and Chromium');
     } catch (e) { out('FAIL', 'end-to-end journey on beta', (e.stdout || '').toString().split('\n').filter(l => /✘|Error:|^\s+> /.test(l)).slice(0, 4).map(l => l.trim()).join(' | ') + ' (details: cd tools/e2e && npx playwright test)'); }
   }
 
