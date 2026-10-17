@@ -433,6 +433,10 @@ const RTYPES={try:{n:'Try',p:5},con:{n:'Conversion',p:2},pen:{n:'Penalty',p:3},d
 const ptsOf=x=>!isRugby()?1:triesOnly()?(x.type==='try'?1:0):(RTYPES[x.type]?.p||0);
 const Words=()=>isRugby()?(triesOnly()?{goals:'Tries',goal:'try',Goal:'Try',scorers:'Try scorers'}:{goals:'Points',goal:'score',Goal:'Score',scorers:'Points scorers'}):{goals:'Goals',goal:'goal',Goal:'Goal',scorers:'Goal scorers'};
 const evLabel=x=>isRugby()?(RTYPES[x.type]?.n||'Score'):'';
+// Rugby scores by type, e.g. "2 tries, 1 conversion", for either side (ties and countback use these)
+const RWORDS={try:['try','tries'],con:['conversion','conversions'],pen:['penalty','penalties'],drop:['drop goal','drop goals']};
+const breakdown=l=>Object.keys(RTYPES).map(t=>{const n=(l||[]).filter(x=>x.type===t).length;return n?`${n} ${RWORDS[t][n>1?1:0]}`:''}).filter(Boolean).join(', ');
+const triesOf=l=>(l||[]).filter(x=>x.type==='try').length;
 const scorerName=p=>p==='og'?'Own goal':p?nameOf(p):'Scorer not set';
 function goalTally(games){const c={};games.forEach(g=>(g.goals||[]).forEach(x=>{if(x.p&&x.p!=='og')c[x.p]=(c[x.p]||0)+ptsOf(x)}));return c}
 const alpha=l=>[...l].sort((a,b)=>a.name.localeCompare(b.name,'en',{sensitivity:'base'}));
@@ -862,7 +866,7 @@ function ftAsk(g){
     ${g.opponent?'':`<p class="warnline">⚠️ No opposition entered for this game. Add who you played so the result makes sense in Results and for followers.</p>
     <label>Opposition<input id="ftopp" maxlength="40" placeholder="e.g. Riverside" list="ftopps" autocomplete="off"></label><datalist id="ftopps">${opponents().map(o=>`<option value="${esc(o)}"></option>`).join('')}</datalist>`}
     <p class="note">The clock stops at ${tAt(el(g))} and the result counts in today's record. You can reopen the game later if needed.</p>
-    <div class="cbtns"><button class="btn warn" data-act="ftyes">End game</button><button class="btn" data-act="ftno">Keep playing</button></div>
+    <div class="cbtns"><button class="btn" data-act="ftno">Keep playing</button><button class="btn warn" data-act="ftyes">End game</button></div>
   </div></div>`;
 }
 
@@ -1143,8 +1147,12 @@ function gameView(id){
         <option value="" ${x.p?'':'selected'}>Scorer not set</option>
         ${byName(inGame(g).length?inGame(g):S.squad.map(p=>p.id)).map(p=>`<option value="${p}" ${x.p===p?'selected':''}>${esc(nameOf(p))}</option>`).join('')}
         ${isRugby()?'':`<option value="og" ${x.p==='og'?'selected':''}>Own goal</option>`}</select></div>`).join('')}</div>
+    ${isRugby()?`<p class="note"><b>${esc(usName(g))}:</b> ${breakdown(g.goals)}</p>`:''}
     <p class="note">Times are from kick-off. Type a new one (like 12:30) to correct it.</p>
     ${!isRugby()&&g.score.us>(g.goals||[]).length?`<p class="note">${g.score.us-(g.goals||[]).length} earlier goal${g.score.us-(g.goals||[]).length>1?'s':''} without a scorer.</p>`:''}</section>`:''}
+  ${isRugby()&&(g.opp||[]).length?`<section class="sec log"><h3>${esc(g.opponent||'Their')} scores</h3>
+    <div class="rows">${(g.opp||[]).map(x=>`<div class="row"><span class="at num">${tAt(x.at)}</span><span class="evl">${evLabel(x)}</span></div>`).reverse().join('')}</div>
+    <p class="note"><b>${esc(g.opponent||'They')}:</b> ${breakdown(g.opp)}</p></section>`:''}
   ${g.subs.length?`<section class="sec log"><div class="ghead"><h3>Subs</h3><button class="x" data-act="undo">Undo last sub</button></div>
     <div class="rows">${subs.map(e=>`<div class="row"><span class="at num">${tAt(e.at)}</span><span class="txt"><span class="onn">▲ ${esc(nameOf(e.on))}</span> &nbsp;<span class="off">▼ ${esc(nameOf(e.off))}</span>${e.gk?' <span class="note">(in goal)</span>':''}</span></div>`).join('')}</div></section>`:''}
   ${selection}${late}
@@ -1552,7 +1560,7 @@ function tSummary(t){
   const scorers=Object.entries(gl).filter(([,n])=>n>0).sort((a,b)=>b[1]-a[1]||nameOf(a[0]).localeCompare(nameOf(b[0])));
   if(!gs.length&&!t.report)return'';
   return `<div class="tsum">
-    <div class="summary num"><span>Played <b>${gs.length}</b></span><span>W <b>${r.W}</b> · D <b>${r.D}</b> · L <b>${r.L}</b></span><span>${Words().goals} <b>${r.F}–${r.A}</b></span></div>
+    <div class="summary num"><span>Played <b>${gs.length}</b></span><span>W <b>${r.W}</b> · D <b>${r.D}</b> · L <b>${r.L}</b></span><span>${Words().goals} <b>${r.F}–${r.A}</b></span>${isRugby()?`<span>Tries <b>${gs.reduce((a,g)=>a+triesOf(g.goals),0)}–${gs.reduce((a,g)=>a+triesOf(g.opp),0)}</b></span>`:''}</div>
     ${scorers.length?`<span class="lbl">${Words().scorers}</span><div class="rows">${scorers.map(([p,n])=>`<div class="row"><span class="who">${esc(nameOf(p))}</span><b class="num">${n}</b></div>`).join('')}</div>`:''}
     ${rows.length?`<span class="lbl">Playing time, least first</span><div class="rows">${rows.map(x=>{const low=avg>0&&x.t<avg*0.8;
       return `<div class="mrow ${low?'low':''}"><span class="who">${esc(nameOf(x.p))}${low?'<span class="flag">Less time</span>':''}</span><span class="m num">${fmtM(x.t)}</span>
@@ -1569,8 +1577,9 @@ function tSummary(t){
 function summaryText(t,names){
   const gs=t.games||[],r=record(gs),gl=goalTally(gs.filter(g=>g.played||g.done));
   const lines=[`${isRugby()?'🏉':'⚽'} *${S.cfg.short||S.cfg.team||'Our team'}${t.name?' – '+t.name:''}*${t.date?', '+nice(t.date):''}`,
-    `W${r.W} D${r.D} L${r.L} · ${Words().goals} ${r.F}–${r.A}`,''];
+    `W${r.W} D${r.D} L${r.L} · ${Words().goals} ${r.F}–${r.A}${isRugby()?` · Tries ${gs.filter(g=>g.played||g.done).reduce((a,g)=>a+triesOf(g.goals),0)}–${gs.filter(g=>g.played||g.done).reduce((a,g)=>a+triesOf(g.opp),0)}`:''}`,''];
   gs.forEach(g=>{lines.push(`${g.time?g.time+'  ':''}${gameLine(t,g)}${g.played||g.done?'':' (not played)'}`);
+    if(isRugby()&&(g.played||g.done)&&((g.goals||[]).length||(g.opp||[]).length))lines.push(`    ${usOf(t,g)}: ${breakdown(g.goals)||'no score'} · ${g.opponent||'Them'}: ${breakdown(g.opp)||'no score'}`);
     if(!names)return;
     const ev=[...(g.goals||[]).map(x=>({at:x.at,t:(isRugby()?'🏉 ':'⚽ ')+scorerName(x.p)+(isRugby()?' ('+evLabel(x).toLowerCase()+')':'')})),
       ...(g.cards||[]).map(x=>({at:x.at,t:(x.c==='r'?'🟥 ':'🟨 ')+nameOf(x.p)}))].sort((a,b)=>a.at-b.at);
@@ -1608,7 +1617,7 @@ function seasonView(){
   ${ts.length?`<section class="sec"><h3>Tournaments</h3>${ts.map(t=>{const r=record(t.games||[]),open=S.openT===t.id;
     return `<div class="tcard"><button data-act="topen" data-id="${t.id}"><span><span class="tn">${esc(t.name||'Tournament')}</span><span class="ts" style="display:block">${esc(nice(t.date))}</span></span>
       <span class="num" style="text-align:right"><b>W${r.W} D${r.D} L${r.L}</b><span class="ts" style="display:block">${Words().goals} ${r.F}–${r.A}</span></span></button>
-      ${open?`<div class="tb">${tSummary(t)}<span class="lbl">Games</span>${(t.games||[]).map(g=>`<div class="gl"><span>${esc(g.time||'G'+g.n)} ${esc(isAway(g)?(g.opponent||'?'):(g.team||t.short||S.cfg.short||'Us'))} v ${esc(isAway(g)?(g.team||t.short||S.cfg.short||'Us'):(g.opponent||'?'))}</span><b class="num">${g.played||g.done?scoreHA(g):'not played'}</b></div>${(g.goals||[]).length?`<div class="gls">${isRugby()?'🏉':'⚽'} ${(g.goals||[]).map(x=>esc(scorerName(x.p))+' '+mn(x.at)+(isRugby()?' ('+evLabel(x).toLowerCase()+')':'')).join(', ')}</div>`:''}${(g.cards||[]).length?`<div class="gls">${(g.cards||[]).map(x=>(x.c==='r'?'🟥 ':'🟨 ')+esc(nameOf(x.p))+' '+mn(x.at)).join(', ')}</div>`:''}`).join('')}
+      ${open?`<div class="tb">${tSummary(t)}<span class="lbl">Games</span>${(t.games||[]).map(g=>`<div class="gl"><span>${esc(g.time||'G'+g.n)} ${esc(isAway(g)?(g.opponent||'?'):(g.team||t.short||S.cfg.short||'Us'))} v ${esc(isAway(g)?(g.team||t.short||S.cfg.short||'Us'):(g.opponent||'?'))}</span><b class="num">${g.played||g.done?scoreHA(g):'not played'}</b></div>${(g.goals||[]).length?`<div class="gls">${isRugby()?'🏉':'⚽'} ${(g.goals||[]).map(x=>esc(scorerName(x.p))+' '+mn(x.at)+(isRugby()?' ('+evLabel(x).toLowerCase()+')':'')).join(', ')}</div>`:''}${isRugby()&&(g.played||g.done)&&((g.goals||[]).length||(g.opp||[]).length)?`<div class="gls">${esc(g.team||t.short||S.cfg.short||'Us')}: ${breakdown(g.goals)||'no score'} · ${esc(g.opponent||'Them')}: ${breakdown(g.opp)||'no score'}${(g.opp||[]).length?` (${(g.opp||[]).map(x=>evLabel(x).toLowerCase()+' '+mn(x.at)).join(', ')})`:''}</div>`:''}${(g.cards||[]).length?`<div class="gls">${(g.cards||[]).map(x=>(x.c==='r'?'🟥 ':'🟨 ')+esc(nameOf(x.p))+' '+mn(x.at)).join(', ')}</div>`:''}`).join('')}
         ${S.editT===t.id?tEdit(t):`<div class="cbtns"><button class="btn small" data-act="tedit" data-id="${t.id}">Edit</button>
         <button class="x ${S.confirm==='t-'+t.id?'sure':''}" data-act="tdel" data-id="${t.id}">${S.confirm==='t-'+t.id?'Tap to delete this tournament':'Delete this tournament'}</button></div>`}</div>`:''}</div>`}).join('')}</section>`:''}
   ${ts.length||S.awards.length?`<div class="danger"><button class="btn warn" data-act="wipe">${S.confirm==='wipe'?'Tap again to delete all season data':'Delete all season data'}</button>

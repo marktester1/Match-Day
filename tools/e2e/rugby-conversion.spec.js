@@ -47,7 +47,37 @@ test('a conversion needs an unconverted try, for us and for them', async ({page}
     await expect(con()).toBeEnabled();
     await pick('con');
     await expect(c.score('them')).toHaveText('7');
+    await c.press(c.plus('them'));
+    await pick('pen');
+    await expect(c.score('them')).toHaveText('10');
     await c.saved();
+
+    // What they scored is shown, by type, for countback
+    const theirs = c.view.locator('section.log').filter({has: page.locator('h3', {hasText: 'Their scores'})});
+    await expect(theirs.locator('.row')).toHaveCount(3);
+    await expect(theirs).toContainText('1 try, 1 conversion, 1 penalty');
+    await expect(c.view.locator('section.log').filter({has: page.locator('h3', {hasText: 'Our points'})})).toContainText('1 try, 1 conversion');
+
+    // ...in saved results, the summary and what's shared (no names in the plain share)
+    await c.fullTime(1);
+    await c.saved();
+    await c.goTab('games');
+    await c.press(c.btn('Finish tournament and save to Results'));
+    await c.press(c.btn('Tap again to save and start fresh'));
+    await c.press(c.btn('Write it later', c.modal));
+    await c.reload(TEAM);
+    await c.goTab('season');
+    const tc = c.view.locator('.tcard').first();
+    await c.press(tc.locator('[data-act=topen]'));
+    await expect(tc.locator('.tb')).toBeVisible();
+    await expect(tc.locator('.gls').filter({hasText: 'Them:'})).toContainText('Them: 1 try, 1 conversion, 1 penalty');
+    await expect(tc.locator('.tsum .summary')).toContainText('Tries 1–1');
+    await page.evaluate(() => Object.defineProperty(navigator, 'share', {configurable: true, value: async d => { window.__shared = d.text; }}));
+    await c.press(c.btn('Share results', tc));
+    await expect.poll(() => page.evaluate(() => window.__shared)).toContain('Tries 1–1');
+    const shared = await page.evaluate(() => window.__shared);
+    expect(shared).toContain('Them: 1 try, 1 conversion, 1 penalty');
+    for (const n of SQUAD) expect(shared).not.toContain(n);
     finished = true;
   } finally {
     await cleanUp(finished, [async () => { if (joined) await c.leave(TEAM); }]);
