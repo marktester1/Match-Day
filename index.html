@@ -364,7 +364,7 @@ body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.26.6';
+const APP_VERSION='0.26.7';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,benchAsk:null,rptEdit:null,fpush:undefined,fpushEdit:false,fkinds:null,dpush:undefined,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
@@ -391,7 +391,12 @@ function blank(n){return{n,opponent:'',team:'',time:'',pitch:'',gk:null,starters
 function G(id){const g=S.games[id];const b=blank(+id.slice(1));return g?{...b,...g,clock:{...b.clock,...g.clock},score:{...b.score,...g.score}}:b}
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function nameOf(id){const p=S.squad.find(p=>p.id===id);if(p)return p.name;for(const t of S.archive){const q=(t.players||[]).find(p=>p.id===id);if(q)return q.name}return'Removed player'}
-const el=g=>g.clock.acc+(g.clock.running?Math.max(0,Date.now()-g.clock.startedAt):0);
+// The server refuses game times over 10 hours (a safety check), so the clock never goes past just under that.
+const CLOCK_MAX=36e6-60000;
+const el=g=>Math.min(CLOCK_MAX,g.clock.acc+(g.clock.running?Math.max(0,Date.now()-g.clock.startedAt):0));
+// A clock left running (no Full time) stops by itself and saves an hour after the game should have ended.
+const overrunAt=()=>Math.min(CLOCK_MAX,(S.tour.len||10)*60000+3600000);
+const autoStopped=g=>!g.clock.running&&!g.done&&g.clock.acc>=overrunAt();
 const started=g=>g.clock.running||g.clock.acc>0;
 const nPer=()=>[1,2,4].includes(+S.tour.periods)?+S.tour.periods:1;
 const perLen=()=>(S.tour.len||10)*60000/nPer();
@@ -1099,6 +1104,7 @@ function gameView(id){
   </section>
   ${undoLive(id)?`<div class="undobar" role="status"><span>${esc(S.undo.label)}</span><button data-act="undoact" aria-label="Undo: ${esc(S.undo.label)}">Undo</button></div>`:''}
   ${gameSaveLine(id)}
+  ${autoStopped(g)?`<div class="warnline" role="status"><b>The clock stopped by itself</b> an hour after this game should have ended, so nothing was lost. If the game is over, tap <b>Full time</b>. If you're still playing, restart the clock.</div>`:''}
   ${S.askFt===id?ftAsk(g):''}
   ${S.qp&&S.qp.g===id?quickPick(g,S.qp):''}
   ${S.rpick&&S.rpick.g===id?rugbyBar(g,S.rpick.k):''}
@@ -1870,6 +1876,8 @@ document.addEventListener('focusout',()=>setTimeout(()=>{if(pending)render()},0)
 setInterval(()=>{
   let any=false;
   gids().forEach(id=>{const g=G(id);if(!g.clock.running)return;any=true;
+    const stopAt=g.clock.acc<overrunAt()?overrunAt():CLOCK_MAX; // restarted after stopping itself: only the 10-hour backstop
+    if(el(g)>=stopAt){mut(id,g=>{g.clock.acc=stopAt;g.clock.running=false});toast(`Game ${g.n}'s clock stopped by itself. Did you forget Full time?`);return}
     if(nPer()>1){const startP=Math.floor(g.clock.acc/perLen()+1e-9),end=(startP+1)*perLen();
       if(startP<nPer()-1&&el(g)>=end){ // time for the break: stop the clock exactly on the boundary
         mut(id,g=>{g.clock.acc=end;g.clock.running=false});
