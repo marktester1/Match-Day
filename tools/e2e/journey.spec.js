@@ -61,6 +61,7 @@ test('a coach runs a whole match day', async ({page, browser}, info) => {
   try {
     // 1. Create a team and set it up
     await page.goto('/');
+    await page.locator('#mkname').fill('Claude (test coach)');
     await press(btn('Create a team'));
     await expect(page.locator('#cfg-team')).toBeVisible({timeout: 30000});
     joined = true;

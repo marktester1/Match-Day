@@ -90,3 +90,64 @@ test('the manager role is handed over on leaving, and can be taken over if the m
     ]);
   }
 });
+
+test('a team can have several managers; making one no longer hands the role over', async ({page, browser}, info) => {
+  const mgr = app(page, info);
+  const p2 = await newPhone(browser, info), sam = app(p2.page, info);
+  const p3 = await newPhone(browser, info), kim = app(p3.page, info);
+  let mgrIn = false, samIn = false, kimIn = false, finished = false;
+  try {
+    // A name is needed to create a team
+    await page.goto('/');
+    await page.locator('#mkname').fill('');
+    await page.evaluate(() => localStorage.removeItem('matchday-name'));
+    await mgr.press(mgr.btn('Create a team'));
+    await mgr.toast('Add your name first');
+    await mgr.createTeam(TEAM, SQUAD);
+    mgrIn = true;
+    const code = await mgr.inviteCode();
+    await join(sam, SAM, code, mgr);
+    samIn = true;
+    await join(kim, KIM, code, mgr);
+    kimIn = true;
+
+    // The manager makes Sam a manager too: both are managers now
+    await mgr.saved();
+    await mgr.press(mgr.page.locator('#menubtn'));
+    const samRow = mgr.view.locator('.member').filter({hasText: SAM});
+    await mgr.press(samRow.getByRole('button', {name: 'Make manager'}));
+    await mgr.press(samRow.getByRole('button', {name: 'Tap to make a manager'}));
+    await mgr.toast(`${SAM} is now a manager.`);
+    await expect(mgr.view.locator('.member').filter({has: mgr.page.locator('.tag.mgr')})).toHaveCount(2);
+    await expect(mgr.view).toContainText('Make a new invite code'); // still a manager
+    await mgr.press(mgr.page.locator('[data-act=menuclose]'));
+
+    // Sam has the manager's powers
+    await sam.press(sam.page.locator('#menubtn'));
+    await expect(sam.view).toContainText('Make a new invite code', {timeout: 30000});
+    const kimRow = sam.view.locator('.member').filter({hasText: KIM});
+    await expect(kimRow.getByRole('button', {name: 'Make manager'})).toBeVisible();
+    await sam.press(sam.page.locator('[data-act=menuclose]'));
+    // Kim (not a manager) doesn't
+    await kim.press(kim.page.locator('#menubtn'));
+    await expect(kim.view).not.toContainText('Make a new invite code');
+    await kim.press(kim.page.locator('[data-act=menuclose]'));
+
+    // The first manager leaves: Sam is still a manager, so there's nobody to choose
+    await mgr.leave(TEAM);
+    mgrIn = false;
+    await sam.press(sam.page.locator('#menubtn'));
+    await managerIs(sam, SAM);
+    await expect(sam.view).not.toContainText('This team has no manager');
+    await sam.press(sam.page.locator('[data-act=menuclose]'));
+    finished = true;
+  } finally {
+    await cleanUp(finished, [
+      async () => { if (kimIn) await kim.leave(TEAM); },
+      async () => { if (samIn) await sam.leave(TEAM); },
+      async () => { if (mgrIn) await mgr.leave(TEAM); },
+      () => p2.ctx.close(),
+      () => p3.ctx.close(),
+    ]);
+  }
+});

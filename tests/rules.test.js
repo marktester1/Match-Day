@@ -357,6 +357,39 @@ test('the manager can hand over to another coach, not to an outsider; others can
   await assertSucceeds(updateDoc(doc(alice(), 'teams', T), {createdBy: 'carol'}));
   await assertSucceeds(deleteDoc(doc(db('carol'), 'teams', T, 'members', 'alice'))); // the new manager can remove coaches
 });
+test('several managers: a manager adds and removes managers; listed managers who are coaches can manage', async () => {
+  await env.withSecurityRulesDisabled(async ctx => {
+    const f = ctx.firestore();
+    for (const u of ['carol', 'dave']) await setDoc(doc(f, 'teams', T, 'members', u), {code: CODE, joined: new Date()});
+  });
+  await assertFails(updateDoc(doc(db('carol'), 'teams', T), {managers: ['carol']}));      // a coach can't make themselves one
+  await assertSucceeds(updateDoc(doc(alice(), 'teams', T), {managers: ['carol']}));        // alice (manager) adds carol
+  await assertSucceeds(updateDoc(doc(db('carol'), 'teams', T), {managers: ['carol', 'dave']})); // carol can add dave
+  await assertSucceeds(deleteDoc(doc(db('dave'), 'teams', T, 'members', 'carol')));        // a listed manager can remove a coach
+  await assertFails(updateDoc(doc(db('carol'), 'teams', T), {managers: ['dave']}));        // carol isn't a coach any more: no powers
+  await assertSucceeds(updateDoc(doc(db('dave'), 'teams', T), {managers: []}));            // managers can remove managers
+  await assertFails(updateDoc(doc(db('dave'), 'teams', T), {managers: ['dave']}));         // and then dave isn't one
+  await assertFails(updateDoc(doc(alice(), 'teams', T), {managers: Array.from({length: 11}, (_, i) => 'm' + i)})); // at most 10
+});
+test('a listed manager can make a new invite code', async () => {
+  await env.withSecurityRulesDisabled(async ctx => {
+    const f = ctx.firestore();
+    await setDoc(doc(f, 'teams', T, 'members', 'carol'), {code: CODE, joined: new Date()});
+    await updateDoc(doc(f, 'teams', T), {managers: ['carol']});
+  });
+  const f = db('carol'), b = writeBatch(f);
+  b.update(doc(f, 'teams', T), {code: 'NEWCODE8'});
+  b.set(doc(f, 'codes', 'NEWCODE8'), {team: T});
+  b.delete(doc(f, 'codes', CODE));
+  await assertSucceeds(b.commit());
+});
+test('the owner can add or remove managers on any team, and change nothing else', async () => {
+  await env.withSecurityRulesDisabled(async ctx => setDoc(doc(ctx.firestore(), 'teams', T, 'members', 'carol'), {code: CODE, joined: new Date()}));
+  await assertFails(updateDoc(doc(owner(false), 'teams', T), {managers: ['carol']}));
+  await assertSucceeds(updateDoc(doc(owner(), 'teams', T), {managers: ['carol']}));
+  await assertSucceeds(updateDoc(doc(owner(), 'teams', T), {managers: []}));
+  await assertFails(updateDoc(doc(owner(), 'teams', T), {managers: ['carol'], code: 'NEWCODE8'}));
+});
 test('a manager leaving hands over and leaves in one step', async () => {
   await env.withSecurityRulesDisabled(async ctx => setDoc(doc(ctx.firestore(), 'teams', T, 'members', 'carol'), {code: CODE, joined: new Date()}));
   const f = alice(), b = writeBatch(f);

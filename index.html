@@ -245,6 +245,8 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 .welcome{display:flex;flex-direction:column;gap:6px;padding:4px 2px}
 .welcome h2{font-size:28px}
 .welcome p{color:var(--muted);margin:0}
+.admcoaches{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.admc{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px}
 .warnline{border-left:4px solid var(--live);padding:6px 10px;background:var(--live-bg);border-radius:6px}
 .rstate{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-radius:10px;font-size:14px;background:var(--live-bg)}
 .rstate.done{background:var(--grass-2)}
@@ -364,10 +366,10 @@ body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.26.7';
+const APP_VERSION='0.27.0';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,benchAsk:null,rptEdit:null,fpush:undefined,fpushEdit:false,fkinds:null,dpush:undefined,
-  gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
+  gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,managers:[],askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
   feed:null,pfeed:undefined,pgames:[],pbanner:null,awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const nice=d=>{if(!d)return'';const t=new Date(d+'T12:00');return isNaN(t)?d:t.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})};
@@ -985,9 +987,11 @@ function render(){
   if(S.cfgLoaded&&!S.cfg.team){keepSetup(()=>{v.innerHTML=setupView()});return} // updates arriving mid-typing mustn't wipe it
   const keepRpt=document.getElementById('rpttext')?.value; // a half-written report survives redraws
   const keepOpp=document.getElementById('ftopp')?.value;
+  const keepNm=document.getElementById('nudgename')?.value;
   v.innerHTML=S.tab==='games'&&S.fx&&!S.game?fixturesView():S.tab==='games'?(S.game?gameView(S.game):gamesList()):S.tab==='minutes'?minutesView():S.tab==='notes'?notesView():S.tab==='awards'?awardsView():S.tab==='season'?seasonView():squadView();
   if(keepRpt!=null&&document.getElementById('rpttext'))document.getElementById('rpttext').value=keepRpt;
   if(keepOpp&&document.getElementById('ftopp'))document.getElementById('ftopp').value=keepOpp;
+  if(keepNm&&document.getElementById('nudgename'))document.getElementById('nudgename').value=keepNm;
   if(S.saved){const keep=document.getElementById('rptnew')?.value;v.insertAdjacentHTML('beforeend',savedPop());if(keep)document.getElementById('rptnew').value=keep}
   if(S.requests.length&&!v.querySelector('.reqs'))v.insertAdjacentHTML('afterbegin',`<button class="reqnote" data-act="menu">${esc(S.requests.map(r=>r.name||'Someone').join(', '))} ${S.requests.length>1?'want':'wants'} to join the team. Tap to see who and accept or decline.</button>`);
   if(S.syncOpen)v.insertAdjacentHTML('afterbegin',syncPanel());
@@ -1034,11 +1038,17 @@ function setupLine(){
   return S.setupOpen?`<div class="card setupcard"><div class="ghead"><h3>Tournament settings</h3><button class="x" data-act="setupclose">Done</button></div>${setupFields()}</div>`
     :`<button class="setupline" data-act="setupopen"><span>${esc(bits.join(' · '))}</span><b>Change</b></button>`;
 }
+function nameNudge(){ // every coach needs a name, so managers can see who is in the team
+  if(myName()||!S.teamId)return'';
+  return `<div class="card nudge"><h3>Add your name</h3><p class="note">The other coaches and managers see it in the team's coach list, so they know who can see the team.</p>
+    <div class="cbtns"><input id="nudgename" placeholder="e.g. Sam (coach)" maxlength="40" autocomplete="name" style="flex:1;min-width:150px"><button class="btn go small" data-act="savename">Save</button></div></div>`;
+}
 function gamesList(){
-  if(!tourReady())return `<div class="sec">${requestsBanner()}${setupCard()}</div>`;
+  if(!tourReady())return `<div class="sec">${nameNudge()}${requestsBanner()}${setupCard()}</div>`;
   let W=0,D=0,L=0,F=0,A=0;const ids=gids();
   ids.forEach(id=>{const g=G(id);if(g.done){F+=g.score.us;A+=g.score.them;g.score.us>g.score.them?W++:g.score.us<g.score.them?L++:D++}});
   return `<div class="sec">
+  ${nameNudge()}
   ${requestsBanner()}
   <div class="summary num"><span>Played <b>${W+D+L}</b> of ${ids.length}</span><span>W <b>${W}</b> · D <b>${D}</b> · L <b>${L}</b></span><span>${Words().goals} <b>${F}–${A}</b></span></div>
   <div class="glist">${ids.map(id=>{const g=G(id);const n=inGame(g).length;
@@ -1600,7 +1610,7 @@ function seasonView(){
 
 /* ---------- actions ---------- */
 function keepSetup(fn){ // re-draw the set-up screen without losing what's been typed into it
-  const keep={};['cfg-team','cfg-short','cfg-size','bulknames','joinname','joincode'].forEach(x=>{const e=document.getElementById(x);if(e)keep[x]=e.value});
+  const keep={};['cfg-team','cfg-short','cfg-size','bulknames','joinname','joincode','mkname'].forEach(x=>{const e=document.getElementById(x);if(e)keep[x]=e.value});
   fn();Object.entries(keep).forEach(([x,v])=>{const e=document.getElementById(x);if(e)e.value=v});
 }
 document.addEventListener('click',e=>{
@@ -1610,7 +1620,7 @@ document.addEventListener('click',e=>{
   // finish before redrawing, so the tap would seem to do nothing. Any button tap leaves the box first.
   {const f=document.activeElement;if(b.tagName==='BUTTON'&&f&&f!==b&&/^(INPUT|TEXTAREA)$/.test(f.tagName)&&f.type!=='file')f.blur()}
   const a=b.dataset.act,id=S.game,p=b.dataset.p;
-  if(!['reset','del','finish','awdel','tdel','wipe','leave','clock0','subdel','signout','notedel','restoreundo','rmcoach','undo','newcode','mkmgr','claimmgr','admmgr','leaveto','leavecancel','pnew'].includes(a))S.confirm=null;
+  if(!['reset','del','finish','awdel','tdel','wipe','leave','clock0','subdel','signout','notedel','restoreundo','rmcoach','undo','newcode','mkmgr','unmgr','claimmgr','admmgr','leaveto','leavecancel','pnew'].includes(a))S.confirm=null;
   switch(a){
     case'tab':if(b.dataset.t===S.tab&&S.game){S.game=null;S.fix=null;S.pick=null;render();break}
       S.tab=b.dataset.t;lastTab[secOf(S.tab)]=S.tab;S.pick=null;render();break;
@@ -1708,7 +1718,8 @@ document.addEventListener('click',e=>{
     case'leavecancel':S.confirm=null;S.leaveHeir=null;render();break;
     case'claimmgr':if(S.confirm==='claimmgr'){S.confirm=null;claimManager()}else{S.confirm='claimmgr';render()}break;
     case'admmgr':{const k='am-'+b.dataset.t+'-'+b.dataset.id;if(S.confirm===k){S.confirm=null;adminMakeManager(b.dataset.t,b.dataset.id)}else{S.confirm=k;render()}break}
-    case'mkmgr':{const k='mg-'+b.dataset.id;if(S.confirm===k){S.confirm=null;handOver(b.dataset.id)}else{S.confirm=k;render()}break}
+    case'mkmgr':{const k='mg-'+b.dataset.id;if(S.confirm===k){S.confirm=null;addManager(b.dataset.id)}else{S.confirm=k;render()}break}
+    case'unmgr':{const k='um-'+b.dataset.id;if(S.confirm===k){S.confirm=null;removeManager(b.dataset.id)}else{S.confirm=k;render()}break}
     case'rmcoach':{const k='rm-'+b.dataset.id;if(S.confirm===k){S.confirm=null;removeCoach(b.dataset.id)}else{S.confirm=k;render()}break}
     case'teams':S.teams=true;S.game=null;S.fix=null;render();window.scrollTo(0,0);break;
     case'teamsclose':S.teams=false;render();break;
@@ -1778,7 +1789,12 @@ document.addEventListener('click',e=>{
       const sz=document.getElementById('cfg-size');c.size=Math.min(11,Math.max(3,parseInt(sz?.value)||c.size||5));
       if(!c.team){toast('Add a team name first.');break}if(!c.short)c.short=shortName(c.team);
       S.cfg=c;put('club/settings',c);addNames(document.getElementById('bulknames')?.value);toast('All set.');render();break}
-    case'mkteam':b.disabled=true;createTeam().finally(()=>{b.disabled=false});break;
+    case'mkteam':{const nm=(document.getElementById('mkname')?.value||'').trim().slice(0,40);
+      if(!nm){toast('Add your name first, so the other coaches know who manages the team.');document.getElementById('mkname')?.focus();break}
+      lsSet('matchday-name',nm);b.disabled=true;createTeam().finally(()=>{b.disabled=false});break}
+    case'savename':{const nm=(document.getElementById('nudgename')?.value||'').trim().slice(0,40);
+      if(!nm){toast('Type your name first.');break}
+      lsSet('matchday-name',nm);myTeams().forEach(x=>touchMember(x,true));toast('Name saved.');render();break}
     case'backup':saveBackup();break;
     case'restoreok':applyRestore();break;
     case'restoreundo':if(S.confirm==='undo'){S.confirm=null;undoRestore()}else{S.confirm='undo';b.textContent='Tap again to undo the restore';}break;
@@ -2037,7 +2053,7 @@ function openTeam(t){
   if(S.teamId&&S.teamId!==t){switchTeam(t);return} // adding a second team: reload into it
   saveTeams([...myTeams(),t]);syncTeamList();
   lsSet(TEAM_KEY,t);S.gate=false;S.adding=false;S.teamId=t;db=fsAdapter('teams/'+t);liveLabel();watchTeams();
-  F.onSnapshot(F.doc(fs,'teams',t),s=>{S.invite=s.data()?.code||'';S.createdBy=s.data()?.createdBy||null;render()},()=>{});
+  F.onSnapshot(F.doc(fs,'teams',t),s=>{S.invite=s.data()?.code||'';S.createdBy=s.data()?.createdBy||null;S.managers=s.data()?.managers||[];render()},()=>{});
   watchMembers(t);watchRequests(t);touchMember(t);
   subscribe(e=>{if(leaving)return; // we're leaving on purpose: let leaveTeam finish (and wipe)
     if(e&&e.code==='permission-denied'&&!removedCheck){removedCheck=true;leaveTeam(false)}});
@@ -2182,20 +2198,33 @@ async function newInviteCode(){ // manager: the old code stops working at once; 
     catch(e){if(e.code!=='permission-denied'||i===2){toast(`Couldn't make a new code (${errCode(e)}).`);return}}
   }
 }
-const noManager=()=>S.createdBy&&S.members.length&&!S.members.some(m=>m.id===S.createdBy);
+// A team's managers: whoever made it (or was handed that role) plus anyone added to its managers list.
+const isMgrId=id=>!!id&&(id===S.createdBy||(S.managers||[]).includes(id));
+const amMgr=()=>isMgrId(FB.auth.currentUser?.uid);
+const noManager=()=>S.createdBy&&S.members.length&&!S.members.some(m=>isMgrId(m.id));
 async function claimManager(){ // the manager's sign-in has left the team: take the role so someone can manage coaches and codes
   const {F,fs,auth}=FB;
   try{await track(F.updateDoc(F.doc(fs,'teams',S.teamId),{createdBy:auth.currentUser.uid}),null,'team');toast("You're now the manager.")}
   catch(e){toast(`Couldn't make you the manager (${errCode(e)}).`)}
 }
-async function handOver(id){ // manager: make another coach the manager (they can then remove coaches and make codes)
-  const {F,fs}=FB,m=S.members.find(x=>x.id===id);
-  try{await track(F.updateDoc(F.doc(fs,'teams',S.teamId),{createdBy:id}),null,'team');toast(`${m?.name||'That coach'} is now the manager.`)}
-  catch(e){toast(`Couldn't change the manager (${errCode(e)}).`)}
+async function addManager(id){ // a manager makes another coach a manager too
+  const {F,fs}=FB,m=S.members.find(x=>x.id===id),list=[...new Set([...(S.managers||[]),id])];
+  if(list.length>10){toast('A team can have up to 10 managers.');return}
+  try{await track(F.updateDoc(F.doc(fs,'teams',S.teamId),{managers:list}),null,'team');toast(`${m?.name||'That coach'} is now a manager.`)}
+  catch(e){toast(`Couldn't make them a manager (${errCode(e)}).`)}
+}
+async function removeManager(id){ // stop another coach being a manager (you stay one)
+  const {F,fs,auth}=FB,me=auth.currentUser.uid,m=S.members.find(x=>x.id===id);
+  const patch={managers:(S.managers||[]).filter(x=>x!==id&&(id!==S.createdBy||x!==me))};
+  if(id===S.createdBy)patch.createdBy=me;
+  try{await track(F.updateDoc(F.doc(fs,'teams',S.teamId),patch),null,'team');toast(`${m?.name||'That coach'} isn't a manager any more.`)}
+  catch(e){toast(`Couldn't change the managers (${errCode(e)}).`)}
 }
 async function removeCoach(id){
   const {F,fs}=FB,m=S.members.find(x=>x.id===id);
-  await track(F.deleteDoc(F.doc(fs,'teams',S.teamId,'members',id))).then(()=>toast(`${m?.name||'That coach'} has been removed from the team.`)).catch(e=>toast(`Couldn't remove (${errCode(e)}).`));
+  const me=FB.auth.currentUser.uid,b=F.writeBatch(fs);b.delete(F.doc(fs,'teams',S.teamId,'members',id));
+  if(isMgrId(id))b.update(F.doc(fs,'teams',S.teamId),{managers:(S.managers||[]).filter(x=>x!==id),...(id===S.createdBy?{createdBy:me}:{})});
+  await track(b.commit()).then(()=>toast(`${m?.name||'That coach'} has been removed from the team.`)).catch(e=>toast(`Couldn't remove (${errCode(e)}).`));
 }
 function requestsBanner(){
   if(!S.requests.length)return'';
@@ -2272,8 +2301,9 @@ async function leaveTeam(remote=true,force=false,heir=null){
   if(remote&&!(await uploadedFirst(force))){S.confirm='leave-force';render();return}
   const rep={kind:'leave',team:S.cfg.team||'the team',at:Date.now(),pending:force?sync.pending:0};
   if(remote){leaving=true;setSync('wait','Leaving…');
-    if(heir&&t){ // the manager hands over and leaves in one step, so the team is never left without one
-      const b=F.writeBatch(fs);b.update(F.doc(fs,'teams',t),{createdBy:heir});b.delete(F.doc(fs,'teams',t,'members',uid));
+    const patch=t?leavePatch(uid,heir):null;
+    if(patch){ // a manager hands over (if needed) and leaves in one step, so the team is never left without one
+      const b=F.writeBatch(fs);b.update(F.doc(fs,'teams',t),patch);b.delete(F.doc(fs,'teams',t,'members',uid));
       if(await settle(b.commit(),8000)!=='ok'){leaving=false;liveLabel();toast("Couldn't hand over the manager role just now, so you haven't left. Try again with a better signal.");return}
       rep.member='ok';
     }else rep.member=t?await settle(F.deleteDoc(F.doc(fs,'teams',t,'members',uid)),6000):'ok';
@@ -2342,7 +2372,7 @@ async function moveTeamsTo(signIn){
     const s=await within(F.getDocFromServer(F.doc(fs,'teams',t)).catch(e=>e),6000);
     if(s===null){toast("Couldn't reach one of your teams, so nothing changed. Try again with a better signal.");liveLabel();return}
     if(s instanceof Error||!s.exists())continue; // not a member any more: nothing to move
-    mine.push({t,code:s.data().code,mgr:s.data().createdBy===old.uid});
+    mine.push({t,code:s.data().code,mgr:s.data().createdBy===old.uid,ms:s.data().managers||[]});
   }
   // 2. The account signs in on the side (the phone stays signed in as itself meanwhile).
   const app2=AppM.initializeApp(cfg,'switch'+Date.now()),auth2=A.initializeAuth(app2,{persistence:A.inMemoryPersistence});
@@ -2350,7 +2380,7 @@ async function moveTeamsTo(signIn){
   let u2;try{u2=(await signIn(auth2)).user}catch(e){await done();toast(authMsg(e));liveLabel();return}
   if(u2.uid===old.uid){await done();toast('That is already the account on this phone.');liveLabel();return}
   // 3. Move each team: the account asks, the phone accepts (and hands over manager) in one write.
-  for(const {t,code,mgr} of mine){
+  for(const {t,code,mgr,ms} of mine){
     try{
       const inAlready=await F.getDoc(F.doc(fs2,'teams',t,'members',u2.uid)).then(x=>x.exists()).catch(()=>false);
       const b=F.writeBatch(fs);
@@ -2359,7 +2389,8 @@ async function moveTeamsTo(signIn){
         b.set(F.doc(fs,'teams',t,'members',u2.uid),{code,joined:F.serverTimestamp(),name:myName(),via:u2.providerData.some(p=>p.providerId==='google.com')?'google':'email',by:myName()});
         b.delete(F.doc(fs,'teams',t,'requests',u2.uid));
       }
-      if(mgr)b.update(F.doc(fs,'teams',t),{createdBy:u2.uid});
+      if(mgr)b.update(F.doc(fs,'teams',t),{createdBy:u2.uid,managers:ms.filter(x=>x!==old.uid)});
+      else if(ms.includes(old.uid))b.update(F.doc(fs,'teams',t),{managers:[...new Set(ms.map(x=>x===old.uid?u2.uid:x))]});
       b.delete(F.doc(fs,'teams',t,'members',old.uid)); // the phone's own entry: the account replaces it
       const ok=await within(b.commit().then(()=>true),10000);
       if(!ok)throw Object.assign(new Error('timeout'),{code:'no signal'});
@@ -2438,7 +2469,14 @@ function accountCard(){
     ${S.acct?acctForm(S.acct):`${googleBtn()}<div class="cbtns"><button class="btn" data-act="acctcreate">Create an account with email</button><button class="btn" data-act="acctsignin">Sign in with email</button></div>`}</div>`;
 }
 const signoutBtn=()=>`<button class="x ${S.confirm&&S.confirm.startsWith('signout')?'sure':''}" data-act="signout">${S.confirm==='signout-force'?`Not uploaded: tap again to sign out anyway and lose ${sync.pending||'some'} change${sync.pending===1?'':'s'}`:S.confirm==='signout'?'Tap again to sign out on this phone':'Sign out on this phone'}</button>`;
-const heirs=()=>{const me=FB.auth.currentUser?.uid;return S.createdBy===me?S.members.filter(m=>m.id!==me):[]}; // a manager leaving must hand over first
+const heirs=()=>{const me=FB.auth.currentUser?.uid; // the last manager leaving must choose who takes over
+  if(!amMgr()||S.members.some(m=>m.id!==me&&isMgrId(m.id)))return[];return S.members.filter(m=>m.id!==me)};
+function leavePatch(uid,heir){ // the team record change that goes with a manager leaving
+  const ms=(S.managers||[]).filter(x=>x!==uid);
+  if(S.createdBy!==uid)return ms.length!==(S.managers||[]).length?{managers:ms}:null;
+  const next=heir||S.members.find(m=>m.id!==uid&&ms.includes(m.id))?.id;
+  return next?{createdBy:next,managers:ms.filter(x=>x!==next)}:null;
+}
 const leaveBtn=()=>S.confirm==='leave-pick'?`<div class="warnline"><b>Who takes over as manager?</b> You're the manager, so choose another coach before you leave. The manager can remove coaches and make new invite codes.
   <div class="cbtns" style="margin-top:8px">${heirs().map(m=>`<button class="btn small" data-act="leaveto" data-id="${esc(m.id)}">${esc(m.name||'Coach')}</button>`).join('')}<button class="btn small" data-act="leavecancel">Cancel</button></div></div>`:`<button class="x ${S.confirm&&S.confirm.startsWith('leave')?'sure':''}" data-act="leave">${S.confirm==='leave-force'?`Not uploaded: tap again to leave anyway and lose ${sync.pending||'some'} change${sync.pending===1?'':'s'}`:S.confirm==='leave'?'Tap again to leave this team on this phone':'Leave this team on this phone'}</button>`;
 function pendingCard(){
@@ -2465,6 +2503,8 @@ function gateView(){
     <p>For grassroots coaches on match days and tournament days: pick the team, make the subs, keep everyone's playing time fair and the score up to date. Football or rugby.</p></div>`}
   <div class="card"><h3>Start a new team</h3>
     <p class="note">You'll get an invite code to give the other coaches.</p>
+    <label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">Your name (the coaches see this)</span>
+      <input id="mkname" value="${esc(myName())}" placeholder="e.g. Sam (coach)" maxlength="40" autocomplete="name"></label>
     <button class="btn go" data-act="mkteam">Create a team</button></div>
   <div class="card"><h3>Join a team</h3>
     <p class="note">Ask a coach for the team's invite code (in their ☰ menu). The code sends a request: a coach in the team then accepts you.${FB?.auth?.currentUser?.email?' They also see the email you signed in with, so they know it\'s you.':''}</p>
@@ -2513,18 +2553,24 @@ async function loadAdmin(){
       const [st,ms]=await Promise.all([F.getDoc(F.doc(fs,'teams',d.id,'club','settings')).catch(()=>null),F.getDocs(F.collection(fs,'teams',d.id,'members')).catch(()=>null)]);
       const cfg=st?.data?.()||{},mem=ms?ms.docs.map(m=>m.data()):[];
       const seen=Math.max(0,...mem.map(m=>m.seen?.toMillis?.()||m.joined?.toMillis?.()||0));
-      const mgr=d.data().createdBy,list=ms?ms.docs.map(m=>({id:m.id,name:m.data().name||'Coach'})):[];
+      const mgr=d.data().createdBy,mgrs=d.data().managers||[],isM=id=>id===mgr||mgrs.includes(id);
+      const list=ms?ms.docs.map(m=>({id:m.id,name:m.data().name||'Coach (no name)',mgr:isM(m.id)})):[];
       return{id:d.id,name:cfg.team||'',sport:cfg.sport||'football',created:d.data().created?.toMillis?.()||0,coaches:mem.length,seen,
-        orphan:!!ms&&!list.some(m=>m.id===mgr),list};
+        orphan:!!ms&&!list.some(m=>m.mgr),list,createdBy:mgr,managers:mgrs};
     }));
     S.admin={loading:false,teams:rows.sort((a,b)=>b.seen-a.seen)};
   }catch(e){S.admin={loading:false,error:errCode(e),teams:[]}}
   render();
 }
-async function adminMakeManager(t,id){ // owner: give a team with no manager a new one
-  const {F,fs}=FB;
-  try{await F.updateDoc(F.doc(fs,'teams',t),{createdBy:id});toast('Manager set.');loadAdmin()}
-  catch(e){toast(`Couldn't set the manager (${errCode(e)}).`)}
+async function adminMakeManager(t,id){ // owner: make a coach in any team a manager, or stop them being one
+  const {F,fs}=FB,row=(S.admin?.teams||[]).find(x=>x.id===t);if(!row)return;
+  const c=row.list.find(m=>m.id===id),patch={};
+  if(!c?.mgr)patch.managers=[...new Set([...row.managers,id])].slice(0,10);
+  else{patch.managers=row.managers.filter(x=>x!==id);
+    if(row.createdBy===id){const next=row.list.find(m=>m.mgr&&m.id!==id);if(!next){toast("They're the only manager. Make someone else a manager first.");return}
+      patch.createdBy=next.id;patch.managers=patch.managers.filter(x=>x!==next.id)}}
+  try{await F.updateDoc(F.doc(fs,'teams',t),patch);toast(c?.mgr?'No longer a manager.':'Now a manager.');loadAdmin()}
+  catch(e){toast(`Couldn't change the managers (${errCode(e)}).`)}
 }
 function adminView(){
   const A=S.admin||{teams:[]},T=A.teams,day=864e5,now=Date.now();
@@ -2538,8 +2584,9 @@ function adminView(){
   <div class="summary num"><span>Teams <b>${T.length}</b></span><span>Active this week <b>${week}</b></span><span>Football <b>${T.length-rug}</b> · Rugby <b>${rug}</b></span></div>
   <div class="rows">${T.map(t=>`<div class="row adm"><div class="who">${esc(t.name||'(not set up yet)')}<span class="tag">${t.sport==='rugby'?'Rugby':'Football'}</span></div>
     <div class="note">${t.coaches} coach${t.coaches===1?'':'es'} · last active ${esc(when(t.seen))} · created ${esc(when(t.created))}</div>
-    ${t.orphan?`<div class="warnline"><b>No manager.</b> ${t.list.length?'Make one of these coaches the manager:':'No coaches left in this team.'}
-      ${t.list.length?`<div class="cbtns" style="margin-top:6px">${t.list.map(m=>{const k='am-'+t.id+'-'+m.id;return `<button class="btn small ${S.confirm===k?'sure':''}" data-act="admmgr" data-t="${esc(t.id)}" data-id="${esc(m.id)}">${S.confirm===k?'Tap again: make '+esc(m.name)+' manager':esc(m.name)}</button>`}).join('')}</div>`:''}</div>`:''}
+    ${t.orphan?`<div class="warnline"><b>No manager.</b> ${t.list.length?'Make one of the coaches below a manager.':'No coaches left in this team.'}</div>`:''}
+    ${t.list.length?`<div class="admcoaches">${t.list.map(m=>{const k='am-'+t.id+'-'+m.id;return `<div class="admc"><span>${esc(m.name)}${m.mgr?' <span class="tag mgr">Manager</span>':''}</span>
+      <button class="x ${S.confirm===k?'sure':''}" data-act="admmgr" data-t="${esc(t.id)}" data-id="${esc(m.id)}">${S.confirm===k?'Tap again to confirm':m.mgr?'Remove as manager':'Make manager'}</button></div>`}).join('')}</div>`:''}
     <div class="note num admid">${esc(t.id)}</div></div>`).join('')}</div>
   <button class="btn small" data-act="adminload" style="align-self:flex-start">Refresh</button>`}
   </div>`;
@@ -2558,11 +2605,11 @@ function ago(ts){
 }
 function membersList(){
   const me=FB.auth.currentUser?.uid,via={google:'Google',email:'Email',phone:'No account'};
-  const l=[...S.members].sort((a,b)=>(b.id===S.createdBy)-(a.id===S.createdBy)||(b.id===me)-(a.id===me)||(a.name||'~').localeCompare(b.name||'~'));
+  const l=[...S.members].sort((a,b)=>isMgrId(b.id)-isMgrId(a.id)||(b.id===me)-(a.id===me)||(a.name||'~').localeCompare(b.name||'~'));
   return `<div class="rows">${l.map(m=>`<div class="row member"><span class="who">${esc(m.name||(m.via==='phone'||!m.via?'Coach (no account)':'Coach'))}
-      ${m.id===S.createdBy?'<span class="tag mgr">Manager</span>':''}${m.id===me?'<span class="tag">you</span>':''}</span>
+      ${isMgrId(m.id)?'<span class="tag mgr">Manager</span>':''}${m.id===me?'<span class="tag">you</span>':''}</span>
     <span class="note">${via[m.via]||'No account'}${ago(m.seen)?' · '+ago(m.seen):''}</span>
-    ${S.createdBy===me&&m.id!==me?`<span class="cbtns"><button class="x ${S.confirm==='mg-'+m.id?'sure':''}" data-act="mkmgr" data-id="${esc(m.id)}">${S.confirm==='mg-'+m.id?'Tap to make manager':'Make manager'}</button><button class="x ${S.confirm==='rm-'+m.id?'sure':''}" data-act="rmcoach" data-id="${esc(m.id)}">${S.confirm==='rm-'+m.id?'Tap to remove':'Remove'}</button></span>`:''}</div>`).join('')||'<p class="note">Loading…</p>'}</div>`;
+    ${amMgr()&&m.id!==me?`<span class="cbtns">${isMgrId(m.id)?`<button class="x ${S.confirm==='um-'+m.id?'sure':''}" data-act="unmgr" data-id="${esc(m.id)}">${S.confirm==='um-'+m.id?'Tap to stop them managing':'Remove as manager'}</button>`:`<button class="x ${S.confirm==='mg-'+m.id?'sure':''}" data-act="mkmgr" data-id="${esc(m.id)}">${S.confirm==='mg-'+m.id?'Tap to make a manager':'Make manager'}</button>`}<button class="x ${S.confirm==='rm-'+m.id?'sure':''}" data-act="rmcoach" data-id="${esc(m.id)}">${S.confirm==='rm-'+m.id?'Tap to remove':'Remove'}</button></span>`:''}</div>`).join('')||'<p class="note">Loading…</p>'}</div>`;
 }
 function menuView(){
   const u=FB.auth.currentUser;
@@ -2586,7 +2633,7 @@ function menuView(){
     <p>Invite code: <b class="num" style="font-family:var(--display);font-size:26px;letter-spacing:.06em">${esc(showCode(S.invite))||'…'}</b></p>
     ${inviteShare()}
     <p class="note">Other coaches open the app, tap <b>Join a team</b> and enter this code. The code only sends a request: someone in the team has to accept each person.</p>
-    ${S.createdBy===FB.auth.currentUser?.uid?`<button class="x ${S.confirm==='newcode'?'sure':''}" data-act="newcode" style="align-self:flex-start">${S.confirm==='newcode'?'Tap again: the old code stops working at once':'Make a new invite code'}</button>
+    ${amMgr()?`<button class="x ${S.confirm==='newcode'?'sure':''}" data-act="newcode" style="align-self:flex-start">${S.confirm==='newcode'?'Tap again: the old code stops working at once':'Make a new invite code'}</button>
       <p class="note">${S.invite&&S.invite.length<8?'Your code is the older, shorter kind: a new one is 8 characters and much harder to guess. ':''}Use this if the code has been shared too widely. Coaches already in the team stay in.</p>`:''}
     ${requestsBanner()}
     <span class="lbl">Team members</span>
