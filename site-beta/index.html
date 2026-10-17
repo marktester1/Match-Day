@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en-GB">
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Match Day (beta) · manage your team on match days and tournament days</title>
+<meta name="description" content="For grassroots coaches on match days and tournament days: line-ups, subs, fair playing time and the score on your phone, with a live score link for families. Football and rugby. Free.">
+<meta name="theme-color" content="#1e6a3a">
+<meta property="og:title" content="Match Day · manage your team on match days and tournament days">
+<meta property="og:description" content="Line-ups, subs, fair playing time and the score for grassroots football and rugby, on match days and tournament days. Free.">
+<meta property="og:image" content="img/game.png">
+<link rel="icon" href="https://match-day-beta-17b23.web.app/icons/icon-192.png">
+<link rel="apple-touch-icon" href="https://match-day-beta-17b23.web.app/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Same colours and type as the app */
+:root{
+  --bg:#f2f5f0; --surface:#ffffff; --ink:#16211a; --muted:#5b6a60; --line:#d7dfd6;
+  --grass:#1e6a3a; --grass-deep:#175a30; --chalk:#ffffff; --gold:#c8961a; --tint:#e3eee4;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0e1511; --surface:#16201a; --ink:#e4ece6; --muted:#97a99d; --line:#2a372f;
+  --grass:#2f8a50; --grass-deep:#1f6a3b; --gold:#e6b84a; --tint:#17261c; color-scheme:dark}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.55 var(--body)}
+a{color:var(--grass)}
+h1,h2,h3{font-family:var(--display);font-weight:700;line-height:1.05;margin:0;text-wrap:balance;letter-spacing:.005em}
+p{margin:0}
+.w{max-width:1080px;margin:0 auto;padding:0 20px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:50px;padding:0 22px;border-radius:12px;font-weight:700;text-decoration:none;font-size:17px}
+.btn.go{background:var(--chalk);color:var(--grass-deep)}
+.btn.line{border:2px solid #ffffff99;color:var(--chalk)}
+.btn.dark{background:var(--grass);color:#fff}
+.btn:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+
+/* Top bar and hero: the one bold, grass-striped block */
+.betabar{background:#b06a10;color:#fff;text-align:center;padding:10px 16px;font-size:15px}.betabar a{color:#fff;font-weight:700}
+.hero{background:repeating-linear-gradient(90deg,var(--grass) 0 80px,var(--grass-deep) 80px 160px);color:var(--chalk);overflow:hidden}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:16px}
+.logo{display:flex;align-items:center;gap:10px;color:inherit;text-decoration:none;font:700 28px/1 var(--display)}
+.logo img{width:40px;height:40px;border-radius:10px;box-shadow:0 1px 3px #0004}
+.bar .open{color:var(--chalk);font-weight:700;text-decoration:none;border:2px solid #ffffff80;border-radius:10px;padding:8px 14px;font-size:15px}
+.herogrid{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center;padding-block:28px 0}
+.hero h1{font-size:clamp(44px,7vw,76px);text-transform:uppercase}
+.hero h1 em{font-style:normal;color:#ffe08a}
+.lead{font-size:clamp(18px,2.2vw,21px);margin-top:18px;max-width:34ch;color:#f1f7f2}
+.ctas{display:flex;flex-wrap:wrap;gap:12px;margin-top:26px}
+.small{font-size:14px;margin-top:14px;color:#dceade}
+.phone{justify-self:center;width:min(330px,80vw);border-radius:44px 44px 0 0;border:10px solid #0d140f;border-bottom:0;background:#0d140f;box-shadow:0 30px 60px #0006;overflow:hidden;margin-top:12px;aspect-ratio:393/600}
+.phone img{display:block;width:100%;height:100%;object-fit:cover;object-position:top;border-radius:34px 34px 0 0}
+
+section{padding-block:64px}
+.kicker{font:700 14px var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--grass)}
+h2{font-size:clamp(34px,4.5vw,48px);margin-top:6px}
+.intro{color:var(--muted);margin-top:10px;max-width:60ch}
+
+.days{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:28px}
+.day{background:var(--surface);border:2px solid var(--grass);border-radius:16px;padding:22px}
+.day .ic{font-size:30px;line-height:1}
+.day h3{font-size:30px;margin-top:10px}
+.day p{color:var(--muted);margin-top:6px}
+.feats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:32px}
+.f{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px}
+.f .ic{font-size:26px;line-height:1}
+.f h3{font-size:25px;margin-top:10px}
+.f p{color:var(--muted);margin-top:6px;font-size:16px}
+
+.shots{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:32px}
+.shot figure{margin:0}
+.shot img{display:block;width:100%;height:auto;border-radius:22px;border:6px solid #0d140f;background:#0d140f;aspect-ratio:393/659;object-fit:cover;object-position:top}
+.shot figcaption{margin-top:10px;font-size:15px;color:var(--muted)}
+.shot figcaption b{display:block;color:var(--ink);font-size:16px}
+
+.safe{background:var(--tint)}
+.safegrid{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start}
+.ticks{list-style:none;padding:0;margin:0;display:grid;gap:14px}
+.ticks li{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px 14px 50px;position:relative}
+.ticks li::before{content:"✓";position:absolute;left:16px;top:13px;width:24px;height:24px;border-radius:99px;background:var(--grass);color:#fff;font-weight:700;font-size:14px;display:grid;place-items:center}
+.ticks b{display:block}
+
+.steps{list-style:none;padding:0;margin:32px 0 0;display:grid;grid-template-columns:repeat(3,1fr);gap:16px;counter-reset:s}
+.steps li{counter-increment:s;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px}
+.steps li::before{content:counter(s);font:700 44px/1 var(--display);color:var(--grass)}
+.steps h3{font-size:24px;margin-top:6px}
+.steps p{color:var(--muted);margin-top:6px;font-size:16px}
+.start{margin-top:28px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+
+.faq{max-width:760px}
+details{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:4px 18px;margin-top:12px}
+summary{cursor:pointer;font-weight:700;padding:12px 0;list-style:none;display:flex;justify-content:space-between;gap:12px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font:700 24px/1 var(--display);color:var(--grass)}
+details[open] summary::after{content:"–"}
+details p{color:var(--muted);padding-bottom:14px}
+
+footer{border-top:1px solid var(--line);padding-block:32px 48px;color:var(--muted);font-size:14px}
+footer .links{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:12px;font-size:15px}
+
+@media (max-width:860px){
+  .days{grid-template-columns:1fr}
+  .herogrid,.safegrid{grid-template-columns:1fr}
+  .feats{grid-template-columns:1fr 1fr}
+  .shots{grid-template-columns:1fr 1fr}
+  .steps{grid-template-columns:1fr}
+}
+@media (max-width:560px){
+  .w{padding:0 16px}
+  .feats{grid-template-columns:1fr}
+  .bar .open{display:none}
+  section{padding-block:48px}
+  .ctas .btn{flex:1 1 100%}
+}
+</style>
+
+<div class="betabar"><b>Beta, for testers.</b> This version opens the beta app, with its own test data. Coaches using Match Day for real: <a href="https://matchday-website-preview.web.app">go to the main site</a>.</div>
+<header class="hero">
+  <div class="w">
+    <nav class="bar" aria-label="Main">
+      <a class="logo" href="./"><img src="https://match-day-beta-17b23.web.app/icons/icon-192.png" alt="">Match Day</a>
+      <a class="open" href="https://match-day-beta-17b23.web.app">Open the app</a>
+    </nav>
+    <div class="herogrid">
+      <div>
+        <h1>Manage your team on <em>match day</em></h1>
+        <p class="lead">For grassroots coaches on match days and tournament days. Pick the team, make the subs, keep everyone's playing time fair and the score up to date, all from your phone on the touchline. Families follow live from wherever they are.</p>
+        <div class="ctas">
+          <a class="btn go" href="https://match-day-beta-17b23.web.app">Open Match Day</a>
+          <a class="btn line" href="#start">How to get started</a>
+        </div>
+        <p class="small">Free · Phones and tablets, iPhone, iPad and Android · No download needed · Works with no signal</p>
+      </div>
+      <div class="phone"><img src="img/game.png" alt="A game in Match Day: Harbour Rovers 1, Hillside 0, 12 minutes into the first half" width="786" height="1318"></div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section id="days">
+    <div class="w">
+      <p class="kicker">When you use it</p>
+      <h2>On the day itself, from kick-off to the final whistle</h2>
+      <p class="intro">Match Day is built for the day your team plays: one match, or a tournament with several games back to back. Results, scorers and reports then go into your season record.</p>
+      <div class="days">
+        <div class="day"><div class="ic">⚽</div><h3>A match day</h3><p>One game. Pick the line-up, kick off, make your subs and record the goals. Everyone's minutes are tracked as you go, and families follow the score live.</p></div>
+        <div class="day"><div class="ic">🏆</div><h3>A tournament day</h3><p>Several games in a day. Put in the fixtures, kick-off times and pitches, run each game, and keep minutes fair across the whole day. Save the results and a match report at the end.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" style="padding-top:0">
+    <div class="w">
+      <p class="kicker">What it does</p>
+      <h2>Everything you juggle on the touchline, in one place</h2>
+      <p class="intro">Designed for the touchline: big buttons, one hand, any weather.</p>
+      <div class="feats">
+        <div class="f"><div class="ic">🔁</div><h3>Line-ups and subs</h3><p>Pick the team, then tap or drag players on and off. Keeper changes included, with a quick undo if you tap the wrong one.</p></div>
+        <div class="f"><div class="ic">⏱️</div><h3>Fair playing time</h3><p>Every player's minutes are tracked live across the day, least first, so you can see who needs a run out.</p></div>
+        <div class="f"><div class="ic">⚽</div><h3>Scores and the clock</h3><p>Goals and who scored, one period, halves or quarters. Rugby too: tries, conversions, penalties and the sin bin.</p></div>
+        <div class="f"><div class="ic">📣</div><h3>Followers</h3><p>One link for family, carers and friends: the live score, kick-off times and results. No sign-up, and never a child's name.</p></div>
+        <div class="f"><div class="ic">🏆</div><h3>Tournaments and results</h3><p>Set up the day's fixtures, then save the results, scorers, cards and a match report to your season record.</p></div>
+        <div class="f"><div class="ic">📶</div><h3>Works with no signal</h3><p>Keeps going at the pitch with no reception and catches up when you're back online. Every coach on the team sees the same thing.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="screens" style="padding-top:0">
+    <div class="w">
+      <p class="kicker">See it</p>
+      <h2>Simple enough to use mid-game</h2>
+      <div class="shots">
+        <div class="shot"><figure><img src="img/pitch.png" alt="The pitch view: players' cards showing their minutes, the bench, goals and subs" loading="lazy" width="786" height="1318"><figcaption><b>Tap to sub</b>Who's on, who's off and everyone's minutes.</figcaption></figure></div>
+        <div class="shot"><figure><img src="img/minutes.png" alt="Playing time list, least first, with players who need more time marked" loading="lazy" width="786" height="1318"><figcaption><b>Fair minutes</b>Least time first, flagged when someone needs more.</figcaption></figure></div>
+        <div class="shot"><figure><img src="img/follower.png" alt="The follower page: live score 1–0 and the day's fixtures, with no players' names" loading="lazy" width="786" height="1318"><figcaption><b>For families</b>Live score and fixtures. Team names only.</figcaption></figure></div>
+        <div class="shot"><figure><img src="img/games.png" alt="The tournament list of four games with results and kick-off times" loading="lazy" width="786" height="1318"><figcaption><b>The whole day</b>Fixtures, pitches, results as they finish.</figcaption></figure></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="safe" id="privacy">
+    <div class="w safegrid">
+      <div>
+        <p class="kicker">Built for children's sport</p>
+        <h2>Keeps children's details to a minimum</h2>
+        <p class="intro">Match Day only needs first names or shirt numbers. There are no adverts, nothing is sold, and you're not tracked around the web.</p>
+        <p class="intro"><a href="https://match-day-beta-17b23.web.app/privacy.html">Read the privacy notice</a></p>
+      </div>
+      <ul class="ticks">
+        <li><b>First names only</b>No surnames, dates of birth or photos needed.</li>
+        <li><b>Followers never see players' names</b>The follower link shows team names and scores, nothing else.</li>
+        <li><b>Playing time stays with the coaches</b>Minutes are for keeping things fair, and are never shared.</li>
+        <li><b>Coaches approve who joins</b>New coaches ask to join with your team's code, and you accept them.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="start">
+    <div class="w">
+      <p class="kicker">Get started</p>
+      <h2>Ready in two minutes</h2>
+      <ol class="steps">
+        <li><h3>Open it on your phone or tablet</h3><p>Go to Match Day in the browser. On iPhone or iPad (Safari): Share → <b>Add to Home Screen</b>. On Android (Chrome): ⋮ → <b>Install app</b>.</p></li>
+        <li><h3>Create your team</h3><p>Add your team name, how many a side, and your squad's first names. Paste them in one go if you like.</p></li>
+        <li><h3>Invite and share</h3><p>Invite your other coaches from the ☰ menu, and send your follower link to the team's group chat.</p></li>
+      </ol>
+      <div class="start"><a class="btn dark" href="https://match-day-beta-17b23.web.app">Open Match Day</a></div>
+    </div>
+  </section>
+
+  <section id="faq" style="padding-top:0">
+    <div class="w faq">
+      <p class="kicker">Questions</p>
+      <h2>Good to know</h2>
+      <details><summary>Is it free?</summary><p>Yes, Match Day is free to use at the moment. If that ever changes, we'll tell you in the app at least 30 days before.</p></details>
+      <details><summary>Which phones and tablets does it work on?</summary><p>Any recent iPhone, iPad, or Android phone or tablet, in the browser. Add it to your Home Screen and it opens like any other app. A tablet gives you a bigger pitch to tap on, and it works on computers too.</p></details>
+      <details><summary>What if there's no signal at the pitch?</summary><p>It keeps working. Everything saves on your phone and uploads when you're back in signal, so the other coaches and followers catch up then.</p></details>
+      <details><summary>Can more than one coach use it?</summary><p>Yes. Every coach on the team sees the same line-up, subs and score live. New coaches ask to join with your team's code and you approve them.</p></details>
+      <details><summary>Does it do one-off matches as well as tournaments?</summary><p>Yes. Set up one game for a league match, or several for a tournament day. Results go to your season record either way.</p></details>
+      <details><summary>Do I need an account?</summary><p>No. Signing in with Google or email is optional, but recommended so your team comes with you if you change phone.</p></details>
+      <details><summary>Football only?</summary><p>Football and rugby. Rugby has tries, conversions and penalties, and a sin-bin countdown that still counts towards a player's time on the pitch.</p></details>
+      <details><summary>How do I get in touch?</summary><p>Email <a href="mailto:markdavidmileswork@gmail.com">markdavidmileswork@gmail.com</a> with feedback, bugs or ideas. It's an early version and every suggestion is read.</p></details>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="w">
+    <div class="links">
+      <a href="https://match-day-beta-17b23.web.app">Open Match Day</a>
+      <a href="https://match-day-beta-17b23.web.app/privacy.html">Privacy</a>
+      <a href="https://match-day-beta-17b23.web.app/terms.html">Terms</a>
+      <a href="mailto:markdavidmileswork@gmail.com">Contact</a>
+    </div>
+    <p>Match Day is a trading name of Mark Miles Consultancy Limited, registered in England and Wales, company number 08286044. Registered office: 19 Well Close, Winscombe, England, BS25 1HQ.</p>
+  </div>
+</footer>
+</html>

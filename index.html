@@ -366,7 +366,7 @@ body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.27.1';
+const APP_VERSION='0.27.2';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,benchAsk:null,rptEdit:null,fpush:undefined,fpushEdit:false,fkinds:null,dpush:undefined,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,managers:[],askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
@@ -563,6 +563,8 @@ function makeFeed(){
     for(let i=1;i<=10;i++)b.delete(F.doc(fs,'feeds',old,'games','g'+i));b.delete(F.doc(fs,'feeds',old));track(b.commit(),()=>{})}
   S.confirm=null;render();toast('Follower link ready. Share it with family, carers and friends.');
 }
+// The message for the team's group chat (WhatsApp shows *text* in bold). Team names and scores only.
+const followText=()=>`⚽ *Follow ${S.cfg.team||'our team'} live*\n\nTap the link to follow our scores on your phone. No app or sign-up needed:\n👉 ${feedUrl(S.feed.id)}\n\nYou'll see the live score and match clock, kick-off times and pitches for the day's games, and the results as they finish. It only shows team names and scores, never the children's names. Feel free to share it with family who can't make it.`;
 async function shareFeed(copyOnly){
   const url=feedUrl(S.feed.id),title=`${S.cfg.team||'Our team'}: live scores`;
   if(!copyOnly&&navigator.share){try{await navigator.share({title,text:`Follow ${S.cfg.team||'our team'}'s scores live on Match Day`,url});return}catch(e){if(e.name==='AbortError')return}}
@@ -574,7 +576,7 @@ function parentCard(){
   return `<div class="card"><h3>Followers</h3>
     <p class="note">Anyone with this link can follow the score live: family, carers and friends. They see team names, the score, clock, half time and full time, and the day's games. They never see players' names, line-ups or minutes, and they can't change anything.</p>
     ${cur?`<div class="plink">${esc(feedUrl(S.feed.id))}</div>
-      <div class="cbtns"><button class="btn go" data-act="pshare">Share link</button><button class="btn" data-act="pcopy">Copy</button></div>
+      <div class="cbtns"><a class="btn go wa" href="https://wa.me/?text=${encodeURIComponent(followText())}" target="_blank" rel="noopener">Share on WhatsApp</a><button class="btn" data-act="pshare">Share another way</button><button class="btn" data-act="pcopy">Copy</button></div>
       <p class="note">This link works for the ${esc(S.feed.season)} season.</p>
       <button class="x ${S.confirm==='pnew'?'sure':''}" data-act="pnew">${S.confirm==='pnew'?'Tap again: the old link stops working':'Make a new link'}</button>`
     :`${S.feed?`<p class="note">Last season's link (${esc(S.feed.season)}) has stopped updating.</p>`:''}
