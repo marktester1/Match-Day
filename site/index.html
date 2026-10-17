@@ -2,11 +2,11 @@
 <html lang="en-GB">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Match Day · the touchline app for grassroots coaches</title>
-<meta name="description" content="Line-ups, subs, fair playing time and live scores for grassroots football and rugby coaches, with a live score link for families. Works with no signal. Free.">
+<title>Match Day · manage your team on match days and tournament days</title>
+<meta name="description" content="For grassroots coaches on match days and tournament days: line-ups, subs, fair playing time and the score on your phone, with a live score link for families. Football and rugby. Free.">
 <meta name="theme-color" content="#1e6a3a">
-<meta property="og:title" content="Match Day · the touchline app for grassroots coaches">
-<meta property="og:description" content="Line-ups, subs, fair playing time and live scores for grassroots football and rugby. Free.">
+<meta property="og:title" content="Match Day · manage your team on match days and tournament days">
+<meta property="og:description" content="Line-ups, subs, fair playing time and the score for grassroots football and rugby, on match days and tournament days. Free.">
 <meta property="og:image" content="img/game.png">
 <link rel="icon" href="https://match-day-17b23.web.app/icons/icon-192.png">
 <link rel="apple-touch-icon" href="https://match-day-17b23.web.app/icons/apple-touch-icon.png">
@@ -56,6 +56,11 @@ section{padding-block:64px}
 h2{font-size:clamp(34px,4.5vw,48px);margin-top:6px}
 .intro{color:var(--muted);margin-top:10px;max-width:60ch}
 
+.days{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:28px}
+.day{background:var(--surface);border:2px solid var(--grass);border-radius:16px;padding:22px}
+.day .ic{font-size:30px;line-height:1}
+.day h3{font-size:30px;margin-top:10px}
+.day p{color:var(--muted);margin-top:6px}
 .feats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:32px}
 .f{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px}
 .f .ic{font-size:26px;line-height:1}
@@ -94,6 +99,7 @@ footer{border-top:1px solid var(--line);padding-block:32px 48px;color:var(--mute
 footer .links{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:12px;font-size:15px}
 
 @media (max-width:860px){
+  .days{grid-template-columns:1fr}
   .herogrid,.safegrid{grid-template-columns:1fr}
   .feats{grid-template-columns:1fr 1fr}
   .shots{grid-template-columns:1fr 1fr}
@@ -116,8 +122,8 @@ footer .links{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:12px;font-s
     </nav>
     <div class="herogrid">
       <div>
-        <h1>The touchline app for <em>grassroots coaches</em></h1>
-        <p class="lead">Line-ups, subs, fair playing time and the score, all on your phone or tablet. Families follow live from wherever they are. Football or rugby, one game or a whole tournament.</p>
+        <h1>Manage your team on <em>match day</em></h1>
+        <p class="lead">For grassroots coaches on match days and tournament days. Pick the team, make the subs, keep everyone's playing time fair and the score up to date, all from your phone on the touchline. Families follow live from wherever they are.</p>
         <div class="ctas">
           <a class="btn go" href="https://match-day-beta-17b23.web.app">Open Match Day</a>
           <a class="btn line" href="#start">How to get started</a>
@@ -130,10 +136,22 @@ footer .links{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:12px;font-s
 </header>
 
 <main>
-  <section id="features">
+  <section id="days">
+    <div class="w">
+      <p class="kicker">When you use it</p>
+      <h2>On the day itself, from kick-off to the final whistle</h2>
+      <p class="intro">Match Day is built for the day your team plays: one match, or a tournament with several games back to back. Results, scorers and reports then go into your season record.</p>
+      <div class="days">
+        <div class="day"><div class="ic">⚽</div><h3>A match day</h3><p>One game. Pick the line-up, kick off, make your subs and record the goals. Everyone's minutes are tracked as you go, and families follow the score live.</p></div>
+        <div class="day"><div class="ic">🏆</div><h3>A tournament day</h3><p>Several games in a day. Put in the fixtures, kick-off times and pitches, run each game, and keep minutes fair across the whole day. Save the results and a match report at the end.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" style="padding-top:0">
     <div class="w">
       <p class="kicker">What it does</p>
-      <h2>Everything you juggle on match day, in one place</h2>
+      <h2>Everything you juggle on the touchline, in one place</h2>
       <p class="intro">Designed for the touchline: big buttons, one hand, any weather.</p>
       <div class="feats">
         <div class="f"><div class="ic">🔁</div><h3>Line-ups and subs</h3><p>Pick the team, then tap or drag players on and off. Keeper changes included, with a quick undo if you tap the wrong one.</p></div>
