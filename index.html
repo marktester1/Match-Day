@@ -878,7 +878,10 @@ function keeperAsk(g){
 }
 
 /* ---------- rugby scoring: what was scored, then (for us) who ---------- */
+// A conversion only follows a try: each side needs a try it hasn't converted yet.
+const canConvert=(g,k)=>{const l=k==='us'?(g.goals||[]):(g.opp||[]);return l.filter(x=>x.type==='try').length>l.filter(x=>x.type==='con').length};
 function addScore(id,k,type){
+  if(type==='con'&&!canConvert(G(id),k)){toast('A conversion needs a try first.');render();return}
   let i=-1;withUndo(id,`${RTYPES[type].n}${k==='us'?'':' for '+(G(id).opponent||'them')}`);
   mut(id,g=>{const x={at:el(g),type};
     if(k==='us'){x.p=null;g.goals=[...(g.goals||[]),x];i=g.goals.length-1;g.score.us+=ptsOf(x)}
@@ -892,8 +895,9 @@ function removeScore(id,k){
 }
 function rugbyBar(g,k){
   return `<div class="hint scorer"><b>${k==='us'?'What did we score?':'What did '+esc(g.opponent||'they')+' score?'}</b>
-    <div class="pickchips">${Object.entries(RTYPES).map(([t,x])=>`<button class="pc" data-act="rtype" data-type="${t}">${x.n} +${x.p}</button>`).join('')}
-      <button class="pc" data-act="rcancel">Cancel</button></div></div>`;
+    <div class="pickchips">${Object.entries(RTYPES).map(([t,x])=>`<button class="pc" data-act="rtype" data-type="${t}" ${t==='con'&&!canConvert(g,k)?'disabled':''}>${x.n} +${x.p}</button>`).join('')}
+      <button class="pc" data-act="rcancel">Cancel</button></div>
+    ${canConvert(g,k)?'':'<p class="note">A conversion needs a try first.</p>'}</div>`;
 }
 
 /* ---------- goal scorers ---------- */
