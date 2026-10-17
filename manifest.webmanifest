@@ -1,7 +1,7 @@
 {
   "name": "Match Day",
   "short_name": "Match Day",
-  "description": "Touchline app for grassroots football coaches: line-ups, subs, playing time and awards.",
+  "description": "Manage your team on match days and tournament days: line-ups, subs, fair playing time and the score. For grassroots football and rugby coaches.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

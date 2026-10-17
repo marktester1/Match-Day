@@ -242,6 +242,9 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 .errs.ok{color:var(--ink)}
 .cmp{display:grid;grid-template-columns:auto 1fr 1fr;gap:4px 12px;font-size:14px}
 .cmp .chg{font-weight:700;color:var(--live)}
+.welcome{display:flex;flex-direction:column;gap:6px;padding:4px 2px}
+.welcome h2{font-size:28px}
+.welcome p{color:var(--muted);margin:0}
 .warnline{border-left:4px solid var(--live);padding:6px 10px;background:var(--live-bg);border-radius:6px}
 .rstate{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-radius:10px;font-size:14px;background:var(--live-bg)}
 .rstate.done{background:var(--grass-2)}
@@ -361,7 +364,7 @@ body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.26.5';
+const APP_VERSION='0.26.6';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,benchAsk:null,rptEdit:null,fpush:undefined,fpushEdit:false,fkinds:null,dpush:undefined,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
@@ -1017,7 +1020,7 @@ function setupFields(){
 }
 function setupCard(){
   return `<div class="card setupcard"><h3>Set up today's games</h3>
-    <p class="note">How many games, how long, and how many a side. You can change these later.</p>
+    <p class="note">Playing one match? Set games to 1. A tournament day? Put in how many games you'll play. You can change these later.</p>
     ${setupFields()}
     <button class="btn go" data-act="setupgo">Set up games</button></div>`;
 }
@@ -2450,7 +2453,8 @@ function gateView(){
   return `<div class="sec" style="gap:14px">
   ${reportCard()}
   ${pendingCard()}
-  ${S.adding?`<button class="back" data-act="gateback">← My teams</button><h2>Add a team</h2>`:''}
+  ${S.adding?`<button class="back" data-act="gateback">← My teams</button><h2>Add a team</h2>`:`<div class="welcome"><h2>Manage your team on match day</h2>
+    <p>For grassroots coaches on match days and tournament days: pick the team, make the subs, keep everyone's playing time fair and the score up to date. Football or rugby.</p></div>`}
   <div class="card"><h3>Start a new team</h3>
     <p class="note">You'll get an invite code to give the other coaches.</p>
     <button class="btn go" data-act="mkteam">Create a team</button></div>

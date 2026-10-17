@@ -1,11 +1,11 @@
 # Match Day: marketing blurb
 
-WhatsApp-ready (`*bold*` shows as bold). Updated for v0.25.1.
+WhatsApp-ready (`*bold*` shows as bold). Updated for v0.26.6.
 
 ```
-⚽🏉 *Match Day – a free touchline app for grassroots coaches*
+⚽🏉 *Match Day – manage your team on match days and tournament days*
 
-I've built an app to take the stress out of match days and tournaments, and I'd love coaches to try it this weekend.
+I've built a free app for grassroots coaches to run their team on the day itself: one match or a whole tournament, from picking the team to the final whistle. I'd love coaches to try it this weekend.
 
 *What it does*
 • *Line-ups & subs* – tap or drag players on and off, keeper changes included, with a quick undo if you tap the wrong one
