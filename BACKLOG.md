@@ -181,6 +181,11 @@ Today a phone can use the app with no account (anonymous sign-in); Google or ema
 
 ## Season history and PDF export (requested)
 
+- **Decided (17 Oct 2026): billing and seasons are separate.** Paying is a yearly subscription
+  that runs 12 months from the day the coach subscribes (not tied to the football calendar). A
+  season is the coach's own: they define it manually, from their first tournament to their last,
+  and results, awards, the season record and the PDF are grouped by it. A subscription can span
+  two seasons, and a season can span two subscription years; neither affects the other.
 - **More than one season.** Today the Season tab is one running list of saved tournaments and
   awards, and the only way to start afresh is "delete season data". Instead: a season label
   (e.g. 2026/27) on each saved tournament and award, a "Start a new season" step that files the
