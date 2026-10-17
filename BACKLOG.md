@@ -5,6 +5,12 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Waiting on testing
 
+- **Bug (next beta build):** "Ask to join" can sit on "Sending…" with no time limit (seen twice in
+  the iOS Simulator tests, over 20 s on a freshly started phone). Give it a timeout and a clear
+  "No signal: try again" message, like other saves.
+- **Bug (next beta build):** in light mode the "5/5" players counter on the pitch is white text on
+  a white pill (`.pitch .cnt` inherits `.cnt`'s white background). Fix: a see-through dark pill,
+  e.g. `background:#0000002e;border-color:#ffffff40`.
 - **v0.26.1 on beta:** a warning at full time (and on Finish tournament) when a game has no
   opposition, with a box to add it there and then; the goal count on a player's label is now a
   neutral grey pill under the minutes, so it no longer overlaps the corner or looks like a card.
