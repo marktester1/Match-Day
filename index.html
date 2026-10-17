@@ -361,7 +361,7 @@ body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.26.4';
+const APP_VERSION='0.26.5';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,benchAsk:null,rptEdit:null,fpush:undefined,fpushEdit:false,fkinds:null,dpush:undefined,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
@@ -1601,7 +1601,7 @@ document.addEventListener('click',e=>{
   // finish before redrawing, so the tap would seem to do nothing. Any button tap leaves the box first.
   {const f=document.activeElement;if(b.tagName==='BUTTON'&&f&&f!==b&&/^(INPUT|TEXTAREA)$/.test(f.tagName)&&f.type!=='file')f.blur()}
   const a=b.dataset.act,id=S.game,p=b.dataset.p;
-  if(!['reset','del','finish','awdel','tdel','wipe','leave','clock0','subdel','signout','notedel','restoreundo','rmcoach','undo','newcode','mkmgr','pnew'].includes(a))S.confirm=null;
+  if(!['reset','del','finish','awdel','tdel','wipe','leave','clock0','subdel','signout','notedel','restoreundo','rmcoach','undo','newcode','mkmgr','claimmgr','admmgr','leaveto','leavecancel','pnew'].includes(a))S.confirm=null;
   switch(a){
     case'tab':if(b.dataset.t===S.tab&&S.game){S.game=null;S.fix=null;S.pick=null;render();break}
       S.tab=b.dataset.t;lastTab[secOf(S.tab)]=S.tab;S.pick=null;render();break;
@@ -1695,6 +1695,10 @@ document.addEventListener('click',e=>{
     case'invshare':navigator.share({text:inviteText()}).catch(()=>{});break;
     case'invcopy':navigator.clipboard?.writeText(inviteText()).then(()=>toast('Invite copied. Paste it into a message.'),()=>toast("Couldn't copy it."));break;
     case'newcode':if(S.confirm==='newcode'){S.confirm=null;newInviteCode()}else{S.confirm='newcode';render()}break;
+    case'leaveto':S.confirm=null;S.leaveHeir=b.dataset.id;leaveTeam(true,false,b.dataset.id);break;
+    case'leavecancel':S.confirm=null;S.leaveHeir=null;render();break;
+    case'claimmgr':if(S.confirm==='claimmgr'){S.confirm=null;claimManager()}else{S.confirm='claimmgr';render()}break;
+    case'admmgr':{const k='am-'+b.dataset.t+'-'+b.dataset.id;if(S.confirm===k){S.confirm=null;adminMakeManager(b.dataset.t,b.dataset.id)}else{S.confirm=k;render()}break}
     case'mkmgr':{const k='mg-'+b.dataset.id;if(S.confirm===k){S.confirm=null;handOver(b.dataset.id)}else{S.confirm=k;render()}break}
     case'rmcoach':{const k='rm-'+b.dataset.id;if(S.confirm===k){S.confirm=null;removeCoach(b.dataset.id)}else{S.confirm=k;render()}break}
     case'teams':S.teams=true;S.game=null;S.fix=null;render();window.scrollTo(0,0);break;
@@ -1775,7 +1779,8 @@ document.addEventListener('click',e=>{
     case'syncclose':S.syncOpen=false;render();break;
     case'syncretry':retryFailed(b.dataset.id);break;
     case'syncdrop':dismissFailed(b.dataset.id);break;
-    case'leave':if(S.confirm==='leave-force'){S.confirm=null;leaveTeam(true,true)}else if(S.confirm==='leave'){b.disabled=true;b.textContent='Leaving…';leaveTeam()}else{S.confirm='leave';render()}break;
+    case'leave':if(!S.confirm?.startsWith('leave')&&heirs().length){S.confirm='leave-pick';render();break}
+      if(S.confirm==='leave-force'){S.confirm=null;leaveTeam(true,true,S.leaveHeir)}else if(S.confirm==='leave'){b.disabled=true;b.textContent='Leaving…';leaveTeam()}else{S.confirm='leave';render()}break;
     case'reportok':lsSet('matchday-report',null);render();break;
     case'reload':location.reload();break;
   }
@@ -2166,6 +2171,12 @@ async function newInviteCode(){ // manager: the old code stops working at once; 
     catch(e){if(e.code!=='permission-denied'||i===2){toast(`Couldn't make a new code (${errCode(e)}).`);return}}
   }
 }
+const noManager=()=>S.createdBy&&S.members.length&&!S.members.some(m=>m.id===S.createdBy);
+async function claimManager(){ // the manager's sign-in has left the team: take the role so someone can manage coaches and codes
+  const {F,fs,auth}=FB;
+  try{await track(F.updateDoc(F.doc(fs,'teams',S.teamId),{createdBy:auth.currentUser.uid}),null,'team');toast("You're now the manager.")}
+  catch(e){toast(`Couldn't make you the manager (${errCode(e)}).`)}
+}
 async function handOver(id){ // manager: make another coach the manager (they can then remove coaches and make codes)
   const {F,fs}=FB,m=S.members.find(x=>x.id===id);
   try{await track(F.updateDoc(F.doc(fs,'teams',S.teamId),{createdBy:id}),null,'team');toast(`${m?.name||'That coach'} is now the manager.`)}
@@ -2236,7 +2247,7 @@ function reportCard(){
   </ul><button class="btn small" data-act="reportok" style="align-self:flex-start">OK</button></div>`;
 }
 let leaving=false,removedCheck=false;
-async function leaveTeam(remote=true,force=false){
+async function leaveTeam(remote=true,force=false,heir=null){
   const {F,fs,auth}=FB,t=S.teamId,uid=auth.currentUser?.uid;
   if(!remote){ // a coach removed this phone: keep a note of the team and its code, so it can ask to rejoin
     const left=await F.getDocFromServer(F.doc(fs,'teams',t,'members',uid)).then(m=>!m.exists()).catch(e=>e?.code==='permission-denied');
@@ -2250,7 +2261,11 @@ async function leaveTeam(remote=true,force=false){
   if(remote&&!(await uploadedFirst(force))){S.confirm='leave-force';render();return}
   const rep={kind:'leave',team:S.cfg.team||'the team',at:Date.now(),pending:force?sync.pending:0};
   if(remote){leaving=true;setSync('wait','Leaving…');
-    rep.member=t?await settle(F.deleteDoc(F.doc(fs,'teams',t,'members',uid)),6000):'ok';
+    if(heir&&t){ // the manager hands over and leaves in one step, so the team is never left without one
+      const b=F.writeBatch(fs);b.update(F.doc(fs,'teams',t),{createdBy:heir});b.delete(F.doc(fs,'teams',t,'members',uid));
+      if(await settle(b.commit(),8000)!=='ok'){leaving=false;liveLabel();toast("Couldn't hand over the manager role just now, so you haven't left. Try again with a better signal.");return}
+      rep.member='ok';
+    }else rep.member=t?await settle(F.deleteDoc(F.doc(fs,'teams',t,'members',uid)),6000):'ok';
     const listed=t?await settle(F.updateDoc(F.doc(fs,'users',uid),{['teams.'+t]:F.deleteField()}),3000):'ok';
     // not confirmed (no signal): finish at the next start with signal, and keep the team out of the list meanwhile
     if((rep.member!=='ok'||listed!=='ok')&&t)lsSet('matchday-leave-todo',JSON.stringify([...new Set([...leaveTodo(),t])]));
@@ -2412,7 +2427,9 @@ function accountCard(){
     ${S.acct?acctForm(S.acct):`${googleBtn()}<div class="cbtns"><button class="btn" data-act="acctcreate">Create an account with email</button><button class="btn" data-act="acctsignin">Sign in with email</button></div>`}</div>`;
 }
 const signoutBtn=()=>`<button class="x ${S.confirm&&S.confirm.startsWith('signout')?'sure':''}" data-act="signout">${S.confirm==='signout-force'?`Not uploaded: tap again to sign out anyway and lose ${sync.pending||'some'} change${sync.pending===1?'':'s'}`:S.confirm==='signout'?'Tap again to sign out on this phone':'Sign out on this phone'}</button>`;
-const leaveBtn=()=>`<button class="x ${S.confirm&&S.confirm.startsWith('leave')?'sure':''}" data-act="leave">${S.confirm==='leave-force'?`Not uploaded: tap again to leave anyway and lose ${sync.pending||'some'} change${sync.pending===1?'':'s'}`:S.confirm==='leave'?'Tap again to leave this team on this phone':'Leave this team on this phone'}</button>`;
+const heirs=()=>{const me=FB.auth.currentUser?.uid;return S.createdBy===me?S.members.filter(m=>m.id!==me):[]}; // a manager leaving must hand over first
+const leaveBtn=()=>S.confirm==='leave-pick'?`<div class="warnline"><b>Who takes over as manager?</b> You're the manager, so choose another coach before you leave. The manager can remove coaches and make new invite codes.
+  <div class="cbtns" style="margin-top:8px">${heirs().map(m=>`<button class="btn small" data-act="leaveto" data-id="${esc(m.id)}">${esc(m.name||'Coach')}</button>`).join('')}<button class="btn small" data-act="leavecancel">Cancel</button></div></div>`:`<button class="x ${S.confirm&&S.confirm.startsWith('leave')?'sure':''}" data-act="leave">${S.confirm==='leave-force'?`Not uploaded: tap again to leave anyway and lose ${sync.pending||'some'} change${sync.pending===1?'':'s'}`:S.confirm==='leave'?'Tap again to leave this team on this phone':'Leave this team on this phone'}</button>`;
 function pendingCard(){
   if(!S.pending.length)return'';
   const sent=p=>new Date(p.at||Date.now()).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
@@ -2484,11 +2501,18 @@ async function loadAdmin(){
       const [st,ms]=await Promise.all([F.getDoc(F.doc(fs,'teams',d.id,'club','settings')).catch(()=>null),F.getDocs(F.collection(fs,'teams',d.id,'members')).catch(()=>null)]);
       const cfg=st?.data?.()||{},mem=ms?ms.docs.map(m=>m.data()):[];
       const seen=Math.max(0,...mem.map(m=>m.seen?.toMillis?.()||m.joined?.toMillis?.()||0));
-      return{id:d.id,name:cfg.team||'',sport:cfg.sport||'football',created:d.data().created?.toMillis?.()||0,coaches:mem.length,seen};
+      const mgr=d.data().createdBy,list=ms?ms.docs.map(m=>({id:m.id,name:m.data().name||'Coach'})):[];
+      return{id:d.id,name:cfg.team||'',sport:cfg.sport||'football',created:d.data().created?.toMillis?.()||0,coaches:mem.length,seen,
+        orphan:!!ms&&!list.some(m=>m.id===mgr),list};
     }));
     S.admin={loading:false,teams:rows.sort((a,b)=>b.seen-a.seen)};
   }catch(e){S.admin={loading:false,error:errCode(e),teams:[]}}
   render();
+}
+async function adminMakeManager(t,id){ // owner: give a team with no manager a new one
+  const {F,fs}=FB;
+  try{await F.updateDoc(F.doc(fs,'teams',t),{createdBy:id});toast('Manager set.');loadAdmin()}
+  catch(e){toast(`Couldn't set the manager (${errCode(e)}).`)}
 }
 function adminView(){
   const A=S.admin||{teams:[]},T=A.teams,day=864e5,now=Date.now();
@@ -2502,6 +2526,8 @@ function adminView(){
   <div class="summary num"><span>Teams <b>${T.length}</b></span><span>Active this week <b>${week}</b></span><span>Football <b>${T.length-rug}</b> · Rugby <b>${rug}</b></span></div>
   <div class="rows">${T.map(t=>`<div class="row adm"><div class="who">${esc(t.name||'(not set up yet)')}<span class="tag">${t.sport==='rugby'?'Rugby':'Football'}</span></div>
     <div class="note">${t.coaches} coach${t.coaches===1?'':'es'} · last active ${esc(when(t.seen))} · created ${esc(when(t.created))}</div>
+    ${t.orphan?`<div class="warnline"><b>No manager.</b> ${t.list.length?'Make one of these coaches the manager:':'No coaches left in this team.'}
+      ${t.list.length?`<div class="cbtns" style="margin-top:6px">${t.list.map(m=>{const k='am-'+t.id+'-'+m.id;return `<button class="btn small ${S.confirm===k?'sure':''}" data-act="admmgr" data-t="${esc(t.id)}" data-id="${esc(m.id)}">${S.confirm===k?'Tap again: make '+esc(m.name)+' manager':esc(m.name)}</button>`}).join('')}</div>`:''}</div>`:''}
     <div class="note num admid">${esc(t.id)}</div></div>`).join('')}</div>
   <button class="btn small" data-act="adminload" style="align-self:flex-start">Refresh</button>`}
   </div>`;
@@ -2552,6 +2578,8 @@ function menuView(){
       <p class="note">${S.invite&&S.invite.length<8?'Your code is the older, shorter kind: a new one is 8 characters and much harder to guess. ':''}Use this if the code has been shared too widely. Coaches already in the team stay in.</p>`:''}
     ${requestsBanner()}
     <span class="lbl">Team members</span>
+    ${noManager()?`<div class="warnline"><b>This team has no manager.</b> The manager's sign-in has left the team (for example after leaving, or the browser clearing its data). Any coach can take over, so someone can remove coaches and make new invite codes.
+      <div class="cbtns" style="margin-top:8px"><button class="btn small ${S.confirm==='claimmgr'?'sure':''}" data-act="claimmgr">${S.confirm==='claimmgr'?'Tap again to become the manager':'Become the manager'}</button></div></div>`:''}
     ${membersList()}
     ${leaveBtn()}</div>
   ${parentCard()}
