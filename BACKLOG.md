@@ -254,6 +254,16 @@ Today a phone can use the app with no account (anonymous sign-in); Google or ema
   Limited (08286044), registered office in Winscombe. Decide whether Match Day should sit under a
   different company or trading name, or show a different address (e.g. a registered office service
   rather than a home address). Update privacy.html, terms.html and Lemon Squeezy's store details.
+- **Change the company name to something less personal** (the App Store shows the company's legal
+  name as the seller, and doesn't accept trading names). Options: rename Mark Miles Consultancy
+  Limited (special resolution + form NM01 at Companies House, about £20 online; company number, bank
+  and tax stay the same) or set up a separate company for Match Day (about £50; needs its own
+  D-U-N-S number, bank account and accounts). Before renaming: check the name is free at Companies
+  House, on the UK IPO trade mark register (avoid anything near "Match of the Day") and as a domain.
+  Do it **before** Apple Developer enrolment. After a rename: tell Dun & Bradstreet the new name
+  (the D-U-N-S number stays the same), the bank, and HMRC for VAT/PAYE if registered; update
+  privacy.html, terms.html and the website footer. Until then, "Match Day" can be used as a trading
+  name (no registration needed; the legal name, number and registered office must still be shown).
 - **Get a domain name** (e.g. matchday-something.co.uk) instead of match-day-17b23.web.app. Firebase
   Hosting can serve it for free once it's connected. Then: add it to Google sign-in's authorised domains and
   OAuth redirect URIs, update LIVE_HOSTS in firebase-config.js, Lemon Squeezy's links, the parent
