@@ -360,15 +360,19 @@ body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.26.2';
+const APP_VERSION='0.26.3';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,benchAsk:null,rptEdit:null,fpush:undefined,fpushEdit:false,fkinds:null,dpush:undefined,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
   feed:null,pfeed:undefined,pgames:[],pbanner:null,awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const nice=d=>{if(!d)return'';const t=new Date(d+'T12:00');return isNaN(t)?d:t.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})};
-let db=null,pending=false,suppressClick=false;
+let db=null,pending=false,moving=false,suppressClick=false;
 const queues={};
+// A game being saved keeps this phone's copy until the server has it: the local database takes a
+// moment to apply a write, and a server update already on its way would otherwise put the older
+// game back, and the next change would build on that (losing the one before).
+let gHold={},gServer=null; // game -> writes not yet acknowledged; the latest games from the server
 const gids=()=>Array.from({length:Math.min(10,Math.max(1,S.tour.count||6))},(_,i)=>'g'+(i+1));
 
 // Undo: the bar names the action, and undo is refused if the game has changed since (another
@@ -466,13 +470,21 @@ function mins(g){
 /* ---------- saving ---------- */
 function put(path,body){
   if(!db)return;
-  if(/^games\/g\d+$/.test(path))feedGame=path.slice(6);
+  let done;
+  if(/^games\/g\d+$/.test(path)){const id=feedGame=path.slice(6),h=gHold;h[id]=(h[id]||0)+1;done=()=>releaseGame(h,id)}
   if(/^(games\/|club\/(tournament|settings)$)/.test(path))schedulePublish();
-  queues[path]=(queues[path]||Promise.resolve()).then(()=>db.doc(path).set(body)).catch(e=>{
+  queues[path]=(queues[path]||Promise.resolve()).then(()=>db.doc(path).set(body,done)).catch(e=>{
+    if(done)done();
     if(e&&e.code==='invalid_argument'){S.readOnly=true;render();toast("You can view this but not edit it. Ask the owner to invite you by email as an Editor.")}
     else if(e&&e.code==='quota_exceeded')toast("Storage is full, so that change wasn't saved.");
     else toast("Couldn't save that change. Check your connection and try again.");
   });
+}
+function releaseGame(h,id){
+  if(--h[id]>0)return;delete h[id];
+  if(h!==gHold||!gServer)return; // another team's write finishing
+  const o=gServer[id];if(canon(o)===canon(S.games[id]))return;
+  if(o)S.games[id]=o;else delete S.games[id];render(); // a change from another phone landed while saving
 }
 function remove(path){
   if(!db)return;
@@ -941,7 +953,7 @@ function fixPanel(id,g,st){
 /* ---------- render ---------- */
 function render(){
   const a=document.activeElement;
-  if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA')&&a.type!=='file'&&a.closest('#view, .top')){pending=true;syncHeader(false);return}
+  if(moving||a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA')&&a.type!=='file'&&a.closest('#view, .top')){pending=true;syncHeader(false);return}
   pending=false;
   if(FOLLOW){document.getElementById('hteam').textContent='';document.getElementById('view').innerHTML=parentView();return}
   syncHeader(true);
@@ -1817,7 +1829,14 @@ document.addEventListener('submit',e=>{
   const nid='p'+Math.random().toString(36).slice(2,9);S.squad=[...S.squad,{id:nid,name:n.slice(0,30)}];askBench([nid]);
   i.value='';saveSquad();toast(`${n.slice(0,30)} added.`);setTimeout(()=>document.getElementById('newname')?.focus(),0);
 });
+// A box's change fires as the coach taps the next box, before focus lands there: redrawing then
+// would replace the box they tapped and lose their typing. So redraw once focus has moved.
 document.addEventListener('change',e=>{
+  const t=e.target;
+  moving=/^(INPUT|TEXTAREA)$/.test(t.tagName)&&!/^(checkbox|radio|file)$/.test(t.type)&&document.activeElement!==t;
+  try{onChange(e)}finally{if(moving){moving=false;setTimeout(()=>{if(pending)render()},0)}}
+});
+function onChange(e){
   const t=e.target;
   if(t.id==='myname'){lsSet('matchday-name',t.value.trim().slice(0,40));myTeams().forEach(x=>touchMember(x,true));toast('Name saved.');return}
   if(t.id==='restorefile'&&t.files&&t.files[0]){readBackup(t.files[0]);t.value='';return}
@@ -1835,7 +1854,7 @@ document.addEventListener('change',e=>{
   if(t.dataset.field&&S.game){const f=t.dataset.field,v=t.value.trim().slice(0,40);if(G(S.game)[f]!==v)mut(S.game,g=>{g[f]=v})}
   if(t.dataset.tour){const k=t.dataset.tour;let v=t.value;if(k==='len')v=Math.min(60,Math.max(1,parseInt(v)||10));if(k==='count')v=Math.min(10,Math.max(1,parseInt(v)||6));if(k==='size')v=Math.min(11,Math.max(3,parseInt(v)||5));
     S.tour={...S.tour,[k]:v};saveTour();if(k==='len'||k==='count')render()}
-});
+}
 document.addEventListener('focusout',()=>setTimeout(()=>{if(pending)render()},0));
 
 /* live clock */
@@ -1863,7 +1882,10 @@ function subscribe(err){
   db.doc('club/tournament').onSnapshot(s=>{if(s.exists)S.tour={...S.tour,...s.data()};render()},err);
   db.collection('awards').onSnapshot(s=>{S.awards=s.docs.map(d=>({id:d.id,...d.data()}));render()},err);
   db.collection('archive').onSnapshot(s=>{S.archive=s.docs.map(d=>({id:d.id,...d.data()}));render()},err);
-  db.collection('games').onSnapshot(s=>{const o={};s.docs.forEach(d=>{o[d.id]=d.data()});S.games=o;autoOpen();render()},err);
+  gHold={};gServer=null;
+  db.collection('games').onSnapshot(s=>{const o={};s.docs.forEach(d=>{o[d.id]=d.data()});gServer=o;
+    const g={...o};for(const id in gHold){if(S.games[id])g[id]=S.games[id];else delete g[id]} // still saving: keep this phone's copy
+    S.games=g;autoOpen();render()},err);
 }
 
 /* firebase: where every team's data lives */
@@ -1926,7 +1948,7 @@ function fsAdapter(base){ // the small storage interface put()/remove()/subscrib
   const {F,fs}=FB,ref=p=>F.doc(fs,base+'/'+p);
   const fail=(e,p)=>toast(`${whatIs(p)}: that change wasn't saved. Tap the red status at the top to try again.`);
   return{
-    doc:p=>({set:b=>{track(F.setDoc(ref(p),b),fail,p,()=>db.doc(p).set(b));return Promise.resolve()},
+    doc:p=>({set:(b,done)=>{const w=track(F.setDoc(ref(p),b),fail,p,()=>db.doc(p).set(b));if(done)w.then(done,done);return Promise.resolve()},
       delete:()=>{track(F.deleteDoc(ref(p)),fail,p,()=>db.doc(p).delete());return Promise.resolve()},
       onSnapshot:(cb,err)=>F.onSnapshot(ref(p),s=>cb({exists:s.exists(),data:()=>s.data()}),err)}),
     collection:c=>({onSnapshot:(cb,err)=>F.onSnapshot(F.collection(fs,base+'/'+c),s=>cb({docs:s.docs.map(d=>({id:d.id,data:()=>d.data()}))}),err)})

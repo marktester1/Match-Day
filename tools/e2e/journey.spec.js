@@ -37,7 +37,6 @@ test('a coach runs a whole match day', async ({page, browser}, info) => {
     const row = view.locator('.row').filter({has: page.locator('.who').getByText(name, {exact: true})});
     await press(row.locator(`[data-act=role][data-r=${r}]`));
     await expect(row.locator(`[data-r=${r}]`)).toHaveClass(/\bon\b/);
-    await saved();
   };
   const chip = (name, where = '.pitch') => view.locator(`${where} .chip`).filter({has: page.locator('.n').getByText(name, {exact: true})});
   const score = k => view.locator('.board .side').nth(k === 'us' ? 0 : 1).locator('b'); // we're at home in every game
@@ -47,12 +46,16 @@ test('a coach runs a whole match day', async ({page, browser}, info) => {
   const reload = async () => { await saved(); await page.reload(); await expect(page.locator('#hteam')).toHaveText(TEAM, {timeout: 30000}); };
   // The header says "Shared · live" once every change has reached the server, as a coach sees it.
   const saved = () => expect(page.locator('#sync')).toHaveText('Shared · live', {timeout: 30000});
-  // Known app issues (v0.26.1) this test steps around, so it stays about the journey:
-  // - moving straight from one box to the next redraws the screen as the first one saves, and the
-  //   second box loses focus and what's typed: so each box is left before the next is filled;
-  // - two quick changes to the same game can lose the first one (a server update arriving between
-  //   them puts the older copy back): so line-up and fixture changes wait until saved.
-  const enter = async (sel, v) => { const b = page.locator(sel); await b.fill(v); await b.blur(); await expect(page.locator(sel)).toHaveValue(v); await saved(); };
+  // Tap a box and type, as a coach would, going straight on to the next one: the keys go wherever
+  // focus is, so a box replaced while the last one saves would lose them.
+  const enter = async (sel, v) => {
+    const b = page.locator(sel);
+    await press(b);
+    await expect(b).toBeFocused();
+    if (await b.getAttribute('type') === 'date') await b.fill(v);
+    else { await page.keyboard.press('ControlOrMeta+a'); await page.keyboard.type(v); }
+    await expect(b).toHaveValue(v);
+  };
   let joined = false, finished = false;
 
   try {
