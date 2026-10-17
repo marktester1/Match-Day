@@ -1,7 +1,7 @@
 // A coach's whole match day on the beta site, start to finish. Each browser gets a fresh
 // anonymous sign-in, so it creates its own team and leaves it at the end. It never opens the
 // Beta Test Team (L9J-Q7H) or live. Run: cd tools/e2e && npx playwright test
-const {test, expect} = require('@playwright/test');
+const {test, expect} = require('./test'); // Playwright's, or real Android Chrome with ANDROID=1
 
 const TEAM = 'Claude E2E U9s', SHORT = 'Claude E2E';
 const PASTED = 'Alfie Smith\nAlfie Jones\nPlayer 7\nBea Lane, Cormac\nDara\nEsme\nFinn';
