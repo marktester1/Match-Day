@@ -10,6 +10,15 @@ Rules from this branch go to beta only while testing. Afterwards, re-deploy main
 
 ## 1. Team unlock: £3.99 one-off per team
 
+> **Changing (decided 17 Oct 2026): a yearly subscription instead of a one-off unlock.** The
+> team pays yearly, and each year runs 12 months from the day it subscribes (not the football
+> calendar). Seasons stay separate: the coach defines a season themselves, from their first
+> tournament to their last, and that grouping has nothing to do with billing. To rework below:
+> the product (subscription, not single payment), the webhook (`subscription_created`,
+> `subscription_updated`, `subscription_expired` set `paidUntil` rather than `unlocked: true`),
+> the rules (paid = `paidUntil > request.time`), lapsed teams go view-only as in the trial, and
+> the price (still to decide).
+
 **What's free and what's paid** (decided: 30-day free trial):
 - Every feature is free for 30 days from when the team is created (`teams/{t}.created`).
 - After that, without the unlock, the team becomes **view-only**: coaches can still see games,
