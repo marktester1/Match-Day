@@ -52,6 +52,7 @@ function app(page, info) {
 
     async createTeam(team, names) {
       await page.goto('/');
+      await page.locator('#mkname').fill('Claude (test coach)');
       await press(btn('Create a team'));
       await expect(page.locator('#cfg-team')).toBeVisible({timeout: 30000});
       await page.locator('#cfg-team').fill(team);
