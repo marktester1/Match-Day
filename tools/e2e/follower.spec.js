@@ -150,12 +150,7 @@ test('a follower watches the day from the link', async ({page, browser}, info) =
   }
 });
 
-// Known app bug (v0.26.3): "Make a new link" never completes. Its second tap is meant to confirm,
-// but 'pnew' is missing from the click handler's list of actions that keep S.confirm, so every tap
-// clears it and asks again. Marked as expected to fail: when it's fixed this test reports
-// "unexpectedly passed", and test.fail() below should be removed.
 test('a new follower link replaces the old one', async ({page, browser}, info) => {
-  test.fail(true, '"Make a new link" can\'t be confirmed (pnew clears its own confirm)');
   const coach = app(page, info);
   const phone = await newPhone(browser, info), fp = phone.page;
   const fview = fp.locator('#view'), board = fp.locator('.pboard');

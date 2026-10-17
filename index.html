@@ -257,6 +257,7 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 .pend.declined b:first-child,.pend.removed b:first-child{color:var(--bad)}
 .menubtn.dot{position:relative}
 .menubtn.dot::after{content:"";position:absolute;top:6px;right:6px;width:10px;height:10px;border-radius:50%;background:var(--live);border:2px solid var(--surface)}
+.menubtn[hidden]{display:none}
 .qps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .qp{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:58px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);text-align:left}
 .qp b{font-size:18px}
@@ -360,7 +361,7 @@ body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.26.3';
+const APP_VERSION='0.26.4';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,benchAsk:null,rptEdit:null,fpush:undefined,fpushEdit:false,fkinds:null,dpush:undefined,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
@@ -1600,7 +1601,7 @@ document.addEventListener('click',e=>{
   // finish before redrawing, so the tap would seem to do nothing. Any button tap leaves the box first.
   {const f=document.activeElement;if(b.tagName==='BUTTON'&&f&&f!==b&&/^(INPUT|TEXTAREA)$/.test(f.tagName)&&f.type!=='file')f.blur()}
   const a=b.dataset.act,id=S.game,p=b.dataset.p;
-  if(!['reset','del','finish','awdel','tdel','wipe','leave','clock0','subdel','signout','notedel','restoreundo','rmcoach','undo','newcode','mkmgr'].includes(a))S.confirm=null;
+  if(!['reset','del','finish','awdel','tdel','wipe','leave','clock0','subdel','signout','notedel','restoreundo','rmcoach','undo','newcode','mkmgr','pnew'].includes(a))S.confirm=null;
   switch(a){
     case'tab':if(b.dataset.t===S.tab&&S.game){S.game=null;S.fix=null;S.pick=null;render();break}
       S.tab=b.dataset.t;lastTab[secOf(S.tab)]=S.tab;S.pick=null;render();break;

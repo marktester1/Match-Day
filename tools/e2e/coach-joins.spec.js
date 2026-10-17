@@ -20,6 +20,7 @@ test('a coach joins with the invite code and starts a match', async ({page, brow
     await sam.page.goto('/?join=' + code.replace('-', ''));
     await expect(sam.page.locator('#joincode')).toHaveValue(code, {timeout: 30000});
     await expect(sam.page.locator('#sync')).toHaveText('No team yet');
+    await expect(sam.page.locator('#menubtn')).toBeHidden();
     // a wrong code, then no name, then the real thing
     await sam.page.locator('#joincode').fill('ZZZZ-ZZZ2');
     await sam.page.locator('#joinname').fill(COACH);
