@@ -257,6 +257,7 @@ body.beta .brand h1::after{content:"BETA";font-family:var(--body);font-size:11px
 .pend.declined b:first-child,.pend.removed b:first-child{color:var(--bad)}
 .menubtn.dot{position:relative}
 .menubtn.dot::after{content:"";position:absolute;top:6px;right:6px;width:10px;height:10px;border-radius:50%;background:var(--live);border:2px solid var(--surface)}
+.menubtn[hidden]{display:none}
 .qps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .qp{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:58px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);text-align:left}
 .qp b{font-size:18px}
@@ -360,15 +361,19 @@ body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.26.1';
+const APP_VERSION='0.26.5';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,benchAsk:null,rptEdit:null,fpush:undefined,fpushEdit:false,fkinds:null,dpush:undefined,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
   feed:null,pfeed:undefined,pgames:[],pbanner:null,awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const nice=d=>{if(!d)return'';const t=new Date(d+'T12:00');return isNaN(t)?d:t.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})};
-let db=null,pending=false,suppressClick=false;
+let db=null,pending=false,moving=false,suppressClick=false;
 const queues={};
+// A game being saved keeps this phone's copy until the server has it: the local database takes a
+// moment to apply a write, and a server update already on its way would otherwise put the older
+// game back, and the next change would build on that (losing the one before).
+let gHold={},gServer=null; // game -> writes not yet acknowledged; the latest games from the server
 const gids=()=>Array.from({length:Math.min(10,Math.max(1,S.tour.count||6))},(_,i)=>'g'+(i+1));
 
 // Undo: the bar names the action, and undo is refused if the game has changed since (another
@@ -466,13 +471,21 @@ function mins(g){
 /* ---------- saving ---------- */
 function put(path,body){
   if(!db)return;
-  if(/^games\/g\d+$/.test(path))feedGame=path.slice(6);
+  let done;
+  if(/^games\/g\d+$/.test(path)){const id=feedGame=path.slice(6),h=gHold;h[id]=(h[id]||0)+1;done=()=>releaseGame(h,id)}
   if(/^(games\/|club\/(tournament|settings)$)/.test(path))schedulePublish();
-  queues[path]=(queues[path]||Promise.resolve()).then(()=>db.doc(path).set(body)).catch(e=>{
+  queues[path]=(queues[path]||Promise.resolve()).then(()=>db.doc(path).set(body,done)).catch(e=>{
+    if(done)done();
     if(e&&e.code==='invalid_argument'){S.readOnly=true;render();toast("You can view this but not edit it. Ask the owner to invite you by email as an Editor.")}
     else if(e&&e.code==='quota_exceeded')toast("Storage is full, so that change wasn't saved.");
     else toast("Couldn't save that change. Check your connection and try again.");
   });
+}
+function releaseGame(h,id){
+  if(--h[id]>0)return;delete h[id];
+  if(h!==gHold||!gServer)return; // another team's write finishing
+  const o=gServer[id];if(canon(o)===canon(S.games[id]))return;
+  if(o)S.games[id]=o;else delete S.games[id];render(); // a change from another phone landed while saving
 }
 function remove(path){
   if(!db)return;
@@ -608,6 +621,7 @@ function pGamesList(f){
 }
 /* ---------- push notifications (followers' alerts; coaches' join requests) ---------- */
 const isIOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const inApp=/MatchDayApp\//.test(navigator.userAgent); // the native iPhone app (ios-app/) adds this to its user agent
 const standalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
 let MSG=null;
 async function pushToken(){ // asks permission (straight after a tap) and returns this phone's push address
@@ -622,7 +636,7 @@ const pushWhy=e=>({'ios-home':'On iPhone, first add this page to your Home Scree
   unsupported:"This browser can't get notifications. Try Chrome on Android, or the Home Screen app on iPhone."})[e&&e.message]||`Couldn't turn on notifications (${errCode(e)}).`;
 const KINDS=[['kick','Kick-off'],['goal','Goals'],['card','Cards'],['ht','Half time'],['ft','Full time']];
 function followPushCard(f){
-  if(S.fpush===undefined)return'';
+  if(S.fpush===undefined||inApp)return''; // web push doesn't work inside the iPhone app yet
   const on=S.fpush,kl=k=>k==='goal'&&f.sport==='rugby'?'Scores':(KINDS.find(x=>x[0]===k)||[])[1];
   if(on&&!S.fpushEdit)return `<div class="card"><h3>🔔 Notifications on</h3><p class="note">For: ${on.kinds.map(kl).join(', ')||'nothing'}. They arrive even when this page is closed.</p>
     <div class="cbtns"><button class="btn" data-act="fpushedit">Change</button><button class="btn" data-act="fpushoff">Turn off</button></div></div>`;
@@ -653,7 +667,7 @@ async function devicePush(on){
   render();
 }
 function devicePushCard(){
-  if(S.dpush===undefined)return'';
+  if(S.dpush===undefined||inApp)return'';
   return `<div class="card"><h3>${S.dpush?'🔔 ':''}Notifications on this phone</h3>
     <p class="note">${S.dpush?'On: you get':'Get'} a notification when someone asks to join a team you coach, and when a coach is accepted, even when the app is closed.</p>
     ${!S.dpush&&isIOS&&!standalone()?'<p class="warnline">On iPhone, open Match Day from your Home Screen first (Share → Add to Home Screen).</p>':''}
@@ -940,7 +954,7 @@ function fixPanel(id,g,st){
 /* ---------- render ---------- */
 function render(){
   const a=document.activeElement;
-  if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA')&&a.type!=='file'&&a.closest('#view, .top')){pending=true;syncHeader(false);return}
+  if(moving||a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA')&&a.type!=='file'&&a.closest('#view, .top')){pending=true;syncHeader(false);return}
   pending=false;
   if(FOLLOW){document.getElementById('hteam').textContent='';document.getElementById('view').innerHTML=parentView();return}
   syncHeader(true);
@@ -1587,7 +1601,7 @@ document.addEventListener('click',e=>{
   // finish before redrawing, so the tap would seem to do nothing. Any button tap leaves the box first.
   {const f=document.activeElement;if(b.tagName==='BUTTON'&&f&&f!==b&&/^(INPUT|TEXTAREA)$/.test(f.tagName)&&f.type!=='file')f.blur()}
   const a=b.dataset.act,id=S.game,p=b.dataset.p;
-  if(!['reset','del','finish','awdel','tdel','wipe','leave','clock0','subdel','signout','notedel','restoreundo','rmcoach','undo','newcode','mkmgr'].includes(a))S.confirm=null;
+  if(!['reset','del','finish','awdel','tdel','wipe','leave','clock0','subdel','signout','notedel','restoreundo','rmcoach','undo','newcode','mkmgr','claimmgr','admmgr','leaveto','leavecancel','pnew'].includes(a))S.confirm=null;
   switch(a){
     case'tab':if(b.dataset.t===S.tab&&S.game){S.game=null;S.fix=null;S.pick=null;render();break}
       S.tab=b.dataset.t;lastTab[secOf(S.tab)]=S.tab;S.pick=null;render();break;
@@ -1681,6 +1695,10 @@ document.addEventListener('click',e=>{
     case'invshare':navigator.share({text:inviteText()}).catch(()=>{});break;
     case'invcopy':navigator.clipboard?.writeText(inviteText()).then(()=>toast('Invite copied. Paste it into a message.'),()=>toast("Couldn't copy it."));break;
     case'newcode':if(S.confirm==='newcode'){S.confirm=null;newInviteCode()}else{S.confirm='newcode';render()}break;
+    case'leaveto':S.confirm=null;S.leaveHeir=b.dataset.id;leaveTeam(true,false,b.dataset.id);break;
+    case'leavecancel':S.confirm=null;S.leaveHeir=null;render();break;
+    case'claimmgr':if(S.confirm==='claimmgr'){S.confirm=null;claimManager()}else{S.confirm='claimmgr';render()}break;
+    case'admmgr':{const k='am-'+b.dataset.t+'-'+b.dataset.id;if(S.confirm===k){S.confirm=null;adminMakeManager(b.dataset.t,b.dataset.id)}else{S.confirm=k;render()}break}
     case'mkmgr':{const k='mg-'+b.dataset.id;if(S.confirm===k){S.confirm=null;handOver(b.dataset.id)}else{S.confirm=k;render()}break}
     case'rmcoach':{const k='rm-'+b.dataset.id;if(S.confirm===k){S.confirm=null;removeCoach(b.dataset.id)}else{S.confirm=k;render()}break}
     case'teams':S.teams=true;S.game=null;S.fix=null;render();window.scrollTo(0,0);break;
@@ -1761,7 +1779,8 @@ document.addEventListener('click',e=>{
     case'syncclose':S.syncOpen=false;render();break;
     case'syncretry':retryFailed(b.dataset.id);break;
     case'syncdrop':dismissFailed(b.dataset.id);break;
-    case'leave':if(S.confirm==='leave-force'){S.confirm=null;leaveTeam(true,true)}else if(S.confirm==='leave'){b.disabled=true;b.textContent='Leaving…';leaveTeam()}else{S.confirm='leave';render()}break;
+    case'leave':if(!S.confirm?.startsWith('leave')&&heirs().length){S.confirm='leave-pick';render();break}
+      if(S.confirm==='leave-force'){S.confirm=null;leaveTeam(true,true,S.leaveHeir)}else if(S.confirm==='leave'){b.disabled=true;b.textContent='Leaving…';leaveTeam()}else{S.confirm='leave';render()}break;
     case'reportok':lsSet('matchday-report',null);render();break;
     case'reload':location.reload();break;
   }
@@ -1816,7 +1835,14 @@ document.addEventListener('submit',e=>{
   const nid='p'+Math.random().toString(36).slice(2,9);S.squad=[...S.squad,{id:nid,name:n.slice(0,30)}];askBench([nid]);
   i.value='';saveSquad();toast(`${n.slice(0,30)} added.`);setTimeout(()=>document.getElementById('newname')?.focus(),0);
 });
+// A box's change fires as the coach taps the next box, before focus lands there: redrawing then
+// would replace the box they tapped and lose their typing. So redraw once focus has moved.
 document.addEventListener('change',e=>{
+  const t=e.target;
+  moving=/^(INPUT|TEXTAREA)$/.test(t.tagName)&&!/^(checkbox|radio|file)$/.test(t.type)&&document.activeElement!==t;
+  try{onChange(e)}finally{if(moving){moving=false;setTimeout(()=>{if(pending)render()},0)}}
+});
+function onChange(e){
   const t=e.target;
   if(t.id==='myname'){lsSet('matchday-name',t.value.trim().slice(0,40));myTeams().forEach(x=>touchMember(x,true));toast('Name saved.');return}
   if(t.id==='restorefile'&&t.files&&t.files[0]){readBackup(t.files[0]);t.value='';return}
@@ -1834,7 +1860,7 @@ document.addEventListener('change',e=>{
   if(t.dataset.field&&S.game){const f=t.dataset.field,v=t.value.trim().slice(0,40);if(G(S.game)[f]!==v)mut(S.game,g=>{g[f]=v})}
   if(t.dataset.tour){const k=t.dataset.tour;let v=t.value;if(k==='len')v=Math.min(60,Math.max(1,parseInt(v)||10));if(k==='count')v=Math.min(10,Math.max(1,parseInt(v)||6));if(k==='size')v=Math.min(11,Math.max(3,parseInt(v)||5));
     S.tour={...S.tour,[k]:v};saveTour();if(k==='len'||k==='count')render()}
-});
+}
 document.addEventListener('focusout',()=>setTimeout(()=>{if(pending)render()},0));
 
 /* live clock */
@@ -1862,7 +1888,10 @@ function subscribe(err){
   db.doc('club/tournament').onSnapshot(s=>{if(s.exists)S.tour={...S.tour,...s.data()};render()},err);
   db.collection('awards').onSnapshot(s=>{S.awards=s.docs.map(d=>({id:d.id,...d.data()}));render()},err);
   db.collection('archive').onSnapshot(s=>{S.archive=s.docs.map(d=>({id:d.id,...d.data()}));render()},err);
-  db.collection('games').onSnapshot(s=>{const o={};s.docs.forEach(d=>{o[d.id]=d.data()});S.games=o;autoOpen();render()},err);
+  gHold={};gServer=null;
+  db.collection('games').onSnapshot(s=>{const o={};s.docs.forEach(d=>{o[d.id]=d.data()});gServer=o;
+    const g={...o};for(const id in gHold){if(S.games[id])g[id]=S.games[id];else delete g[id]} // still saving: keep this phone's copy
+    S.games=g;autoOpen();render()},err);
 }
 
 /* firebase: where every team's data lives */
@@ -1925,7 +1954,7 @@ function fsAdapter(base){ // the small storage interface put()/remove()/subscrib
   const {F,fs}=FB,ref=p=>F.doc(fs,base+'/'+p);
   const fail=(e,p)=>toast(`${whatIs(p)}: that change wasn't saved. Tap the red status at the top to try again.`);
   return{
-    doc:p=>({set:b=>{track(F.setDoc(ref(p),b),fail,p,()=>db.doc(p).set(b));return Promise.resolve()},
+    doc:p=>({set:(b,done)=>{const w=track(F.setDoc(ref(p),b),fail,p,()=>db.doc(p).set(b));if(done)w.then(done,done);return Promise.resolve()},
       delete:()=>{track(F.deleteDoc(ref(p)),fail,p,()=>db.doc(p).delete());return Promise.resolve()},
       onSnapshot:(cb,err)=>F.onSnapshot(ref(p),s=>cb({exists:s.exists(),data:()=>s.data()}),err)}),
     collection:c=>({onSnapshot:(cb,err)=>F.onSnapshot(F.collection(fs,base+'/'+c),s=>cb({docs:s.docs.map(d=>({id:d.id,data:()=>d.data()}))}),err)})
@@ -2142,6 +2171,12 @@ async function newInviteCode(){ // manager: the old code stops working at once; 
     catch(e){if(e.code!=='permission-denied'||i===2){toast(`Couldn't make a new code (${errCode(e)}).`);return}}
   }
 }
+const noManager=()=>S.createdBy&&S.members.length&&!S.members.some(m=>m.id===S.createdBy);
+async function claimManager(){ // the manager's sign-in has left the team: take the role so someone can manage coaches and codes
+  const {F,fs,auth}=FB;
+  try{await track(F.updateDoc(F.doc(fs,'teams',S.teamId),{createdBy:auth.currentUser.uid}),null,'team');toast("You're now the manager.")}
+  catch(e){toast(`Couldn't make you the manager (${errCode(e)}).`)}
+}
 async function handOver(id){ // manager: make another coach the manager (they can then remove coaches and make codes)
   const {F,fs}=FB,m=S.members.find(x=>x.id===id);
   try{await track(F.updateDoc(F.doc(fs,'teams',S.teamId),{createdBy:id}),null,'team');toast(`${m?.name||'That coach'} is now the manager.`)}
@@ -2212,7 +2247,7 @@ function reportCard(){
   </ul><button class="btn small" data-act="reportok" style="align-self:flex-start">OK</button></div>`;
 }
 let leaving=false,removedCheck=false;
-async function leaveTeam(remote=true,force=false){
+async function leaveTeam(remote=true,force=false,heir=null){
   const {F,fs,auth}=FB,t=S.teamId,uid=auth.currentUser?.uid;
   if(!remote){ // a coach removed this phone: keep a note of the team and its code, so it can ask to rejoin
     const left=await F.getDocFromServer(F.doc(fs,'teams',t,'members',uid)).then(m=>!m.exists()).catch(e=>e?.code==='permission-denied');
@@ -2226,7 +2261,11 @@ async function leaveTeam(remote=true,force=false){
   if(remote&&!(await uploadedFirst(force))){S.confirm='leave-force';render();return}
   const rep={kind:'leave',team:S.cfg.team||'the team',at:Date.now(),pending:force?sync.pending:0};
   if(remote){leaving=true;setSync('wait','Leaving…');
-    rep.member=t?await settle(F.deleteDoc(F.doc(fs,'teams',t,'members',uid)),6000):'ok';
+    if(heir&&t){ // the manager hands over and leaves in one step, so the team is never left without one
+      const b=F.writeBatch(fs);b.update(F.doc(fs,'teams',t),{createdBy:heir});b.delete(F.doc(fs,'teams',t,'members',uid));
+      if(await settle(b.commit(),8000)!=='ok'){leaving=false;liveLabel();toast("Couldn't hand over the manager role just now, so you haven't left. Try again with a better signal.");return}
+      rep.member='ok';
+    }else rep.member=t?await settle(F.deleteDoc(F.doc(fs,'teams',t,'members',uid)),6000):'ok';
     const listed=t?await settle(F.updateDoc(F.doc(fs,'users',uid),{['teams.'+t]:F.deleteField()}),3000):'ok';
     // not confirmed (no signal): finish at the next start with signal, and keep the team out of the list meanwhile
     if((rep.member!=='ok'||listed!=='ok')&&t)lsSet('matchday-leave-todo',JSON.stringify([...new Set([...leaveTodo(),t])]));
@@ -2367,7 +2406,7 @@ async function signOutAccount(force=false){
   try{await FB.A.signOut(FB.auth)}catch(e){leaving=false;toast(`Couldn't sign out (${errCode(e)}). Nothing was changed.`);return}
   saveTeams([]);lsSet(TEAM_KEY,null);rep.cache=await wipeLocalData();lsSet('matchday-report',JSON.stringify(rep));location.reload();
 }
-const googleBtn=()=>`<button class="btn gbtn" data-act="google"><svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 6.9-10.3 6.9-17.7z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.1 1.4-4.9 2.3-8.2 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>Continue with Google</button>`;
+const googleBtn=()=>inApp?'<p class="note">Google sign-in isn\'t in the iPhone app yet. Use email here, or sign in with Google on the website.</p>':`<button class="btn gbtn" data-act="google"><svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 6.9-10.3 6.9-17.7z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.1 1.4-4.9 2.3-8.2 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>Continue with Google</button>`;
 function acctForm(mode){
   return `<form class="acctf" id="acctf" data-mode="${mode}">
     <input id="acctemail" type="email" autocomplete="username" placeholder="Email address" aria-label="Email address">
@@ -2388,7 +2427,9 @@ function accountCard(){
     ${S.acct?acctForm(S.acct):`${googleBtn()}<div class="cbtns"><button class="btn" data-act="acctcreate">Create an account with email</button><button class="btn" data-act="acctsignin">Sign in with email</button></div>`}</div>`;
 }
 const signoutBtn=()=>`<button class="x ${S.confirm&&S.confirm.startsWith('signout')?'sure':''}" data-act="signout">${S.confirm==='signout-force'?`Not uploaded: tap again to sign out anyway and lose ${sync.pending||'some'} change${sync.pending===1?'':'s'}`:S.confirm==='signout'?'Tap again to sign out on this phone':'Sign out on this phone'}</button>`;
-const leaveBtn=()=>`<button class="x ${S.confirm&&S.confirm.startsWith('leave')?'sure':''}" data-act="leave">${S.confirm==='leave-force'?`Not uploaded: tap again to leave anyway and lose ${sync.pending||'some'} change${sync.pending===1?'':'s'}`:S.confirm==='leave'?'Tap again to leave this team on this phone':'Leave this team on this phone'}</button>`;
+const heirs=()=>{const me=FB.auth.currentUser?.uid;return S.createdBy===me?S.members.filter(m=>m.id!==me):[]}; // a manager leaving must hand over first
+const leaveBtn=()=>S.confirm==='leave-pick'?`<div class="warnline"><b>Who takes over as manager?</b> You're the manager, so choose another coach before you leave. The manager can remove coaches and make new invite codes.
+  <div class="cbtns" style="margin-top:8px">${heirs().map(m=>`<button class="btn small" data-act="leaveto" data-id="${esc(m.id)}">${esc(m.name||'Coach')}</button>`).join('')}<button class="btn small" data-act="leavecancel">Cancel</button></div></div>`:`<button class="x ${S.confirm&&S.confirm.startsWith('leave')?'sure':''}" data-act="leave">${S.confirm==='leave-force'?`Not uploaded: tap again to leave anyway and lose ${sync.pending||'some'} change${sync.pending===1?'':'s'}`:S.confirm==='leave'?'Tap again to leave this team on this phone':'Leave this team on this phone'}</button>`;
 function pendingCard(){
   if(!S.pending.length)return'';
   const sent=p=>new Date(p.at||Date.now()).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
@@ -2460,11 +2501,18 @@ async function loadAdmin(){
       const [st,ms]=await Promise.all([F.getDoc(F.doc(fs,'teams',d.id,'club','settings')).catch(()=>null),F.getDocs(F.collection(fs,'teams',d.id,'members')).catch(()=>null)]);
       const cfg=st?.data?.()||{},mem=ms?ms.docs.map(m=>m.data()):[];
       const seen=Math.max(0,...mem.map(m=>m.seen?.toMillis?.()||m.joined?.toMillis?.()||0));
-      return{id:d.id,name:cfg.team||'',sport:cfg.sport||'football',created:d.data().created?.toMillis?.()||0,coaches:mem.length,seen};
+      const mgr=d.data().createdBy,list=ms?ms.docs.map(m=>({id:m.id,name:m.data().name||'Coach'})):[];
+      return{id:d.id,name:cfg.team||'',sport:cfg.sport||'football',created:d.data().created?.toMillis?.()||0,coaches:mem.length,seen,
+        orphan:!!ms&&!list.some(m=>m.id===mgr),list};
     }));
     S.admin={loading:false,teams:rows.sort((a,b)=>b.seen-a.seen)};
   }catch(e){S.admin={loading:false,error:errCode(e),teams:[]}}
   render();
+}
+async function adminMakeManager(t,id){ // owner: give a team with no manager a new one
+  const {F,fs}=FB;
+  try{await F.updateDoc(F.doc(fs,'teams',t),{createdBy:id});toast('Manager set.');loadAdmin()}
+  catch(e){toast(`Couldn't set the manager (${errCode(e)}).`)}
 }
 function adminView(){
   const A=S.admin||{teams:[]},T=A.teams,day=864e5,now=Date.now();
@@ -2478,6 +2526,8 @@ function adminView(){
   <div class="summary num"><span>Teams <b>${T.length}</b></span><span>Active this week <b>${week}</b></span><span>Football <b>${T.length-rug}</b> · Rugby <b>${rug}</b></span></div>
   <div class="rows">${T.map(t=>`<div class="row adm"><div class="who">${esc(t.name||'(not set up yet)')}<span class="tag">${t.sport==='rugby'?'Rugby':'Football'}</span></div>
     <div class="note">${t.coaches} coach${t.coaches===1?'':'es'} · last active ${esc(when(t.seen))} · created ${esc(when(t.created))}</div>
+    ${t.orphan?`<div class="warnline"><b>No manager.</b> ${t.list.length?'Make one of these coaches the manager:':'No coaches left in this team.'}
+      ${t.list.length?`<div class="cbtns" style="margin-top:6px">${t.list.map(m=>{const k='am-'+t.id+'-'+m.id;return `<button class="btn small ${S.confirm===k?'sure':''}" data-act="admmgr" data-t="${esc(t.id)}" data-id="${esc(m.id)}">${S.confirm===k?'Tap again: make '+esc(m.name)+' manager':esc(m.name)}</button>`}).join('')}</div>`:''}</div>`:''}
     <div class="note num admid">${esc(t.id)}</div></div>`).join('')}</div>
   <button class="btn small" data-act="adminload" style="align-self:flex-start">Refresh</button>`}
   </div>`;
@@ -2528,6 +2578,8 @@ function menuView(){
       <p class="note">${S.invite&&S.invite.length<8?'Your code is the older, shorter kind: a new one is 8 characters and much harder to guess. ':''}Use this if the code has been shared too widely. Coaches already in the team stay in.</p>`:''}
     ${requestsBanner()}
     <span class="lbl">Team members</span>
+    ${noManager()?`<div class="warnline"><b>This team has no manager.</b> The manager's sign-in has left the team (for example after leaving, or the browser clearing its data). Any coach can take over, so someone can remove coaches and make new invite codes.
+      <div class="cbtns" style="margin-top:8px"><button class="btn small ${S.confirm==='claimmgr'?'sure':''}" data-act="claimmgr">${S.confirm==='claimmgr'?'Tap again to become the manager':'Become the manager'}</button></div></div>`:''}
     ${membersList()}
     ${leaveBtn()}</div>
   ${parentCard()}

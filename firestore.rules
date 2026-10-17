@@ -200,6 +200,16 @@ service cloud.firestore {
              && !existsAfter(codeDoc(resource.data.code))))
         && (request.resource.data.createdBy == resource.data.createdBy
              || existsAfter(/databases/$(database)/documents/teams/$(t)/members/$(request.resource.data.createdBy)));
+      // If the manager's sign-in is no longer in the team (it left, or signed out and was lost), any
+      // coach still in the team can take the role, so a team is never stuck without a manager.
+      allow update: if signedIn() && exists(memberPath(t))
+        && !exists(/databases/$(database)/documents/teams/$(t)/members/$(resource.data.createdBy))
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['createdBy'])
+        && request.resource.data.createdBy == request.auth.uid;
+      // The owner (Admin page) can make any coach in a team its manager.
+      allow update: if isOwner()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['createdBy'])
+        && exists(/databases/$(database)/documents/teams/$(t)/members/$(request.resource.data.createdBy));
 
       // Joining: a phone sends a join request quoting the invite code; an existing coach accepts it
       // by creating the member record. Nobody can add themselves with just the code.

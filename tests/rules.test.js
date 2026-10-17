@@ -357,6 +357,34 @@ test('the manager can hand over to another coach, not to an outsider; others can
   await assertSucceeds(updateDoc(doc(alice(), 'teams', T), {createdBy: 'carol'}));
   await assertSucceeds(deleteDoc(doc(db('carol'), 'teams', T, 'members', 'alice'))); // the new manager can remove coaches
 });
+test('a manager leaving hands over and leaves in one step', async () => {
+  await env.withSecurityRulesDisabled(async ctx => setDoc(doc(ctx.firestore(), 'teams', T, 'members', 'carol'), {code: CODE, joined: new Date()}));
+  const f = alice(), b = writeBatch(f);
+  b.update(doc(f, 'teams', T), {createdBy: 'carol'});
+  b.delete(doc(f, 'teams', T, 'members', 'alice'));
+  await assertSucceeds(b.commit());
+});
+test("a team whose manager has gone: a coach still in it can take the role, nobody else, and only when it's gone", async () => {
+  await env.withSecurityRulesDisabled(async ctx => {
+    const f = ctx.firestore();
+    await setDoc(doc(f, 'teams', T, 'members', 'carol'), {code: CODE, joined: new Date()});
+    await setDoc(doc(f, 'teams', T, 'members', 'dave'), {code: CODE, joined: new Date()});
+  });
+  await assertFails(updateDoc(doc(db('carol'), 'teams', T), {createdBy: 'carol'})); // alice (manager) is still here
+  await env.withSecurityRulesDisabled(async ctx => deleteDoc(doc(ctx.firestore(), 'teams', T, 'members', 'alice'))); // alice's sign-in is gone
+  await assertFails(updateDoc(doc(mallory(), 'teams', T), {createdBy: 'mallory'}));      // not in the team
+  await assertFails(updateDoc(doc(db('carol'), 'teams', T), {createdBy: 'dave'}));       // only for yourself
+  await assertFails(updateDoc(doc(db('carol'), 'teams', T), {createdBy: 'carol', code: 'NEWCODE8'})); // nothing else changes
+  await assertSucceeds(updateDoc(doc(db('carol'), 'teams', T), {createdBy: 'carol'}));
+  await assertFails(updateDoc(doc(db('dave'), 'teams', T), {createdBy: 'dave'}));        // carol is manager now
+});
+test('the owner can make any coach in a team its manager, not an outsider, and change nothing else', async () => {
+  await env.withSecurityRulesDisabled(async ctx => setDoc(doc(ctx.firestore(), 'teams', T, 'members', 'carol'), {code: CODE, joined: new Date()}));
+  await assertFails(updateDoc(doc(owner(false), 'teams', T), {createdBy: 'carol'}));
+  await assertFails(updateDoc(doc(owner(), 'teams', T), {createdBy: 'mallory'}));
+  await assertFails(updateDoc(doc(owner(), 'teams', T), {createdBy: 'carol', code: 'NEWCODE8'}));
+  await assertSucceeds(updateDoc(doc(owner(), 'teams', T), {createdBy: 'carol'}));
+});
 
 // ---- join requests: limits, duplicates, declines ----
 test('one sign-in can have requests waiting in at most 3 teams', async () => {
