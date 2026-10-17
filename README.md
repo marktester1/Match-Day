@@ -122,6 +122,25 @@ a failure, `npx playwright show-trace test-results/*/trace.zip` replays every st
 are Playwright's engines (WebKit for iPhones, Chromium for Android) at each phone's screen size and with touch,
 not the real devices; real Safari and Chrome need the iOS Simulator or Android Emulator.
 
+#### Real iPhone Safari in the iOS Simulator (Appium)
+
+`tools/e2e/ios-sim/` plays a shorter coach's day in real Mobile Safari on an Xcode simulator,
+through Appium: create a team and squad, add players with the keyboard's Return key and the Add
+button, set up a match with a fixture, pick the team, kick off, a goal with its scorer, a sub, a
+yellow card and full time, then a reload to check it all saved. Beta only; it leaves its
+"Claude E2E Sim U9s" team at the end. About a minute per run.
+
+```sh
+cd tools/e2e/ios-sim && npm install && npm run setup   # once: Appium and its iPhone driver (~250 MB)
+cd tools/e2e/ios-sim && npm run appium                 # leave running; the first session builds a helper app (~15 min, once)
+cd tools/e2e/ios-sim && npm test                       # in a second terminal
+```
+
+It uses the "iPhone 17" simulator (`SIM_DEVICE="iPhone Air" npm test` for another, or `SIM_UDID=…`).
+Safari's own `safaridriver` can't drive these simulators while the Mac's Safari is a version behind
+iOS in Xcode, which is why it goes through Appium. Safari's automation doesn't mark typed text as an
+edit, so the test fires each box's change when leaving it (see the note at the top of the file).
+
 ### Keeping data safe between versions
 
 - New versions may **add** fields but never rename or remove them. The app fills in missing
