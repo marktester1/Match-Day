@@ -11,6 +11,15 @@ README.md has the setup and release commands.
 - Never publish straight to live. Every change goes to beta first
   (`firebase deploy --only hosting --project beta`), and the user is given the beta link to
   test before anything is promoted.
+- **Only one session releases to live: the main Match Day session the user drives releases from.**
+  Side sessions (fixes, tests, anything started from another session) stop at beta: deploy to beta,
+  commit on their branch, report back, and never run `hosting:clone` to live, publish rules to live,
+  deploy functions to live, or move `main`/tags, even if the user says "release" to them. Several
+  sessions releasing at once has put an older build back on live. Before any release, check beta
+  serves the build being released (`node tools/release-check.cjs pre`).
+- Beta is shared: before deploying to beta, check what beta is serving now (`APP_VERSION` at
+  https://match-day-beta-17b23.web.app) and build on that branch, so you don't replace someone
+  else's newer beta build.
 - Promote to live only when the user says so, and only by copying the tested beta
   (`firebase hosting:clone match-day-beta-17b23:live match-day-17b23:live`). If a cross-project
   clone isn't possible, deploy the same commit with `firebase deploy --only hosting --project live`
