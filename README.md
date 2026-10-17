@@ -128,7 +128,7 @@ not the real devices; real Safari and Chrome need the iOS Simulator or Android E
 through Appium: the coach's whole match day (with a follower on a second simulator), a coach joining
 with the invite code, a follower's day and a new follower link, and the manager tests (three
 simulators). Beta only; each leaves the "Claude E2E Sim …" teams it makes. They use the "iPhone 17",
-"iPhone Air" and "iPhone 17e" simulators (`SIMS="…,…,…"` to choose). About 30–40 minutes in all.
+"iPhone Air" and "iPhone 17e" simulators (`SIMS="…,…,…"` to choose). About 11 minutes in all once Appium's helper app is built.
 
 ```sh
 cd tools/e2e/ios-sim && npm install && npm run setup   # once: Appium and its iPhone driver (~250 MB)
@@ -147,7 +147,7 @@ text as an edit, so the tests fire each box's change when leaving it (see the no
 | | Before promoting (`pre`) | After promoting (`post`) |
 |---|---|---|
 | `--e2e` | Playwright journeys on beta (WebKit and Chromium, ~3 min) | |
-| `--ios-sim` | every iPhone journey on beta (~40 min) | opens **live** in iPhone Safari: right version, no BETA label, start screen and legal pages |
+| `--ios-sim` | every iPhone journey on beta (~11 min) | opens **live** in iPhone Safari: right version, no BETA label, start screen and legal pages |
 
 ```sh
 node tools/release-check.cjs pre --e2e --ios-sim

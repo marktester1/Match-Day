@@ -113,7 +113,7 @@ test('a coach runs a whole match day in iPhone Safari', {timeout: 30 * 60000}, (
 
   await c.card('Dara', 'y');
   await c.toast('Dara: yellow card.');
-  assert.ok(await c.chipPart('Dara', '.cd.y') !== null, 'Dara has a yellow card');
+  await c.until(() => !![...document.querySelectorAll('#view .pitch .chip')].find(x => x.querySelector('.n')?.textContent === 'Dara')?.querySelector('.cd.y'), 'Dara\'s yellow card on her label');
   await f.sawBanner(`Yellow card for ${SHORT}`);
 
   await c.card('Esme', 'r');

@@ -43,10 +43,19 @@ export async function phone(i = 0, {fresh = true} = {}) {
   }
   await b.setTimeout({script: 30000});
   const p = makePhone(b, SIM_NAMES[i]);
-  if (fresh) {
+  if (fresh) { // a new coach: nothing left from an earlier run (an old tab can block deleting stored data)
+    const tabs = await b.getWindowHandles().catch(() => []);
+    for (const h of tabs.slice(1)) { await b.switchToWindow(h).catch(() => {}); await b.closeWindow().catch(() => {}); }
+    if (tabs.length > 1) await b.switchToWindow((await b.getWindowHandles())[0]).catch(() => {});
     await p.goto('/privacy.html');
-    await b.execute(() => { localStorage.clear(); sessionStorage.clear(); indexedDB.databases?.().then(l => l.forEach(d => indexedDB.deleteDatabase(d.name))); });
-    await b.pause(1500);
+    for (let i = 0; i < 5; i++) {
+      const left = await b.execute(async () => { localStorage.clear(); sessionStorage.clear();
+        const l = (await indexedDB.databases?.()) || [];
+        await Promise.all(l.map(d => new Promise(ok => { const r = indexedDB.deleteDatabase(d.name); r.onsuccess = r.onerror = r.onblocked = ok; })));
+        return ((await indexedDB.databases?.()) || []).length; }).catch(() => -1);
+      if (left === 0) break;
+      await b.pause(1000);
+    }
   }
   return p;
 }
@@ -74,7 +83,7 @@ function makePhone(b, name) {
       if (!t || root.dataset.e2eToasts !== undefined) return; root.dataset.e2eToasts = '';
       new MutationObserver(() => { if (!t.hidden) root.dataset.e2eToasts += t.textContent + '\n'; })
         .observe(t, {attributes: true, childList: true, characterData: true, subtree: true}); }),
-    toast: msg => p.until(m => (document.documentElement.dataset.e2eToasts || '').includes(m), `message "${msg}"`, 20000, msg)
+    toast: (msg, ms = 20000) => p.until(m => (document.documentElement.dataset.e2eToasts || '').includes(m), `message "${msg}"`, ms, msg)
       .then(() => b.execute(() => { document.documentElement.dataset.e2eToasts = ''; })),
     // Follower banners show for 6 s: the same idea.
     watchBanners: () => b.execute(() => { const root = document.documentElement; if (root.dataset.e2eBanners !== undefined) return; root.dataset.e2eBanners = '';
@@ -91,7 +100,7 @@ function makePhone(b, name) {
       await p.watchToasts();
     },
     async reload(team) {
-      await p.saved();
+      if (team) await p.saved(); // (a phone not in a team yet has nothing to save)
       await b.execute(() => { document.documentElement.dataset.e2eOld = '1'; }); // gone once the new page is in
       await b.refresh();
       await p.until(t => !document.documentElement.dataset.e2eOld && document.readyState === 'complete' && (!t || document.getElementById('hteam')?.textContent === t), 'the page after reload', 30000, team);

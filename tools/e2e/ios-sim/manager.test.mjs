@@ -25,7 +25,7 @@ async function join(asker, name, code, accepter) {
   await asker.until(c => document.getElementById('joincode')?.value === c, 'the code filled in', 30000, code);
   await asker.type('#joinname', name);
   await asker.tapText('Ask to join');
-  await asker.toast('Request sent.');
+  await asker.toast('Request sent.', 60000); // a phone's first request can take a while in the simulator
   await accepter.until(n => [...document.querySelectorAll('#view .req')].some(x => x.textContent.includes(`${n} wants to join the team`)), `${name}'s request`, 30000, name);
   await accepter.tapFound(n => [...document.querySelectorAll('#view .req')].find(x => x.textContent.includes(n))?.querySelector('[data-act=reqok]'), 'Accept', name);
   await accepter.toast(`${name} is in the team.`);

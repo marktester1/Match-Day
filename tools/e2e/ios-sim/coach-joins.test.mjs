@@ -42,7 +42,7 @@ test('a coach joins with the invite code and starts a match, in iPhone Safari', 
   await sam.toast('Add your name first, so the coaches know who is asking.');
   await sam.type('#joinname', COACH);
   await sam.tapText('Ask to join');
-  await sam.toast('Request sent. A coach in the team needs to accept you.');
+  await sam.toast('Request sent. A coach in the team needs to accept you.', 60000); // a phone's first request can take a while in the simulator
   await sam.until(c => { const t = document.getElementById('view')?.innerText || ''; return t.includes('Waiting for a coach to accept you.') && t.includes('with code ' + c); }, 'waiting to be accepted', 20000, code);
   await sam.reload(); // still waiting after a reload
   await sam.until(() => document.getElementById('view')?.textContent.includes('Waiting for a coach to accept you.'), 'still waiting', 30000);
@@ -86,7 +86,7 @@ test('a coach joins with the invite code and starts a match, in iPhone Safari', 
   // The manager's phone follows the game live, and they can make the sub themselves
   await mgr.until(() => { const g = document.querySelector('#view .gcard'); return g?.querySelector('.pill')?.textContent === 'Live' && g.querySelector('.scr')?.textContent === '1–0'; }, 'game 1 live, 1–0, on the manager\'s phone', 30000);
   await mgr.openGame(1);
-  assert.equal(await mgr.chipPart('Dara', '.gl'), '⚽ 1');
+  await mgr.until(() => [...document.querySelectorAll('#view .pitch .chip')].find(x => x.querySelector('.n')?.textContent === 'Dara')?.querySelector('.gl')?.textContent === '⚽ 1', 'Dara ⚽ 1 on the manager\'s phone');
   await mgr.tapChip('Esme');
   await mgr.tapQp('Gus');
   await mgr.waitChip('Gus');
