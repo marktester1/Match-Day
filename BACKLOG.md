@@ -8,7 +8,10 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 - **Bug (next beta build):** in light mode the "5/5" players counter on the pitch is white text on
   a white pill, so it can't be seen (`.pitch .cnt` inherits `.cnt`'s white background). Fix: a
   see-through dark pill, e.g. `background:#0000002e;border-color:#ffffff40`.
-- **Website (`site/`, branch `website`):** preview at https://matchday-website-preview.web.app (its own
+- **Website (`site/`, branch `website`):** two copies, both on the beta project: the main one for
+  coaches at https://matchday-website-preview.web.app (opens the live app), and a beta copy for testers
+  at https://matchday-website-beta.web.app (opens the beta app, banner, not indexed; build with
+  `sh tools/build_site_beta.sh`, publish with `--config site-beta/firebase.json`). Main one: (its own
   site on the beta project; publish with `firebase deploy --only hosting --config site/firebase.json
   --project match-day-beta-17b23`). Move it once the domain is bought
   (its own Firebase Hosting site on the live project, with the domain's front page as the website
