@@ -5,6 +5,12 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Waiting on testing
 
+- **Bug (next beta build):** in light mode the "5/5" players counter on the pitch is white text on
+  a white pill, so it can't be seen (`.pitch .cnt` inherits `.cnt`'s white background). Fix: a
+  see-through dark pill, e.g. `background:#0000002e;border-color:#ffffff40`.
+- **Website (`site/`, branch `website`):** not published yet. Publish it once the domain is bought
+  (its own Firebase Hosting site on the live project, with the domain's front page as the website
+  and the app on the same domain or app.<domain>). Then update its links from the web.app address.
 - **v0.26.1 on beta:** a warning at full time (and on Finish tournament) when a game has no
   opposition, with a box to add it there and then; the goal count on a player's label is now a
   neutral grey pill under the minutes, so it no longer overlaps the corner or looks like a card.
