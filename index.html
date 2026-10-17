@@ -366,7 +366,7 @@ body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.27.2';
+const APP_VERSION='0.27.3';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,benchAsk:null,rptEdit:null,fpush:undefined,fpushEdit:false,fkinds:null,dpush:undefined,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,managers:[],askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
@@ -1134,11 +1134,12 @@ function gameView(id){
       <span class="who">${x.c==='r'?'🟥':'🟨'} ${esc(nameOf(x.p))}${x.c==='y'&&binLeft(g,x.p)?` <span class="note">sin bin</span>`:''}</span>
       ${g.done?'':`<button class="x" data-act="carddel" data-i="${i}">Remove</button>`}</div>`).join('')}</div></section>`:''}
   ${(g.goals||[]).length?`<section class="sec log"><h3>Our ${Words().goals.toLowerCase()}</h3>
-    <div class="rows">${(g.goals||[]).map((x,i)=>({x,i})).sort((a,b)=>b.x.at-a.x.at).map(({x,i})=>`<div class="row"><span class="at num">${tAt(x.at)}</span>${isRugby()?`<span class="evl">${evLabel(x)}</span>`:''}
+    <div class="rows">${(g.goals||[]).map((x,i)=>({x,i})).sort((a,b)=>b.x.at-a.x.at).map(({x,i})=>`<div class="row"><input class="num subt" data-goalat="${i}" value="${fmt(x.at)}" inputmode="decimal" aria-label="Time of this ${isRugby()?'score':'goal'}, from kick-off (minutes:seconds)">${isRugby()?`<span class="evl">${evLabel(x)}</span>`:''}
       <select class="scsel ${x.p?'':'unset'}" data-goalp="${i}" aria-label="Who scored this goal">
         <option value="" ${x.p?'':'selected'}>Scorer not set</option>
         ${byName(inGame(g).length?inGame(g):S.squad.map(p=>p.id)).map(p=>`<option value="${p}" ${x.p===p?'selected':''}>${esc(nameOf(p))}</option>`).join('')}
         ${isRugby()?'':`<option value="og" ${x.p==='og'?'selected':''}>Own goal</option>`}</select></div>`).join('')}</div>
+    <p class="note">Times are from kick-off. Type a new one (like 12:30) to correct it.</p>
     ${!isRugby()&&g.score.us>(g.goals||[]).length?`<p class="note">${g.score.us-(g.goals||[]).length} earlier goal${g.score.us-(g.goals||[]).length>1?'s':''} without a scorer.</p>`:''}</section>`:''}
   ${g.subs.length?`<section class="sec log"><div class="ghead"><h3>Subs</h3><button class="x" data-act="undo">Undo last sub</button></div>
     <div class="rows">${subs.map(e=>`<div class="row"><span class="at num">${tAt(e.at)}</span><span class="txt"><span class="onn">▲ ${esc(nameOf(e.on))}</span> &nbsp;<span class="off">▼ ${esc(nameOf(e.off))}</span>${e.gk?' <span class="note">(in goal)</span>':''}</span></div>`).join('')}</div></section>`:''}
@@ -1504,7 +1505,7 @@ function tEdit(t){
         <label><span class="lbl">We were</span><select data-ed="side|${i}"><option value="home" ${isAway(g)?'':'selected'}>Home</option><option value="away" ${isAway(g)?'selected':''}>Away</option></select></label></div>
       <div class="meta"><label><span class="lbl">Our ${Words().goals.toLowerCase()}</span><input type="number" min="0" max="199" data-ed="us|${i}" value="${g.score.us}"></label>
         <label><span class="lbl">Their ${Words().goals.toLowerCase()}</span><input type="number" min="0" max="199" data-ed="them|${i}" value="${g.score.them}"></label></div>
-      ${(g.goals||[]).map((x,k)=>`<label class="scl"><span class="lbl">${isRugby()?evLabel(x):'Goal '+(k+1)}</span><select data-ed="goal|${i}|${k}">${opt(x.p)}</select></label>`).join('')}
+      ${(g.goals||[]).map((x,k)=>`<div class="scl"><span class="lbl">${isRugby()?evLabel(x):'Goal '+(k+1)}</span><div class="cbtns"><input class="num subt" data-ed="gat|${i}|${k}" value="${fmt(x.at||0)}" inputmode="decimal" aria-label="Time from kick-off (minutes:seconds)"><select data-ed="goal|${i}|${k}" aria-label="Who scored">${opt(x.p)}</select></div></div>`).join('')}
     </div>`).join('')}
     <div class="cbtns"><button class="btn go" data-act="tsave">Save changes</button><button class="btn" data-act="tcancel">Cancel</button></div>
   </div>`;
@@ -1519,6 +1520,7 @@ function editField(key,val){ // one change to the draft; scorers follow our goal
   else if(f==='us'||f==='them'){const n=Math.max(0,Math.min(99,parseInt(val)||0));g.score={...g.score,[f]:n};if(n>0)g.played=true;
     if(f==='us'&&!isRugby()){const gs=g.goals||[];g.goals=n>gs.length?[...gs,...Array.from({length:n-gs.length},()=>({at:0,p:null}))]:gs.slice(0,n)}}
   else if(f==='goal')g.goals[+k]={...g.goals[+k],p:val||null};
+  else if(f==='gat'){const v=parseT(val);if(v==null||v>36e6)toast('Type the time like 12:30.');else g.goals[+k]={...g.goals[+k],at:v}}
   render();
 }
 function savedPop(){
@@ -1875,6 +1877,10 @@ function onChange(e){
   if(t.id==='restorefile'&&t.files&&t.files[0]){readBackup(t.files[0]);t.value='';return}
   if(t.dataset.gsize&&S.game){const v=Math.min(11,Math.max(3,parseInt(t.value)||tourSize()));mut(S.game,g=>{if(v===tourSize())delete g.size;else g.size=v});return}
   if(t.dataset.ed){editField(t.dataset.ed,t.type==='checkbox'?t.checked:t.value);return}
+  if(t.dataset.goalat&&S.game){const i=+t.dataset.goalat,v=parseT(t.value),max=el(G(S.game));
+    if(v==null){toast('Type the time like 12:30.');render();return}
+    if(v>max){toast(`That's after the clock (${fmt(max)}). Nothing was changed.`);render();return}
+    mut(S.game,g=>{if(g.goals?.[i])g.goals[i].at=v});toast(`Moved to ${fmt(v)}.`);return}
   if(t.dataset.goalp&&S.game){const i=+t.dataset.goalp,v=t.value||null;mut(S.game,g=>{if(g.goals?.[i])g.goals[i].p=v});return}
   if(t.dataset.subat&&S.game){const i=+t.dataset.subat,v=parseT(t.value);if(v==null){toast('Type the time like 4:30.');render();return}
     if(!tryFix(S.game,g=>{g.subs[i].at=v},`Sub moved to ${fmt(v)}.`))render();return}
