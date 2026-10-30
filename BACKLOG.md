@@ -23,6 +23,32 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
   phone and seeing the teams come back.
 - Beta: https://match-day-beta-17b23.web.app (Beta Test Team code `L9J-Q7H`).
 
+## Feedback from the testing round (Oct 2026)
+
+**Website**
+- First sentence is too long; look at the wording overall.
+- Card titles: "Tournament" and "Match day", not "A tournament day" and "A match day".
+- Change the "Works with no signal" wording, including "every coach sees the same thing".
+- Step 2 (Create your team): change the "paste them in one go" wording.
+- Step 1: add a link to the app, and clarify the wording. Maybe add a pop-up in the app too.
+- Make it clear it's an app: people read "app" and think it's a normal website.
+- Rugby feels like an afterthought. Should rugby and football have separate websites?
+
+**In the app**
+- Instructions: clearer, on separate lines.
+- Make the journey step by step, so the next action is obvious.
+- "Set up today's games": change the wording, as the games can be in the future.
+- Saving a tournament is dodgy (get details: what went wrong?).
+- "Clear scores and line-ups without saving" is in red and looks like an error.
+- A back button is needed.
+- Put picking the team at the top at the start of a game.
+- Change "Minutes" to "Minutes played".
+- Don't need a "Done editing" page.
+- At full time on a single game, where is Finish tournament? It should be obvious for one game.
+
+**New idea**
+- Create a viewing app for parents (followers).
+
 ## From the code review (do these before more features)
 
 **Step 1: Data safety: done on beta (v0.20.0); rules on beta only, live needs the go-ahead.**
