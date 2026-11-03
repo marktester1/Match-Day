@@ -50,17 +50,29 @@ function app(page, info) {
     score: (k, away = false) => view.locator('.board .side').nth((k === 'us') !== away ? 0 : 1).locator('b'),
     pill: () => view.locator('.ghead .pill'),
 
-    async createTeam(team, names) {
+    // The first-time set-up wizard: Full set-up, team, players, then "Do this later" for the games.
+    // onCreated runs once the team exists (so a test knows to leave it at the end).
+    async startTeam(team, pasted, {size = '5', onCreated} = {}) {
       await page.goto('/');
       await page.locator('#mkname').fill('Claude (test coach)');
       await press(btn('Create a team'));
-      await expect(page.locator('#cfg-team')).toBeVisible({timeout: 30000});
+      const full = page.locator('[data-act=wizroute][data-v=full]');
+      await expect(full).toBeVisible({timeout: 30000});
+      if (onCreated) onCreated();
+      await press(full);
       await page.locator('#cfg-team').fill(team);
-      await page.locator('#cfg-size').fill('5');
-      await page.locator('#bulknames').fill(names.join('\n'));
-      await press(btn('Start using the app'));
-      await toast('All set.');
+      await press(page.locator(`[data-act=wizsize][data-v="${size}"]`));
+      await expect(page.locator(`[data-act=wizsize][data-v="${size}"]`)).toHaveClass(/\bon\b/);
+      await press(btn('Next'));
+      await expect(view.locator('h2')).toHaveText('Your players');
+      await page.locator('#bulknames').fill(pasted);
+      await press(btn('Next'));
+      await expect(view.locator('h2')).toHaveText('Your match day');
+      await press(btn('Do this later'));
       await expect(page.locator('#hteam')).toHaveText(team);
+    },
+    async createTeam(team, names) {
+      await a.startTeam(team, names.join('\n'));
     },
     async inviteCode() {
       await press(page.locator('#menubtn'));
