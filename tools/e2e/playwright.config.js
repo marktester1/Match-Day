@@ -18,7 +18,7 @@ module.exports = defineConfig({
   timeout: 6 * 60 * 1000,          // the whole journey, one test per browser
   expect: {timeout: 15 * 1000},    // Firestore round trips on beta
   fullyParallel: true,
-  retries: 0,
+  retries: process.env.CI ? 1 : 0, // on GitHub, one more go absorbs a network hiccup
   reporter: [['list']],
   outputDir: 'test-results',
   use: {

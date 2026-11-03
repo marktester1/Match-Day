@@ -1,0 +1,92 @@
+# Every push and pull request: quick checks, the security rules tests (Firestore emulator) and the
+# browser tests (Playwright: Safari's engine on an iPhone screen, and Chrome). The browser tests serve
+# this commit's files from the runner on localhost, which the app points at the beta project, so
+# they use beta data and never touch live. Each test makes its own team and leaves it at the end.
+name: Tests
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Security policy matches index.html
+        run: node tools/csp.cjs --check
+      - name: The app's script has no syntax errors
+        run: |
+          node -e "
+            const h = require('fs').readFileSync('index.html', 'utf8');
+            const s = [...h.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
+            s.forEach(x => new Function(x));
+            console.log('ok:', s.length, 'inline script');"
+      - name: Nothing from exports/ (children's names) is committed
+        run: test -z "$(git ls-files exports)"
+
+  rules:
+    name: Security rules (emulator)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm install -g firebase-tools@15.34.0
+      - run: npm ci
+        working-directory: tests
+      - run: npm test
+        working-directory: tests
+
+  browser:
+    name: Browser tests (beta data)
+    runs-on: ubuntu-latest
+    needs: checks
+    timeout-minutes: 30
+    # One run at a time: Firebase limits new sign-ins from one address, and every test signs in.
+    concurrency:
+      group: browser-tests
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: tools/e2e/package-lock.json
+      - run: npm ci
+        working-directory: tools/e2e
+      - run: npx playwright install --with-deps webkit chromium
+        working-directory: tools/e2e
+      - name: Serve this commit on localhost:8000
+        run: python3 -m http.server 8000 >/dev/null 2>&1 &
+      - run: npx playwright test
+        working-directory: tools/e2e
+        env:
+          MATCHDAY_URL: http://127.0.0.1:8000
+      # Screenshots and page snapshots only: the repository is public, and traces hold sign-in tokens
+      - name: Keep the screenshots of any failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-screenshots
+          path: |
+            tools/e2e/test-results/**/*.png
+            tools/e2e/test-results/**/error-context.md
+          retention-days: 7
