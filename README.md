@@ -126,7 +126,7 @@ not the real devices; real Safari and Chrome need the iOS Simulator or Android E
 
 `tools/e2e/ios-sim/` plays the same journeys in real Mobile Safari on Xcode's iPhone simulators,
 through Appium: the coach's whole match day (with a follower on a second simulator), a coach joining
-with the invite code, a follower's day and a new follower link, and the manager tests (three
+with the invite code, a follower's day and a new follower link, the set-up wizard, and the manager tests (three
 simulators). Beta only; each leaves the "Claude E2E Sim …" teams it makes. They use the "iPhone 17",
 "iPhone Air" and "iPhone 17e" simulators (`SIMS="…,…,…"` to choose). About 11 minutes in all once Appium's helper app is built.
 
@@ -141,6 +141,18 @@ Not ported: the "Share results" text (Share opens iOS's own share sheet) and the
 test (it needs a fake clock). Safari's own `safaridriver` can't drive these simulators while the
 Mac's Safari is a version behind iOS in Xcode, hence Appium. Safari's automation doesn't mark typed
 text as an edit, so the tests fire each box's change when leaving it (see the notes in `lib.mjs`).
+
+#### On GitHub
+
+Every push runs the checks, the rules tests and the Playwright tests (`.github/workflows/tests.yml`).
+Pushes to `main`, pull requests that change the tests, and Actions → Run workflow also run:
+
+- **iPhone Simulator** (`ios-sim.yml`): every `ios-sim` journey, set-up wizard included, on a GitHub Mac.
+- **Android** (`android.yml`): every Playwright test with the coach in real Chrome on an Android
+  emulator, once each at the screen of a Galaxy S24, Galaxy A55 and Pixel 9 (`ANDROID=1`, see `test.js`).
+
+All of them serve the commit on the runner's localhost (beta data, never live) and keep only
+screenshots of a failure, since the repository is public.
 
 #### In the release checks
 
