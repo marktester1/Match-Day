@@ -185,12 +185,18 @@ function makePhone(b, name) {
       await p.until(() => !!document.querySelector('[data-act=mkteam]'), 'the start screen', 30000);
       if (await p.has('#mkname')) await p.enter('#mkname', coach); // a name is needed to create a team
       await p.tapText('Create a team');
-      await p.until(() => !!document.getElementById('cfg-team'), 'the team set-up', 30000);
+      // The set-up wizard: Full set-up, team, players, then "Do this later" for the games
+      await p.until(() => !!document.querySelector('[data-act=wizroute][data-v=full]'), 'the set-up wizard', 30000);
+      await p.tap('[data-act=wizroute][data-v=full]');
+      await p.until(() => !!document.getElementById('cfg-team'), 'the team step', 20000);
       await p.type('#cfg-team', team);
-      await p.type('#cfg-size', '5');
+      await p.tap('[data-act=wizsize][data-v="5"]');
+      await p.tap('[data-act=wiznext]'); // tapped with the keyboard up
+      await p.until(() => document.querySelector('#view h2')?.textContent === 'Your players', 'the players step', 20000);
       await p.type('#bulknames', names.join('\n'));
-      await p.tapText('Start using the app'); // tapped with the keyboard up
-      await p.toast('All set.');
+      await p.tap('[data-act=wiznext]');
+      await p.until(() => document.querySelector('#view h2')?.textContent === 'Your match day', 'the match day step', 20000);
+      await p.tap('[data-act=wizlater]');
       await p.until(t => document.getElementById('hteam')?.textContent === t, 'the team name in the header', 20000, team);
     },
     async inviteCode() {

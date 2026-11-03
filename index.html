@@ -1309,8 +1309,19 @@ function setupView(){
       <li>${games===1?'1 match':games+' games'} set up, ${S.tour.len||10} minutes${nPer()===2?' in halves':nPer()===4?' in quarters':''}</li>
       <li>${opp?`${opp} opponent${opp>1?'s':''} added`:'Opponents: add them on the day'}</li><li>Everything saved</li></ul></div>
     <button class="btn go" data-act="wizstart">Start match day</button>
+    ${homeTip()}
     ${signInInvite()}
     ${teamCard()}</div>`;
+}
+// Once set up: how to open Match Day like an app. Not shown when it already is one.
+function homeTip(){
+  if(inApp||standalone())return'';
+  const android=/Android/i.test(navigator.userAgent);
+  return `<div class="card"><h3>Tip: put Match Day on your Home Screen</h3>
+    <p class="note">It then opens like any other app, full screen, with one tap on the touchline.</p>
+    ${isIOS?'<p>In Safari, tap <b>Share</b>, then <b>Add to Home Screen</b>.</p>'
+      :android?'<p>In Chrome, tap <b>⋮</b>, then <b>Add to Home screen</b> (or <b>Install app</b>).</p>'
+      :'<p>On iPhone or iPad (Safari): <b>Share</b>, then <b>Add to Home Screen</b>.</p><p>On Android (Chrome): <b>⋮</b>, then <b>Add to Home screen</b>.</p>'}</div>`;
 }
 function fixtureRows(){
   return `<datalist id="opps">${opponents().map(o=>`<option value="${esc(o)}"></option>`).join('')}</datalist>

@@ -23,7 +23,7 @@ test('a coach runs a whole match day in iPhone Safari', {timeout: 30 * 60000}, (
   // 1. Create a team and set it up
   await c.createTeam(TEAM, PASTED);
   joined = true;
-  assert.match(await view(), /Set up today's games/);
+  assert.match(await view(), /Set up your games/);
   await c.reload(TEAM);
   await c.goTab('squad');
   await c.until(n => document.querySelectorAll('#view .rows .row .who').length >= n, 'the squad', 20000, 8);
@@ -200,7 +200,8 @@ test('a coach runs a whole match day in iPhone Safari', {timeout: 30 * 60000}, (
   await c.tap('[data-act=sport][data-v=rugby]');
   await c.until(() => document.querySelector('[data-act=rscore][data-v=points]')?.classList.contains('on'), 'rugby points scoring');
   await c.goTab('games');
-  await c.tapText('Set up games');
+  await c.tapText('Yes, same settings'); // the next match day: last time's settings in one tap
+  await c.tap('[data-act=fxclose]');
   await c.openGame(1);
   assert.equal(await c.count('#view [data-act=role][data-r=gk]'), 0); // no keeper in rugby
   await c.pickTeam(null, ['Bea', 'Cormac', 'Dara', 'Esme', 'Finn']);
