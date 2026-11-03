@@ -21,6 +21,8 @@ jobs:
     name: Chrome on ${{ matrix.phone }} (beta data)
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      ANDROID_AVD_HOME: /home/runner/.android/avd   # one place for avdmanager and the emulator to agree on
     strategy:
       fail-fast: false
       matrix:
@@ -51,9 +53,10 @@ jobs:
           SDK=$ANDROID_HOME/cmdline-tools/latest/bin IMG='system-images;android-35;google_apis;x86_64'
           yes | $SDK/sdkmanager --licenses >/dev/null
           $SDK/sdkmanager emulator "$IMG" >/dev/null
+          mkdir -p $ANDROID_AVD_HOME
           echo no | $SDK/avdmanager create avd --force -n phone --package "$IMG"
           W=${SIZE%x*} H=${SIZE#*x}
-          printf 'hw.lcd.width=%s\nhw.lcd.height=%s\nhw.lcd.density=%s\nhw.ramSize=4096\nhw.cpu.ncore=3\nhw.keyboard=yes\n' $W $H $DENSITY >> ~/.android/avd/phone.avd/config.ini
+          printf 'hw.lcd.width=%s\nhw.lcd.height=%s\nhw.lcd.density=%s\nhw.ramSize=4096\nhw.cpu.ncore=3\nhw.keyboard=yes\n' $W $H $DENSITY >> $ANDROID_AVD_HOME/phone.avd/config.ini
         env:
           SIZE: ${{ matrix.size }}
           DENSITY: ${{ matrix.density }}
