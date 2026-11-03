@@ -45,7 +45,7 @@ h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:
 
 .top{display:flex;flex-direction:column;gap:8px}
 .brand{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.brand h1{font-size:28px;line-height:1}
+.brand h1{font-size:28px;line-height:1;min-width:0;overflow-wrap:anywhere} /* a long team name wraps instead of pushing the page wider than a 360-wide phone */
 .brand h1 span{color:var(--grass)}
 .sync{font-size:12px;padding:3px 9px;border-radius:99px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
 .sync.on{color:var(--good);border-color:currentColor}
@@ -225,7 +225,7 @@ input[type=date]::-webkit-date-and-time-value{text-align:left}
 
 .addf{display:flex;gap:8px}
 .addf .btn{flex:0 0 auto}
-.teamsw{cursor:pointer;white-space:nowrap}
+.teamsw{cursor:pointer}
 .hright{display:flex;align-items:center;gap:8px;flex:0 0 auto}
 .menubtn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;width:40px;height:40px;display:grid;place-items:center;padding:0}
 .member .who{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
@@ -382,7 +382,7 @@ body:has(input:focus,textarea:focus,select:focus) .fb{visibility:hidden;transiti
 <a id="feedback" class="fb" href="mailto:markdavidmileswork@gmail.com?subject=Match%20Day%20feedback" aria-label="Send feedback by email">💬 Feedback</a>
 
 <script>
-const APP_VERSION='0.28.1';
+const APP_VERSION='0.28.2';
 // Feedback by email, with the app version and phone type filled in (never the team's or players' details)
 {const fb=document.getElementById('feedback'),dev=(navigator.userAgent.match(/\(([^)]+)\)/)||[])[1]||'';
   fb.href='mailto:markdavidmileswork@gmail.com?subject='+encodeURIComponent('Match Day feedback')+'&body='+

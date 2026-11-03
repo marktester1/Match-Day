@@ -24,7 +24,7 @@ jobs:
   journeys:
     name: iPhone Safari journeys (beta data)
     runs-on: macos-26
-    timeout-minutes: 120
+    timeout-minutes: 75
     defaults:
       run:
         working-directory: tools/e2e/ios-sim
@@ -56,7 +56,11 @@ jobs:
           npm run appium > appium.log 2>&1 &
           for i in $(seq 60); do curl -s http://127.0.0.1:4723/status >/dev/null && exit 0; sleep 2; done
           cat appium.log; exit 1
-      - run: npm test
+      # The set-up wizard and the coach's whole day (with a follower on a second iPhone). The tests with
+      # a second coach or three managers start more simulators than GitHub's small Mac can in time (each
+      # waits over 15 minutes and gives up); WebKit in tests.yml and real Chrome in android.yml cover them,
+      # and `npm test` on a Mac runs them all.
+      - run: node --test --test-concurrency=1 setup-wizard.test.mjs journey.test.mjs
         env:
           MATCHDAY_URL: http://127.0.0.1:8000
       # Screenshots only: the repository is public

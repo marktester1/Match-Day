@@ -9,7 +9,7 @@ test('the feedback button opens an email with the version and phone, and hides w
   await expect(fb).toHaveText('💬 Feedback');
 
   // bottom right, inside the screen
-  const box = await fb.boundingBox(), vp = page.viewportSize();
+  const box = await fb.boundingBox(), vp = await page.evaluate(() => ({width: innerWidth, height: innerHeight})); // (real Chrome on Android has no set viewport)
   expect(box.x + box.width).toBeGreaterThan(vp.width - 40);
   expect(box.y + box.height).toBeGreaterThan(vp.height - 40);
   expect(box.x + box.width).toBeLessThanOrEqual(vp.width);

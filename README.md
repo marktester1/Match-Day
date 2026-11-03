@@ -147,7 +147,7 @@ text as an edit, so the tests fire each box's change when leaving it (see the no
 Every push runs the checks, the rules tests and the Playwright tests (`.github/workflows/tests.yml`).
 Pushes to `main`, pull requests that change the tests, and Actions → Run workflow also run:
 
-- **iPhone Simulator** (`ios-sim.yml`): every `ios-sim` journey, set-up wizard included, on a GitHub Mac.
+- **iPhone Simulator** (`ios-sim.yml`): the set-up wizard and the coach's whole day in real iPhone Safari on a GitHub Mac (the tests with a second coach or three managers need more simulators than it can start in time; run those with `npm test` on a Mac).
 - **Android** (`android.yml`): every Playwright test with the coach in real Chrome on an Android
   emulator, once each at the screen of a Galaxy S24, Galaxy A55 and Pixel 9 (`ANDROID=1`, see `test.js`).
 
