@@ -28,7 +28,8 @@ module.exports = defineConfig({
     locale: 'en-GB',
     timezoneId: 'Europe/London',
   },
-  projects: process.env.ANDROID ? [{name: 'android-chrome', use: {...devices['Pixel 7']}}] // the coach on the emulator's Chrome (see test.js)
+  // the coach on the emulator's Chrome (see test.js); ANDROID_PHONE="Galaxy S24" names the phone it stands for
+  projects: process.env.ANDROID ? [{name: 'android-chrome', use: {...devices[process.env.ANDROID_PHONE || 'Pixel 7']}}]
     : process.env.PHONES ? PHONES : [
     {name: 'iphone-webkit', use: {...devices['iPhone 15']}},        // Safari's engine, iPhone screen, touch
     {name: 'desktop-chromium', use: {...devices['Desktop Chrome']}},

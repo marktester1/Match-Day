@@ -1,0 +1,78 @@
+# Every browser test with the coach's phone in real Chrome on an Android emulator, set to the screen of
+# three popular Android phones (one job each, side by side). Other phones in a test (followers, new
+# coaches) are Playwright's Chromium at the same size (see tools/e2e/test.js). Like the other browser
+# tests they serve this commit on localhost, which the app points at beta, so they use beta data and
+# never touch live. Runs on pushes to main, when these tests change, and by hand (Actions → Android → Run workflow).
+name: Android
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    paths: ['tools/e2e/**', '!tools/e2e/ios-sim/**', '.github/workflows/android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chrome:
+    name: Chrome on ${{ matrix.phone }} (beta data)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # screen in pixels and density (160 × Playwright's scale), so pages lay out at the phone's size
+          - {phone: Galaxy S24, size: 1080x2340, density: 480}
+          - {phone: Galaxy A55, size: 1080x2340, density: 360}
+          - {phone: Pixel 9, size: 1080x2424, density: 480}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: tools/e2e/package-lock.json
+      - run: npm ci
+        working-directory: tools/e2e
+      - run: npx playwright install --with-deps chromium
+        working-directory: tools/e2e
+      - name: Let the emulator use the processor's virtualisation
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - name: Serve this commit on localhost:8000
+        run: python3 -m http.server 8000 >/dev/null 2>&1 &
+      - name: Run the tests on the emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          ANDROID: 1
+          ANDROID_PHONE: ${{ matrix.phone }}
+          MATCHDAY_URL: http://127.0.0.1:8000
+        with:
+          api-level: 35
+          target: google_apis   # a debug build of Android, so Playwright can start Chrome with its own settings
+          arch: x86_64
+          ram-size: 4096M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          working-directory: tools/e2e
+          # the emulator's own localhost is the phone; reverse forwarding points it at this machine's server
+          script: |
+            adb reverse tcp:8000 tcp:8000
+            adb shell wm size ${{ matrix.size }}
+            adb shell wm density ${{ matrix.density }}
+            npx playwright test --workers=1
+      # Screenshots and page snapshots only: the repository is public, and traces hold sign-in tokens
+      - name: Keep the screenshots of any failure
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: android-screenshots-${{ matrix.phone }}
+          path: |
+            tools/e2e/test-results/**/*.png
+            tools/e2e/test-results/**/error-context.md
+          retention-days: 7
