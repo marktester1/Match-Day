@@ -16,7 +16,7 @@ if (process.env.ANDROID) {
       await device.close();
     }, {scope: 'worker'}],
     context: async ({android, baseURL}, use) => {
-      const ctx = await android.launchBrowser({baseURL, locale: 'en-GB', timezoneId: 'Europe/London'});
+      const ctx = await android.launchBrowser({baseURL, hasTouch: true, locale: 'en-GB', timezoneId: 'Europe/London'}); // a phone: taps, not clicks
       // Chrome on the device keeps its data between tests: start each one as a fresh coach
       const p = ctx.pages()[0] || await ctx.newPage();
       await p.goto('/privacy.html');
