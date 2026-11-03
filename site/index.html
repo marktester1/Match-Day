@@ -46,6 +46,9 @@ p{margin:0}
 .hero h1{font-size:clamp(44px,7vw,76px);text-transform:uppercase}
 .hero h1 em{font-style:normal;color:#ffe08a}
 .lead{font-size:clamp(18px,2.2vw,21px);margin-top:18px;max-width:34ch;color:#f1f7f2}
+ul.lead{list-style:none;padding:0;display:flex;flex-direction:column;gap:8px}
+ul.lead li{position:relative;padding-left:22px}
+ul.lead li::before{content:"";position:absolute;left:2px;top:.55em;width:9px;height:9px;border-radius:50%;background:#ffe08a}
 .ctas{display:flex;flex-wrap:wrap;gap:12px;margin-top:26px}
 .small{font-size:14px;margin-top:14px;color:#dceade}
 .phone{justify-self:center;width:min(330px,80vw);border-radius:44px 44px 0 0;border:10px solid #0d140f;border-bottom:0;background:#0d140f;box-shadow:0 30px 60px #0006;overflow:hidden;margin-top:12px;aspect-ratio:393/600}
@@ -123,7 +126,11 @@ footer .links{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:12px;font-s
     <div class="herogrid">
       <div>
         <h1>Manage your team on <em>match day</em></h1>
-        <p class="lead">For grassroots coaches on match days and tournament days. Pick the team, make the subs, keep everyone's playing time fair and the score up to date, all from your phone on the touchline. Families follow live from wherever they are.</p>
+        <ul class="lead">
+          <li>For grassroots coaches on match days and tournament days.</li>
+          <li>Pick the team, make the subs, keep everyone's playing time fair and the score up to date, all from your phone on the touchline.</li>
+          <li>Families follow live from wherever they are.</li>
+        </ul>
         <div class="ctas">
           <a class="btn go" href="https://match-day-17b23.web.app">Open Match Day</a>
           <a class="btn line" href="#start">How to get started</a>
