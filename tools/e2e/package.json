@@ -7,7 +7,8 @@
     "test:webkit": "playwright test --project=iphone-webkit",
     "test:chromium": "playwright test --project=desktop-chromium",
     "test:phones": "PHONES=1 playwright test",
-    "setup": "playwright install webkit chromium"
+    "setup": "playwright install webkit chromium",
+    "test:android": "ANDROID=1 playwright test --workers=1"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1"

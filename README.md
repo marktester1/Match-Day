@@ -122,6 +122,42 @@ a failure, `npx playwright show-trace test-results/*/trace.zip` replays every st
 are Playwright's engines (WebKit for iPhones, Chromium for Android) at each phone's screen size and with touch,
 not the real devices; real Safari and Chrome need the iOS Simulator or Android Emulator.
 
+#### Real iPhone Safari in the iOS Simulator (Appium)
+
+`tools/e2e/ios-sim/` plays the same journeys in real Mobile Safari on Xcode's iPhone simulators,
+through Appium: the coach's whole match day (with a follower on a second simulator), a coach joining
+with the invite code, a follower's day and a new follower link, and the manager tests (three
+simulators). Beta only; each leaves the "Claude E2E Sim …" teams it makes. They use the "iPhone 17",
+"iPhone Air" and "iPhone 17e" simulators (`SIMS="…,…,…"` to choose). About 11 minutes in all once Appium's helper app is built.
+
+```sh
+cd tools/e2e/ios-sim && npm install && npm run setup   # once: Appium and its iPhone driver (~250 MB)
+cd tools/e2e/ios-sim && npm run appium                 # leave running; the first session builds a helper app (~15 min, once)
+cd tools/e2e/ios-sim && npm test                       # in a second terminal: every journey
+cd tools/e2e/ios-sim && node --test follower.test.mjs  # or just one
+```
+
+Not ported: the "Share results" text (Share opens iOS's own share sheet) and the 12-hour clock
+test (it needs a fake clock). Safari's own `safaridriver` can't drive these simulators while the
+Mac's Safari is a version behind iOS in Xcode, hence Appium. Safari's automation doesn't mark typed
+text as an edit, so the tests fire each box's change when leaving it (see the notes in `lib.mjs`).
+
+#### In the release checks
+
+| | Before promoting (`pre`) | After promoting (`post`) |
+|---|---|---|
+| `--e2e` | Playwright journeys on beta (WebKit and Chromium, ~3 min) | |
+| `--ios-sim` | every iPhone journey on beta (~11 min) | opens **live** in iPhone Safari: right version, no BETA label, start screen and legal pages |
+
+```sh
+node tools/release-check.cjs pre --e2e --ios-sim
+node tools/release-check.cjs post --ios-sim
+```
+
+The journeys never run on live: they create teams, which must not happen in coaches' database. The
+live check only opens the app (which signs the phone in anonymously, as for any visitor) and deletes
+that sign-in afterwards. `--ios-sim` starts Appium itself if it isn't running.
+
 ### Keeping data safe between versions
 
 - New versions may **add** fields but never rename or remove them. The app fills in missing

@@ -157,6 +157,17 @@ input[type=date]::-webkit-date-and-time-value{text-align:left}
 .btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:11px 14px;font-weight:700;flex:1;text-align:center}
 .btn.go{background:var(--grass);border-color:var(--grass);color:var(--chalk)}
 .btn.warn{color:var(--bad)}
+.wizsteps{display:flex;gap:6px}.wizsteps i{flex:1;height:6px;border-radius:3px;background:var(--line)}.wizsteps i.on{background:var(--grass)}
+.wiz h2{font-size:28px}
+.wiznav{display:flex;gap:10px}.wiznav .btn{flex:1}
+.wizroute{display:flex;flex-direction:column;gap:4px;text-align:left;padding:16px}
+.wizroute b{font-family:var(--display);font-size:23px}.wizroute span{font-weight:400;font-size:15px;opacity:.85}
+.wizcount{font-family:var(--display);font-size:20px}
+.wizdone{align-items:center;text-align:center}
+.wiztick{width:60px;height:60px;border-radius:50%;background:var(--grass);color:var(--chalk);font-size:32px;display:grid;place-items:center;margin:0 auto 8px}
+.wizlist{list-style:none;padding:0;margin:6px 0;display:flex;flex-direction:column;gap:5px;text-align:left}
+.wizlist li:before{content:"✓ ";color:var(--grass);font-weight:700}
+.btn.quiet{background:none;border-color:transparent;color:var(--muted);font-weight:600;font-size:15px}
 .btn.small{flex:0 0 auto;padding:7px 11px;font-size:14px}
 
 .pitch{position:relative;background:
@@ -165,7 +176,7 @@ input[type=date]::-webkit-date-and-time-value{text-align:left}
   border:2px solid #ffffff66;border-radius:14px;padding:30px 12px 16px;min-height:150px;overflow:hidden}
 .pitch::before{content:"";position:absolute;left:50%;top:50%;width:84px;height:84px;border:2px solid #ffffff55;border-radius:50%;transform:translate(-50%,-50%)}
 .pitch .lbl{position:absolute;top:8px;left:12px;color:#ffffffcc}
-.pitch .cnt{position:absolute;top:8px;right:12px;color:#ffffffcc;font-size:12px;font-weight:700}
+.pitch .cnt{position:absolute;top:8px;right:12px;color:#ffffffcc;font-size:12px;font-weight:700;background:#0000002e;border-color:#ffffff40}
 .chips{position:relative;display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 .chip{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;min-width:86px;padding:8px 12px;border-radius:10px;border:2px solid transparent;background:var(--surface);color:var(--ink);box-shadow:0 1px 2px #0002;touch-action:none;user-select:none;-webkit-user-select:none}
 .chip .n{font-weight:700;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -366,7 +377,7 @@ body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
 <div id="toast" hidden></div>
 
 <script>
-const APP_VERSION='0.27.2';
+const APP_VERSION='0.28.0';
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,benchAsk:null,rptEdit:null,fpush:undefined,fpushEdit:false,fkinds:null,dpush:undefined,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,managers:[],askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
@@ -416,7 +427,7 @@ const clockSub=g=>{if(nPer()===1)return 'of '+fmt((S.tour.len||10)*60000);const 
 function fmt(ms){const s=Math.floor(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}
 function fmtM(ms){const m=ms/60000;return m<1&&ms>0?fmt(ms):Math.round(m)+'m'}
 const bySubTime=g=>[...g.subs].sort((a,b)=>a.at-b.at);
-const SECTIONS={tournament:{label:'Tournament',tabs:[['games','Games'],['minutes','Minutes'],['notes','Notes']]},
+const SECTIONS={tournament:{label:'Tournament',tabs:[['games','Games'],['minutes','Minutes played'],['notes','Notes']]},
   season:{label:'Season',tabs:[['season','Results'],['awards','Awards'],['squad','Squad']]}};
 const secOf=t=>SECTIONS.season.tabs.some(([k])=>k===t)?'season':'tournament';
 const lastTab={tournament:'games',season:'season'}; // where you were in each section
@@ -433,6 +444,10 @@ const RTYPES={try:{n:'Try',p:5},con:{n:'Conversion',p:2},pen:{n:'Penalty',p:3},d
 const ptsOf=x=>!isRugby()?1:triesOnly()?(x.type==='try'?1:0):(RTYPES[x.type]?.p||0);
 const Words=()=>isRugby()?(triesOnly()?{goals:'Tries',goal:'try',Goal:'Try',scorers:'Try scorers'}:{goals:'Points',goal:'score',Goal:'Score',scorers:'Points scorers'}):{goals:'Goals',goal:'goal',Goal:'Goal',scorers:'Goal scorers'};
 const evLabel=x=>isRugby()?(RTYPES[x.type]?.n||'Score'):'';
+// Rugby scores by type, e.g. "2 tries, 1 conversion", for either side (ties and countback use these)
+const RWORDS={try:['try','tries'],con:['conversion','conversions'],pen:['penalty','penalties'],drop:['drop goal','drop goals']};
+const breakdown=l=>Object.keys(RTYPES).map(t=>{const n=(l||[]).filter(x=>x.type===t).length;return n?`${n} ${RWORDS[t][n>1?1:0]}`:''}).filter(Boolean).join(', ');
+const triesOf=l=>(l||[]).filter(x=>x.type==='try').length;
 const scorerName=p=>p==='og'?'Own goal':p?nameOf(p):'Scorer not set';
 function goalTally(games){const c={};games.forEach(g=>(g.goals||[]).forEach(x=>{if(x.p&&x.p!=='og')c[x.p]=(c[x.p]||0)+ptsOf(x)}));return c}
 const alpha=l=>[...l].sort((a,b)=>a.name.localeCompare(b.name,'en',{sensitivity:'base'}));
@@ -862,7 +877,7 @@ function ftAsk(g){
     ${g.opponent?'':`<p class="warnline">⚠️ No opposition entered for this game. Add who you played so the result makes sense in Results and for followers.</p>
     <label>Opposition<input id="ftopp" maxlength="40" placeholder="e.g. Riverside" list="ftopps" autocomplete="off"></label><datalist id="ftopps">${opponents().map(o=>`<option value="${esc(o)}"></option>`).join('')}</datalist>`}
     <p class="note">The clock stops at ${tAt(el(g))} and the result counts in today's record. You can reopen the game later if needed.</p>
-    <div class="cbtns"><button class="btn warn" data-act="ftyes">End game</button><button class="btn" data-act="ftno">Keep playing</button></div>
+    <div class="cbtns"><button class="btn" data-act="ftno">Keep playing</button><button class="btn warn" data-act="ftyes">End game</button></div>
   </div></div>`;
 }
 
@@ -878,7 +893,10 @@ function keeperAsk(g){
 }
 
 /* ---------- rugby scoring: what was scored, then (for us) who ---------- */
+// A conversion only follows a try: each side needs a try it hasn't converted yet.
+const canConvert=(g,k)=>{const l=k==='us'?(g.goals||[]):(g.opp||[]);return l.filter(x=>x.type==='try').length>l.filter(x=>x.type==='con').length};
 function addScore(id,k,type){
+  if(type==='con'&&!canConvert(G(id),k)){toast('A conversion needs a try first.');render();return}
   let i=-1;withUndo(id,`${RTYPES[type].n}${k==='us'?'':' for '+(G(id).opponent||'them')}`);
   mut(id,g=>{const x={at:el(g),type};
     if(k==='us'){x.p=null;g.goals=[...(g.goals||[]),x];i=g.goals.length-1;g.score.us+=ptsOf(x)}
@@ -892,8 +910,9 @@ function removeScore(id,k){
 }
 function rugbyBar(g,k){
   return `<div class="hint scorer"><b>${k==='us'?'What did we score?':'What did '+esc(g.opponent||'they')+' score?'}</b>
-    <div class="pickchips">${Object.entries(RTYPES).map(([t,x])=>`<button class="pc" data-act="rtype" data-type="${t}">${x.n} +${x.p}</button>`).join('')}
-      <button class="pc" data-act="rcancel">Cancel</button></div></div>`;
+    <div class="pickchips">${Object.entries(RTYPES).map(([t,x])=>`<button class="pc" data-act="rtype" data-type="${t}" ${t==='con'&&!canConvert(g,k)?'disabled':''}>${x.n} +${x.p}</button>`).join('')}
+      <button class="pc" data-act="rcancel">Cancel</button></div>
+    ${canConvert(g,k)?'':'<p class="note">A conversion needs a try first.</p>'}</div>`;
 }
 
 /* ---------- goal scorers ---------- */
@@ -937,7 +956,7 @@ function fixPanel(id,g,st){
       ${open(k)?`<div class="fbody">${body}</div>`:''}</div>`;
   const min=!!fixOpen().min;
   return `<section class="card fix ${min?'min':''}" aria-label="Editing"><div class="fixtop"><h3>Editing</h3>
-    <button class="btn small" data-act="fixmin" aria-expanded="${!min}">${min?'Show':'Minimise'}</button></div>
+    <span class="cbtns"><button class="btn small" data-act="fixmin" aria-expanded="${!min}">${min?'Show':'Minimise'}</button><button class="btn small" data-act="fix">Close</button></span></div>
   ${min?'':`${sec('len','Game length',`${S.tour.len||10} min · ${nPer()===2?'halves':nPer()===4?'quarters':'one period'} · ${gameSize(g)}-a-side`,`
     <label class="lenrow"><span>Minutes per game</span><input class="num" type="number" min="1" max="60" data-tour="len" value="${S.tour.len||10}"></label>
     <span class="seg fill" role="group" aria-label="Periods">${[[1,'One period'],[2,'Halves'],[4,'Quarters']].map(([v,l])=>`<button class="${nPer()===v?'on':''}" data-act="periods" data-v="${v}">${l}</button>`).join('')}</span>
@@ -971,7 +990,7 @@ function render(){
   if(FOLLOW){document.getElementById('hteam').textContent='';document.getElementById('view').innerHTML=parentView();return}
   syncHeader(true);
   document.body.classList.toggle('ro',S.readOnly);
-  document.body.classList.toggle('gate',!!(S.gate||S.teams||S.menu||S.adminOpen||(S.cfgLoaded&&!S.cfg.team))); // set-up screen stands alone
+  document.body.classList.toggle('gate',!!(S.gate||S.teams||S.menu||S.adminOpen||(inWizard()&&!S.menu))); // set-up screen stands alone
   const mb=document.getElementById('menubtn');if(mb){mb.hidden=!(FB&&S.teamId&&!S.gate);mb.classList.toggle('dot',S.requests.length>0);mb.setAttribute('aria-label',S.requests.length?`Menu, ${S.requests.length} join request${S.requests.length>1?'s':''}`:'Menu')}
   const sec=secOf(S.tab);document.body.classList.toggle('sec-season',sec==='season');
   document.body.classList.toggle('ingame',!(S.tab==='games'&&!S.game&&!S.fx)); // name/date only on the Games list
@@ -986,7 +1005,7 @@ function render(){
   if(S.teams){v.innerHTML=teamsView();return}
   if(S.adminOpen){v.innerHTML=adminView();return}
   if(S.menu){v.innerHTML=menuView();if(S.syncOpen)v.insertAdjacentHTML('afterbegin',syncPanel());return}
-  if(S.cfgLoaded&&!S.cfg.team){keepSetup(()=>{v.innerHTML=setupView()});return} // updates arriving mid-typing mustn't wipe it
+  if(inWizard()){keepSetup(()=>{v.innerHTML=setupView()});return} // updates arriving mid-typing mustn't wipe it
   const keepRpt=document.getElementById('rpttext')?.value; // a half-written report survives redraws
   const keepOpp=document.getElementById('ftopp')?.value;
   const keepNm=document.getElementById('nudgename')?.value;
@@ -1022,7 +1041,7 @@ function setupFields(){
     <input id="tname" data-tour="name" placeholder="Tournament name (optional)" aria-label="Tournament name" value="${esc(S.tour.name||'')}">
     <input id="tdate" data-tour="date" type="date" aria-label="Tournament date" value="${esc(S.tour.date||'')}"></div>
   <div class="meta three">
-    <label><span class="lbl">Minutes</span><input id="len" class="num" type="number" min="1" max="60" data-tour="len" value="${S.tour.len||10}"></label>
+    <label><span class="lbl">Minutes a game</span><input id="len" class="num" type="number" min="1" max="60" data-tour="len" value="${S.tour.len||10}"></label>
     <label><span class="lbl">Games</span><input id="cnt" class="num" type="number" min="1" max="10" data-tour="count" value="${S.tour.count||6}"></label>
     <label><span class="lbl">A side</span><input id="tsize" class="num" type="number" min="3" max="11" data-tour="size" value="${tourSize()}"></label></div>
   <span class="seg fill" role="group" aria-label="Periods">${[[1,'One period'],[2,'Halves'],[4,'Quarters']].map(([v,l])=>`<button class="${nPer()===v?'on':''}" data-act="periods" data-v="${v}">${l}</button>`).join('')}</span>
@@ -1030,8 +1049,16 @@ function setupFields(){
 `;
 }
 function setupCard(){
-  return `<div class="card setupcard"><h3>Set up today's games</h3>
-    <p class="note">Playing one match? Set games to 1. A tournament day? Put in how many games you'll play. You can change these later.</p>
+  const n=S.tour.count||1;
+  if(S.archive.length&&!S.setupChange)return `<div class="card setupcard"><h3>Next match day: same as last time?</h3>
+    <ul class="wizlist"><li>${n===1?'One match':`Tournament, ${n} games`}</li><li>${S.tour.len||10} minutes a game${nPer()===2?', halves':nPer()===4?', quarters':''}</li><li>${tourSize()}-a-side · ${S.squad.length} player${S.squad.length===1?'':'s'}</li></ul>
+    <label style="display:flex;flex-direction:column;gap:4px;max-width:220px"><span class="lbl">Date</span><input id="tdate" data-tour="date" type="date" aria-label="Date" value="${esc(S.tour.date||today())}"></label>
+    <button class="btn go" data-act="setupsame">Yes, same settings</button>
+    <button class="btn" data-act="setupchange">Change something</button></div>`;
+  return `<div class="card setupcard"><h3>Set up your games</h3>
+    <p class="note">One match? Set games to 1.</p>
+    <p class="note">A tournament? Put in how many games you'll play.</p>
+    <p class="note">You can change all of this later.</p>
     ${setupFields()}
     <button class="btn go" data-act="setupgo">Set up games</button></div>`;
 }
@@ -1064,7 +1091,7 @@ function gamesList(){
   ${(()=>{const no=ids.filter(id=>started(G(id))&&!G(id).opponent).map(id=>G(id).n);return no.length?`<p class="warnline">⚠️ No opposition entered for game${no.length>1?'s':''} ${no.join(', ')}. Tap <b>Enter opponents and kick-off times</b> to add ${no.length>1?'them':'it'} before you save.</p>`:''})()}
   <button class="btn go" data-act="finish">${S.confirm==='finish'?'Tap again to save and start fresh':'Finish tournament and save to Results'}</button>
   <p class="note">Saves results and every player's minutes to Season → Results, then clears the games ready for the next tournament.</p>
-  <button class="btn warn" data-act="reset">${S.confirm==='reset'?'Tap again to clear without saving':'Clear scores and line-ups without saving'}</button>
+  <button class="btn quiet" data-act="reset">${S.confirm==='reset'?'Tap again to clear without saving':'Clear scores and line-ups without saving'}</button>
   ${setupLine()}
   </div>`;
 }
@@ -1123,7 +1150,7 @@ function gameView(id){
   ${S.scorer&&S.scorer.g===id&&g.goals?.[S.scorer.i]?scorerBar(g,S.scorer.i):''}
   ${S.askGk===id?keeperAsk(g):''}
   ${S.askSize&&S.askSize.g===id?sizeAsk(g,S.askSize):''}
-  <div class="cbtns">${cb}<button class="btn" data-act="fix">${S.fix===id?'Done editing':'Edit'}</button></div>
+  <div class="cbtns">${cb}<button class="btn" data-act="fix" aria-expanded="${S.fix===id}">Edit</button></div>
   ${hint}
   <div class="pitch"><span class="lbl">On the pitch</span><span class="cnt num">${pitch.length}/${gameSize(g)}</span>
     <div class="chips">${pitch.length?pitch.map(p=>chip(p,'pitch')).join(''):'<span style="color:#ffffffcc;font-size:14px;padding-top:24px">Pick the starters below</span>'}</div></div>
@@ -1134,12 +1161,17 @@ function gameView(id){
       <span class="who">${x.c==='r'?'🟥':'🟨'} ${esc(nameOf(x.p))}${x.c==='y'&&binLeft(g,x.p)?` <span class="note">sin bin</span>`:''}</span>
       ${g.done?'':`<button class="x" data-act="carddel" data-i="${i}">Remove</button>`}</div>`).join('')}</div></section>`:''}
   ${(g.goals||[]).length?`<section class="sec log"><h3>Our ${Words().goals.toLowerCase()}</h3>
-    <div class="rows">${(g.goals||[]).map((x,i)=>({x,i})).sort((a,b)=>b.x.at-a.x.at).map(({x,i})=>`<div class="row"><span class="at num">${tAt(x.at)}</span>${isRugby()?`<span class="evl">${evLabel(x)}</span>`:''}
+    <div class="rows">${(g.goals||[]).map((x,i)=>({x,i})).sort((a,b)=>b.x.at-a.x.at).map(({x,i})=>`<div class="row"><input class="num subt" data-goalat="${i}" value="${fmt(x.at)}" inputmode="decimal" aria-label="Time of this ${isRugby()?'score':'goal'}, from kick-off (minutes:seconds)">${isRugby()?`<span class="evl">${evLabel(x)}</span>`:''}
       <select class="scsel ${x.p?'':'unset'}" data-goalp="${i}" aria-label="Who scored this goal">
         <option value="" ${x.p?'':'selected'}>Scorer not set</option>
         ${byName(inGame(g).length?inGame(g):S.squad.map(p=>p.id)).map(p=>`<option value="${p}" ${x.p===p?'selected':''}>${esc(nameOf(p))}</option>`).join('')}
         ${isRugby()?'':`<option value="og" ${x.p==='og'?'selected':''}>Own goal</option>`}</select></div>`).join('')}</div>
+    ${isRugby()?`<p class="note"><b>${esc(usName(g))}:</b> ${breakdown(g.goals)}</p>`:''}
+    <p class="note">Times are from kick-off. Type a new one (like 12:30) to correct it.</p>
     ${!isRugby()&&g.score.us>(g.goals||[]).length?`<p class="note">${g.score.us-(g.goals||[]).length} earlier goal${g.score.us-(g.goals||[]).length>1?'s':''} without a scorer.</p>`:''}</section>`:''}
+  ${isRugby()&&(g.opp||[]).length?`<section class="sec log"><h3>${esc(g.opponent||'Their')} scores</h3>
+    <div class="rows">${(g.opp||[]).map(x=>`<div class="row"><span class="at num">${tAt(x.at)}</span><span class="evl">${evLabel(x)}</span></div>`).reverse().join('')}</div>
+    <p class="note"><b>${esc(g.opponent||'They')}:</b> ${breakdown(g.opp)}</p></section>`:''}
   ${g.subs.length?`<section class="sec log"><div class="ghead"><h3>Subs</h3><button class="x" data-act="undo">Undo last sub</button></div>
     <div class="rows">${subs.map(e=>`<div class="row"><span class="at num">${tAt(e.at)}</span><span class="txt"><span class="onn">▲ ${esc(nameOf(e.on))}</span> &nbsp;<span class="off">▼ ${esc(nameOf(e.off))}</span>${e.gk?' <span class="note">(in goal)</span>':''}</span></div>`).join('')}</div></section>`:''}
   ${selection}${late}
@@ -1191,23 +1223,122 @@ function settingsCard(first){
 
     ${first?'':'<p class="note">Changes apply straight away for every coach.</p>'}</div>`;
 }
-function signInInvite(){ // set-up: the moment to tie the new team to a person, not just this phone
+function signInInvite(){ // end of set-up: the moment to tie the new team to a person, not just this phone
   if(!FB||isAccount())return'';
-  return `<div class="card"><h3>First, sign in (recommended)</h3>
+  return `<div class="card"><h3>Keep your team safe: sign in</h3>
     <p>Right now this team is tied to <b>this phone only</b>. If the phone is lost, replaced or its browser data is cleared, you lose the team, and as its manager nobody else could then make a new invite code or remove coaches.</p>
-    <p class="note">Sign in with Google or a free email account and you can open the team on any phone, and the coaches you accept can see it's really you. It takes a minute and is free. Google sign-in leaves the app for a moment, so do it before typing below.</p>
+    <p class="note">Sign in with Google or a free email account and you can open the team on any phone, and the coaches you accept can see it's really you. It takes a minute and is free.</p>
     ${S.acct?acctForm(S.acct):`${googleBtn()}<div class="cbtns"><button class="btn" data-act="acctcreate">Create an account with email</button><button class="btn" data-act="acctsignin">Sign in with email</button></div>`}
     <p class="note">You can skip this and sign in later from the ☰ menu.</p></div>`;
 }
+/* ---------- first-time set-up: a step-by-step wizard ---------- */
+// Progress is kept on this phone (matchday-wiz-<team>), so a manager who is interrupted comes back
+// to the same step. Everything typed is saved to the team as they go, so nothing is lost either way.
+// step: 0 choose quick or full, 1 team, 2 players, 3 match day, 4 fixtures, 5 done.
+const wizKey=()=>'matchday-wiz-'+S.teamId;
+function wiz(){try{return JSON.parse(lsGet(wizKey())||'null')}catch(_){return null}}
+function wizSet(w){lsSet(wizKey(),w?JSON.stringify(w):null);render();window.scrollTo(0,0)}
+const inWizard=()=>S.cfgLoaded&&(!S.cfg.team||!!wiz());
+// Usual single-match length for each format, in two halves (the coach can change it).
+// The usual formats: FA youth football (3v3 to 11v11) and age-grade rugby up to 10-a-side.
+const sideOpts=()=>S.cfg.sport==='rugby'?[4,6,7,8,9,10]:[3,5,7,9,11];
+const matchLen=n=>n<=5?40:n<=7?50:60;
+function quickDefaults(){S.tour={...S.tour,count:1,periods:2,len:matchLen(+S.cfg.size||5),size:+S.cfg.size||5,date:S.tour.date||today(),ready:true};saveTour()}
+function wizHead(w,title){
+  const n=w.route==='quick'?2:4,at=Math.min(w.step,n);
+  return `<div class="wizsteps" aria-hidden="true">${Array.from({length:n},(_,i)=>`<i class="${i<at?'on':''}"></i>`).join('')}</div>
+    <p class="note">Step ${at} of ${n} · saved as you go</p><h2>${title}</h2>`;
+}
+function wizNav(w,next,later){
+  return `<div class="wiznav"><button class="btn" data-act="wizback">← Back</button><button class="btn go" data-act="wiznext">${next}</button></div>
+  ${later?'<button class="btn quiet" data-act="wizlater">Do this later</button>':''}`;
+}
 function setupView(){
-  return `<div class="sec" style="gap:14px">
-  ${signInInvite()}
-  ${settingsCard(true)}
-  <div class="card"><h3>Add your squad</h3>
-    <textarea id="bulknames" placeholder="Paste or type names, one per line or separated by commas"></textarea>
-    <p class="note">First names only are kept. You can add or remove players later on the Squad tab.</p></div>
-  <button class="btn go" data-act="setupdone">Start using the app</button>
-  ${teamCard()}</div>`;
+  const w=wiz()||{step:0},c=S.cfg;
+  if(w.step===0)return `<div class="sec wiz" style="gap:14px">
+    <h2>How much do you want to set up now?</h2>
+    <button class="btn go wizroute" data-act="wizroute" data-v="quick"><b>Quick start</b><span>Team name, players and our usual match settings. Ready in under a minute.</span></button>
+    <button class="btn wizroute" data-act="wizroute" data-v="full"><b>Full set-up</b><span>Set how many games you're playing, how long each one lasts, halves or quarters, and your opponents, kick-off times and pitches.</span></button>
+    <p class="note">You can change everything later, and your progress is saved as you go.</p></div>`;
+  if(w.step===1)return `<div class="sec wiz" style="gap:14px">${wizHead(w,'Your team')}
+    <div class="card">
+    <label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">Team name</span><input id="cfg-team" value="${esc(c.team)}" placeholder="e.g. Example Team U10s" maxlength="40"></label>
+    <p class="note">Include the age group if you like, e.g. U10s.</p>
+    <div class="weare"><span class="lbl">Sport</span><span class="seg fill">${[['football','Football'],['rugby','Rugby']].map(([v,l])=>`<button type="button" class="${(c.sport||'football')===v?'on':''}" data-act="sport" data-v="${v}">${l}</button>`).join('')}</span></div>
+    ${c.sport==='rugby'?`<div class="weare"><span class="lbl">Rugby scoring</span><span class="seg fill">${[['points','Points'],['tries','Tries only']].map(([v,l])=>`<button type="button" class="${(c.rscore||'points')===v?'on':''}" data-act="rscore" data-v="${v}">${l}</button>`).join('')}</span></div>`:''}
+    <span class="lbl">Players a side</span>
+    <span class="seg fill" role="group" aria-label="Players a side">${sideOpts().map(v=>`<button class="${!S.wizOther&&+c.size===v?'on':''}" data-act="wizsize" data-v="${v}">${v}</button>`).join('')}<button class="${S.wizOther||!sideOpts().includes(+c.size)?'on':''}" data-act="wizsize" data-v="other">Other</button></span>
+    ${S.wizOther||!sideOpts().includes(+c.size)?`<label style="display:flex;flex-direction:column;gap:4px;max-width:200px"><span class="lbl">How many a side? (3 to 11)</span><input id="wizsize" class="num" type="number" min="3" max="11" value="${c.size||5}" inputmode="numeric"></label>`:''}
+    <p class="note">You can change it for each game.</p></div>
+    ${wizNav(w,'Next')}</div>`;
+  if(w.step===2){const n=S.squad.length,need=Math.max(0,(+c.size||5)-n);
+    return `<div class="sec wiz" style="gap:14px">${wizHead(w,'Your players')}
+    <div class="card"><label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">Paste or type names, one per line</span>
+      <textarea id="bulknames" placeholder="Ava&#10;Ben&#10;Cal"></textarea></label>
+      <button class="btn" data-act="bulkadd">Add these names</button>
+      <p class="note">First names only, please. Spaces, blank lines and surnames are tidied up for you, and a name that's already in the squad isn't added twice.</p></div>
+    <div class="card"><div class="ghead"><h3>Squad</h3><b class="num wizcount">${n} player${n===1?'':'s'}</b></div>
+      ${need&&n?`<p class="note">You need at least ${+c.size||5} for ${+c.size||5}-a-side: ${need} more to go.</p>`:''}
+      ${n?`<div class="rows">${S.squad.map(p=>`<div class="row"><span class="who">${esc(p.name)}</span><button class="x ${S.confirm===p.id?'sure':''}" data-act="del" data-p="${p.id}">${S.confirm===p.id?'Tap to remove':'Remove'}</button></div>`).join('')}</div>`
+        :'<p class="note">No players yet.</p>'}
+      <p class="note">Saved as you go. Every coach on the team sees the same squad.</p></div>
+    ${wizNav(w,w.route==='quick'?'Finish':'Next')}</div>`}
+  if(w.step===3){const one=(S.tour.count||1)===1;
+    return `<div class="sec wiz" style="gap:14px">${wizHead(w,'Your match day')}
+    <div class="card">
+    <span class="seg fill" role="group" aria-label="One match or a tournament">${[[1,'One match'],[0,'Tournament']].map(([v,l])=>`<button class="${one===!!v?'on':''}" data-act="wizkind" data-v="${v}">${l}</button>`).join('')}</span>
+    ${one?'':`<input id="tname" data-tour="name" placeholder="Tournament name (optional)" aria-label="Tournament name" value="${esc(S.tour.name||'')}">`}
+    <label style="display:flex;flex-direction:column;gap:4px;max-width:220px"><span class="lbl">Date</span><input id="tdate" data-tour="date" type="date" value="${esc(S.tour.date||today())}"></label>
+    <div class="meta">
+      ${one?'':`<label><span class="lbl">Games</span><input id="cnt" class="num" type="number" min="1" max="10" data-tour="count" value="${S.tour.count||6}"></label>`}
+      <label><span class="lbl">Minutes a game</span><input id="len" class="num" type="number" min="1" max="60" data-tour="len" value="${S.tour.len||10}"></label></div>
+    <span class="lbl">Periods</span>
+    <span class="seg fill" role="group" aria-label="Periods">${[[1,'One period'],[2,'Halves'],[4,'Quarters']].map(([v,l])=>`<button class="${nPer()===v?'on':''}" data-act="periods" data-v="${v}">${l}</button>`).join('')}</span>
+    <p class="note">${nPer()>1?`${nPer()===2?'Two halves':'Four quarters'} of ${fmt(perLen())}. The clock pauses by itself at each break.`:'One period, no breaks.'}</p></div>
+    ${wizNav(w,'Next',true)}</div>`}
+  if(w.step===4)return `<div class="sec wiz" style="gap:14px">${wizHead(w,'Fixtures')}
+    <p class="note">Optional. Add them now if you know them, or on the day.</p>
+    ${fixtureRows()}
+    ${fixturePaste()}
+    ${wizNav(w,'Finish',true)}</div>`;
+  // step 5: done
+  const games=gids().length,opp=gids().filter(id=>G(id).opponent).length;
+  return `<div class="sec wiz" style="gap:14px">
+    <div class="card wizdone"><div class="wiztick" aria-hidden="true">✓</div><h2>Your match day is ready!</h2>
+    <ul class="wizlist"><li>${S.squad.length} player${S.squad.length===1?'':'s'} added</li>
+      <li>${games===1?'1 match':games+' games'} set up, ${S.tour.len||10} minutes${nPer()===2?' in halves':nPer()===4?' in quarters':''}</li>
+      <li>${opp?`${opp} opponent${opp>1?'s':''} added`:'Opponents: add them on the day'}</li><li>Everything saved</li></ul></div>
+    <button class="btn go" data-act="wizstart">Start match day</button>
+    ${homeTip()}
+    ${signInInvite()}
+    ${teamCard()}</div>`;
+}
+// Once set up: how to open Match Day like an app. Not shown when it already is one.
+function homeTip(){
+  if(inApp||standalone())return'';
+  const android=/Android/i.test(navigator.userAgent);
+  return `<div class="card"><h3>Tip: put Match Day on your Home Screen</h3>
+    <p class="note">It then opens like any other app, full screen, with one tap on the touchline.</p>
+    ${isIOS?'<p>In Safari, tap <b>Share</b>, then <b>Add to Home Screen</b>.</p>'
+      :android?'<p>In Chrome, tap <b>⋮</b>, then <b>Add to Home screen</b> (or <b>Install app</b>).</p>'
+      :'<p>On iPhone or iPad (Safari): <b>Share</b>, then <b>Add to Home Screen</b>.</p><p>On Android (Chrome): <b>⋮</b>, then <b>Add to Home screen</b>.</p>'}</div>`;
+}
+function fixtureRows(){
+  return `<datalist id="opps">${opponents().map(o=>`<option value="${esc(o)}"></option>`).join('')}</datalist>
+  <div class="rows">${gids().map(id=>{const g=G(id);return `<div class="row" style="flex-wrap:wrap">
+    <b class="num" style="font-family:var(--display);font-size:20px;width:28px">${g.n}</b>
+    <input id="fx-t-${id}" data-fx="${id}|time" value="${esc(g.time)}" placeholder="9:30" style="width:76px" aria-label="Game ${g.n} kick-off">
+    <input id="fx-o-${id}" data-fx="${id}|opponent" value="${esc(g.opponent)}" placeholder="Opponent" list="opps" style="flex:1;min-width:120px" aria-label="Game ${g.n} opponent">
+    <input id="fx-p-${id}" data-fx="${id}|pitch" value="${esc(g.pitch)}" placeholder="Pitch" style="width:64px" aria-label="Game ${g.n} pitch">
+    <button class="x" data-act="fxside" data-g="${id}" aria-label="Game ${g.n}: we are ${isAway(g)?'away':'home'}. Tap to change.">${isAway(g)?'Away':'Home'}</button>
+  </div>`}).join('')}</div>`;
+}
+function fixturePaste(){
+  return `<div class="card"><h3>Paste fixtures</h3>
+    <p class="note">Copy the fixture list from an email or WhatsApp and paste it here, one game per line. If it lists other teams' games too, only lines mentioning ${esc(S.cfg.short||'your team')} are used.</p>
+    <textarea id="fxpaste" placeholder="9.30am ${esc(S.cfg.short||'Us')} v Riverside (Pitch 2)&#10;9.45am Hillside v ${esc(S.cfg.short||'Us')} (Pitch 2)"></textarea>
+    <button class="btn" data-act="fxparse">Fill in fixtures</button>
+    <p class="note">This replaces the times, opponents and pitches above. Line-ups and scores are kept.</p></div>`;
 }
 
 /* ---------- backup ---------- */
@@ -1411,22 +1542,11 @@ function fixturesView(){
   return `<div class="sec" style="gap:14px">
   <button class="back" data-act="fxclose">← All games</button>
   <h2 style="font-size:30px">Fixtures</h2>
-  <datalist id="opps">${opponents().map(o=>`<option value="${esc(o)}"></option>`).join('')}</datalist>
-  <div class="rows">${ids.map(id=>{const g=G(id);return `<div class="row" style="flex-wrap:wrap">
-    <b class="num" style="font-family:var(--display);font-size:20px;width:28px">${g.n}</b>
-    <input id="fx-t-${id}" data-fx="${id}|time" value="${esc(g.time)}" placeholder="9:30" style="width:76px" aria-label="Game ${g.n} kick-off">
-    <input id="fx-o-${id}" data-fx="${id}|opponent" value="${esc(g.opponent)}" placeholder="Opponent" list="opps" style="flex:1;min-width:120px" aria-label="Game ${g.n} opponent">
-    <input id="fx-p-${id}" data-fx="${id}|pitch" value="${esc(g.pitch)}" placeholder="Pitch" style="width:64px" aria-label="Game ${g.n} pitch">
-    <button class="x" data-act="fxside" data-g="${id}" aria-label="Game ${g.n}: we are ${isAway(g)?'away':'home'}. Tap to change.">${isAway(g)?'Away':'Home'}</button>
-  </div>`}).join('')}</div>
+  ${fixtureRows()}
   <div class="cbtns"><button class="btn small" data-act="fxadd" ${ids.length>=10?'disabled':''}>+ Add a game</button>
     <button class="btn small warn" data-act="fxdrop" ${ids.length<=1?'disabled':''}>Remove last game</button></div>
   <p class="note">Each box saves as you leave it. Opponents you've played before appear as suggestions.</p>
-  <div class="card"><h3>Paste fixtures</h3>
-    <p class="note">Copy the fixture list from an email or WhatsApp and paste it here, one game per line. If it lists other teams' games too, only lines mentioning ${esc(S.cfg.short||'your team')} are used.</p>
-    <textarea id="fxpaste" placeholder="9.30am ${esc(S.cfg.short||'Us')} v Riverside (Pitch 2)&#10;9.45am Hillside v ${esc(S.cfg.short||'Us')} (Pitch 2)"></textarea>
-    <button class="btn" data-act="fxparse">Fill in fixtures</button>
-    <p class="note">This replaces the times, opponents and pitches above. Line-ups and scores are kept.</p></div>
+  ${fixturePaste()}
   </div>`;
 }
 function parseFixtures(text){
@@ -1504,7 +1624,7 @@ function tEdit(t){
         <label><span class="lbl">We were</span><select data-ed="side|${i}"><option value="home" ${isAway(g)?'':'selected'}>Home</option><option value="away" ${isAway(g)?'selected':''}>Away</option></select></label></div>
       <div class="meta"><label><span class="lbl">Our ${Words().goals.toLowerCase()}</span><input type="number" min="0" max="199" data-ed="us|${i}" value="${g.score.us}"></label>
         <label><span class="lbl">Their ${Words().goals.toLowerCase()}</span><input type="number" min="0" max="199" data-ed="them|${i}" value="${g.score.them}"></label></div>
-      ${(g.goals||[]).map((x,k)=>`<label class="scl"><span class="lbl">${isRugby()?evLabel(x):'Goal '+(k+1)}</span><select data-ed="goal|${i}|${k}">${opt(x.p)}</select></label>`).join('')}
+      ${(g.goals||[]).map((x,k)=>`<div class="scl"><span class="lbl">${isRugby()?evLabel(x):'Goal '+(k+1)}</span><div class="cbtns"><input class="num subt" data-ed="gat|${i}|${k}" value="${fmt(x.at||0)}" inputmode="decimal" aria-label="Time from kick-off (minutes:seconds)"><select data-ed="goal|${i}|${k}" aria-label="Who scored">${opt(x.p)}</select></div></div>`).join('')}
     </div>`).join('')}
     <div class="cbtns"><button class="btn go" data-act="tsave">Save changes</button><button class="btn" data-act="tcancel">Cancel</button></div>
   </div>`;
@@ -1519,6 +1639,7 @@ function editField(key,val){ // one change to the draft; scorers follow our goal
   else if(f==='us'||f==='them'){const n=Math.max(0,Math.min(99,parseInt(val)||0));g.score={...g.score,[f]:n};if(n>0)g.played=true;
     if(f==='us'&&!isRugby()){const gs=g.goals||[];g.goals=n>gs.length?[...gs,...Array.from({length:n-gs.length},()=>({at:0,p:null}))]:gs.slice(0,n)}}
   else if(f==='goal')g.goals[+k]={...g.goals[+k],p:val||null};
+  else if(f==='gat'){const v=parseT(val);if(v==null||v>36e6)toast('Type the time like 12:30.');else g.goals[+k]={...g.goals[+k],at:v}}
   render();
 }
 function savedPop(){
@@ -1546,7 +1667,7 @@ function tSummary(t){
   const scorers=Object.entries(gl).filter(([,n])=>n>0).sort((a,b)=>b[1]-a[1]||nameOf(a[0]).localeCompare(nameOf(b[0])));
   if(!gs.length&&!t.report)return'';
   return `<div class="tsum">
-    <div class="summary num"><span>Played <b>${gs.length}</b></span><span>W <b>${r.W}</b> · D <b>${r.D}</b> · L <b>${r.L}</b></span><span>${Words().goals} <b>${r.F}–${r.A}</b></span></div>
+    <div class="summary num"><span>Played <b>${gs.length}</b></span><span>W <b>${r.W}</b> · D <b>${r.D}</b> · L <b>${r.L}</b></span><span>${Words().goals} <b>${r.F}–${r.A}</b></span>${isRugby()?`<span>Tries <b>${gs.reduce((a,g)=>a+triesOf(g.goals),0)}–${gs.reduce((a,g)=>a+triesOf(g.opp),0)}</b></span>`:''}</div>
     ${scorers.length?`<span class="lbl">${Words().scorers}</span><div class="rows">${scorers.map(([p,n])=>`<div class="row"><span class="who">${esc(nameOf(p))}</span><b class="num">${n}</b></div>`).join('')}</div>`:''}
     ${rows.length?`<span class="lbl">Playing time, least first</span><div class="rows">${rows.map(x=>{const low=avg>0&&x.t<avg*0.8;
       return `<div class="mrow ${low?'low':''}"><span class="who">${esc(nameOf(x.p))}${low?'<span class="flag">Less time</span>':''}</span><span class="m num">${fmtM(x.t)}</span>
@@ -1563,8 +1684,9 @@ function tSummary(t){
 function summaryText(t,names){
   const gs=t.games||[],r=record(gs),gl=goalTally(gs.filter(g=>g.played||g.done));
   const lines=[`${isRugby()?'🏉':'⚽'} *${S.cfg.short||S.cfg.team||'Our team'}${t.name?' – '+t.name:''}*${t.date?', '+nice(t.date):''}`,
-    `W${r.W} D${r.D} L${r.L} · ${Words().goals} ${r.F}–${r.A}`,''];
+    `W${r.W} D${r.D} L${r.L} · ${Words().goals} ${r.F}–${r.A}${isRugby()?` · Tries ${gs.filter(g=>g.played||g.done).reduce((a,g)=>a+triesOf(g.goals),0)}–${gs.filter(g=>g.played||g.done).reduce((a,g)=>a+triesOf(g.opp),0)}`:''}`,''];
   gs.forEach(g=>{lines.push(`${g.time?g.time+'  ':''}${gameLine(t,g)}${g.played||g.done?'':' (not played)'}`);
+    if(isRugby()&&(g.played||g.done)&&((g.goals||[]).length||(g.opp||[]).length))lines.push(`    ${usOf(t,g)}: ${breakdown(g.goals)||'no score'} · ${g.opponent||'Them'}: ${breakdown(g.opp)||'no score'}`);
     if(!names)return;
     const ev=[...(g.goals||[]).map(x=>({at:x.at,t:(isRugby()?'🏉 ':'⚽ ')+scorerName(x.p)+(isRugby()?' ('+evLabel(x).toLowerCase()+')':'')})),
       ...(g.cards||[]).map(x=>({at:x.at,t:(x.c==='r'?'🟥 ':'🟨 ')+nameOf(x.p)}))].sort((a,b)=>a.at-b.at);
@@ -1602,7 +1724,7 @@ function seasonView(){
   ${ts.length?`<section class="sec"><h3>Tournaments</h3>${ts.map(t=>{const r=record(t.games||[]),open=S.openT===t.id;
     return `<div class="tcard"><button data-act="topen" data-id="${t.id}"><span><span class="tn">${esc(t.name||'Tournament')}</span><span class="ts" style="display:block">${esc(nice(t.date))}</span></span>
       <span class="num" style="text-align:right"><b>W${r.W} D${r.D} L${r.L}</b><span class="ts" style="display:block">${Words().goals} ${r.F}–${r.A}</span></span></button>
-      ${open?`<div class="tb">${tSummary(t)}<span class="lbl">Games</span>${(t.games||[]).map(g=>`<div class="gl"><span>${esc(g.time||'G'+g.n)} ${esc(isAway(g)?(g.opponent||'?'):(g.team||t.short||S.cfg.short||'Us'))} v ${esc(isAway(g)?(g.team||t.short||S.cfg.short||'Us'):(g.opponent||'?'))}</span><b class="num">${g.played||g.done?scoreHA(g):'not played'}</b></div>${(g.goals||[]).length?`<div class="gls">${isRugby()?'🏉':'⚽'} ${(g.goals||[]).map(x=>esc(scorerName(x.p))+' '+mn(x.at)+(isRugby()?' ('+evLabel(x).toLowerCase()+')':'')).join(', ')}</div>`:''}${(g.cards||[]).length?`<div class="gls">${(g.cards||[]).map(x=>(x.c==='r'?'🟥 ':'🟨 ')+esc(nameOf(x.p))+' '+mn(x.at)).join(', ')}</div>`:''}`).join('')}
+      ${open?`<div class="tb">${tSummary(t)}<span class="lbl">Games</span>${(t.games||[]).map(g=>`<div class="gl"><span>${esc(g.time||'G'+g.n)} ${esc(isAway(g)?(g.opponent||'?'):(g.team||t.short||S.cfg.short||'Us'))} v ${esc(isAway(g)?(g.team||t.short||S.cfg.short||'Us'):(g.opponent||'?'))}</span><b class="num">${g.played||g.done?scoreHA(g):'not played'}</b></div>${(g.goals||[]).length?`<div class="gls">${isRugby()?'🏉':'⚽'} ${(g.goals||[]).map(x=>esc(scorerName(x.p))+' '+mn(x.at)+(isRugby()?' ('+evLabel(x).toLowerCase()+')':'')).join(', ')}</div>`:''}${isRugby()&&(g.played||g.done)&&((g.goals||[]).length||(g.opp||[]).length)?`<div class="gls">${esc(g.team||t.short||S.cfg.short||'Us')}: ${breakdown(g.goals)||'no score'} · ${esc(g.opponent||'Them')}: ${breakdown(g.opp)||'no score'}${(g.opp||[]).length?` (${(g.opp||[]).map(x=>evLabel(x).toLowerCase()+' '+mn(x.at)).join(', ')})`:''}</div>`:''}${(g.cards||[]).length?`<div class="gls">${(g.cards||[]).map(x=>(x.c==='r'?'🟥 ':'🟨 ')+esc(nameOf(x.p))+' '+mn(x.at)).join(', ')}</div>`:''}`).join('')}
         ${S.editT===t.id?tEdit(t):`<div class="cbtns"><button class="btn small" data-act="tedit" data-id="${t.id}">Edit</button>
         <button class="x ${S.confirm==='t-'+t.id?'sure':''}" data-act="tdel" data-id="${t.id}">${S.confirm==='t-'+t.id?'Tap to delete this tournament':'Delete this tournament'}</button></div>`}</div>`:''}</div>`}).join('')}</section>`:''}
   ${ts.length||S.awards.length?`<div class="danger"><button class="btn warn" data-act="wipe">${S.confirm==='wipe'?'Tap again to delete all season data':'Delete all season data'}</button>
@@ -1612,7 +1734,7 @@ function seasonView(){
 
 /* ---------- actions ---------- */
 function keepSetup(fn){ // re-draw the set-up screen without losing what's been typed into it
-  const keep={};['cfg-team','cfg-short','cfg-size','bulknames','joinname','joincode','mkname'].forEach(x=>{const e=document.getElementById(x);if(e)keep[x]=e.value});
+  const keep={};['cfg-team','cfg-short','cfg-size','wizsize','bulknames','joinname','joincode','mkname'].forEach(x=>{const e=document.getElementById(x);if(e)keep[x]=e.value});
   fn();Object.entries(keep).forEach(([x,v])=>{const e=document.getElementById(x);if(e)e.value=v});
 }
 document.addEventListener('click',e=>{
@@ -1689,7 +1811,10 @@ document.addEventListener('click',e=>{
       keepSetup(()=>{S.cfg={...S.cfg,[k]:b.dataset.v};if(S.cfgLoaded&&S.cfg.team)put('club/settings',S.cfg);render()});break}
     case'rtype':{const r=S.rpick;S.rpick=null;if(r)addScore(r.g,r.k,b.dataset.type);break}
     case'rcancel':S.rpick=null;render();break;
-    case'setupgo':{document.activeElement?.blur();S.tour={...S.tour,ready:true};if(!S.tour.date)S.tour.date=today();saveTour();S.setupOpen=false;render();window.scrollTo(0,0);toast(`${gids().length} game${gids().length>1?'s':''} ready. Tap a game to pick the team.`);break}
+    case'setupgo':{document.activeElement?.blur();S.setupChange=false;S.tour={...S.tour,ready:true};if(!S.tour.date)S.tour.date=today();saveTour();S.setupOpen=false;render();window.scrollTo(0,0);toast(`${gids().length} game${gids().length>1?'s':''} ready. Tap a game to pick the team.`);break}
+    case'setupsame':{document.activeElement?.blur();S.tour={...S.tour,ready:true,date:S.tour.date||today()};saveTour();S.setupChange=false;S.fx=true;render();window.scrollTo(0,0);
+      toast(`${gids().length===1?'Match':gids().length+' games'} ready. Add your opponents, or tap All games.`);break}
+    case'setupchange':S.setupChange=true;render();break;
     case'setupopen':S.setupOpen=true;render();setTimeout(()=>document.querySelector('.setupcard')?.scrollIntoView({behavior:'smooth',block:'start'}),0);break;
     case'setupclose':document.activeElement?.blur();S.setupOpen=false;render();break;
     case'periods':S.tour={...S.tour,periods:+b.dataset.v};saveTour();render();break;
@@ -1784,9 +1909,29 @@ document.addEventListener('click',e=>{
       const t=document.getElementById('bulknames'),one=document.getElementById('newname');
       const text=[t?.value,one?.value].filter(x=>x&&x.trim()).join('\n');
       if(!text.trim()){toast('Type or paste some names first.');break}
-      const n=addNames(text),sk=addNames.skipped;askBench(addNames.ids);if(t)t.value='';if(one)one.value='';
+      if(t)t.value='';if(one)one.value=''; // first: adding redraws, and the set-up screen keeps what's typed
+      const n=addNames(text),sk=addNames.skipped;askBench(addNames.ids);
       toast(n?`${n} added to the squad.${sk.length?` ${sk.join(', ')} ${sk.length>1?'were':'was'} already in it.`:''}`
         :sk.length?`${sk.join(', ')} ${sk.length>1?'are':'is'} already in the squad.`:"Those don't look like names. Use letters only.");render();break}
+    case'wizsize':{const v=b.dataset.v;keepSetup(()=>{if(v==='other')S.wizOther=true;else{S.wizOther=false;S.cfg={...S.cfg,size:+v}}render()});break}
+    case'wizroute':wizSet({route:b.dataset.v,step:1});break;
+    case'wizback':{const w=wiz()||{step:1};wizSet({...w,step:Math.max(0,w.step-1)});break}
+    case'wizkind':{const one=b.dataset.v==='1';
+      S.tour={...S.tour,count:one?1:Math.max(2,+S.tour.count>1?+S.tour.count:6),periods:one?2:1,len:one?matchLen(tourSize()):10};saveTour();render();break}
+    case'wizlater':wizSet(null);S.tab='games';render();break;
+    case'wizstart':wizSet(null);S.tab='games';S.game=null;S.fx=false;render();break;
+    case'wiznext':{document.activeElement?.blur();const w=wiz()||{route:'full',step:1};
+      if(w.step===1){const c={...S.cfg},t=(document.getElementById('cfg-team')?.value||'').trim().slice(0,40);
+        if(!t){toast('Add a team name first.');document.getElementById('cfg-team')?.focus();break}
+        c.team=t;c.short=shortName(t);const o=document.getElementById('wizsize');c.size=Math.min(11,Math.max(3,parseInt(o?o.value:c.size)||5));S.wizOther=false;
+        S.cfg=c;put('club/settings',c);S.tour={...S.tour,size:c.size};saveTour();wizSet({...w,step:2});break}
+      if(w.step===2){const t=document.getElementById('bulknames'),x=t?.value||'';if(t)t.value='';if(x.trim())addNames(x);
+        if(!S.squad.length){toast('Add at least one player.');break}
+        if(w.route==='quick'){quickDefaults();wizSet({...w,step:5});break}
+        if(!S.tour.ready){S.tour={...S.tour,count:1,periods:2,len:matchLen(tourSize())};saveTour()}
+        wizSet({...w,step:3});break}
+      if(w.step===3){S.tour={...S.tour,ready:true,date:S.tour.date||today()};saveTour();wizSet({...w,step:4});break}
+      wizSet({...w,step:5});break}
     case'setupdone':{document.activeElement?.blur();const c={...S.cfg};['team','short'].forEach(k=>{const i=document.getElementById('cfg-'+k);if(i)c[k]=i.value.trim().slice(0,40)});
       const sz=document.getElementById('cfg-size');c.size=Math.min(11,Math.max(3,parseInt(sz?.value)||c.size||5));
       if(!c.team){toast('Add a team name first.');break}if(!c.short)c.short=shortName(c.team);
@@ -1875,6 +2020,10 @@ function onChange(e){
   if(t.id==='restorefile'&&t.files&&t.files[0]){readBackup(t.files[0]);t.value='';return}
   if(t.dataset.gsize&&S.game){const v=Math.min(11,Math.max(3,parseInt(t.value)||tourSize()));mut(S.game,g=>{if(v===tourSize())delete g.size;else g.size=v});return}
   if(t.dataset.ed){editField(t.dataset.ed,t.type==='checkbox'?t.checked:t.value);return}
+  if(t.dataset.goalat&&S.game){const i=+t.dataset.goalat,v=parseT(t.value),max=el(G(S.game));
+    if(v==null){toast('Type the time like 12:30.');render();return}
+    if(v>max){toast(`That's after the clock (${fmt(max)}). Nothing was changed.`);render();return}
+    mut(S.game,g=>{if(g.goals?.[i])g.goals[i].at=v});toast(`Moved to ${fmt(v)}.`);return}
   if(t.dataset.goalp&&S.game){const i=+t.dataset.goalp,v=t.value||null;mut(S.game,g=>{if(g.goals?.[i])g.goals[i].p=v});return}
   if(t.dataset.subat&&S.game){const i=+t.dataset.subat,v=parseT(t.value);if(v==null){toast('Type the time like 4:30.');render();return}
     if(!tryFix(S.game,g=>{g.subs[i].at=v},`Sub moved to ${fmt(v)}.`))render();return}
@@ -2109,21 +2258,27 @@ async function joinTeam(raw){
   if(!myName()){toast('Add your name first, so the coaches know who is asking.');document.getElementById('joinname')?.focus();return}
   joining=true;render();
   try{
-    await signedIn();
-    const ref=F.doc(fs,'codes',code);
-    const s=await F.getDocFromServer(ref).catch(()=>F.getDoc(ref));
-    if(!s.exists()){toast("That code didn't match a team. Check it with the coach who sent it.");return}
-    const t=s.data().team,uid=auth.currentUser.uid;
-    const already=await F.getDocFromServer(F.doc(fs,'teams',t,'members',uid)).then(x=>x.exists()).catch(()=>false);
-    if(already){dropPending(t);openTeam(t);toast('You were already in this team.');return}
-    const again=getPending().some(x=>x.t===t&&!x.status);
-    await askToJoin(F,fs,auth.currentUser,t,code);
-    addPending(t,code);
-    toast(again?"You'd already asked: your request is still waiting for a coach.":'Request sent. A coach in the team needs to accept you.');
-    S.joinCode='';
+    // A slow or missing signal (seen on a freshly started phone) mustn't leave "Sending…" up for ever
+    const r=await within(sendJoin(F,fs,auth,code),20000);
+    if(r===null)toast("No signal: the request didn't send. Try again when you have signal.");
   }catch(e){toast(e.code==='too-many'?"You're already waiting to join 3 teams. Cancel one of those requests first."
     :`Couldn't send the request (${errCode(e)}). Check your signal and try again.`)}
   finally{joining=false;render()}
+}
+async function sendJoin(F,fs,auth,code){
+  await signedIn();
+  const ref=F.doc(fs,'codes',code);
+  const s=await F.getDocFromServer(ref).catch(()=>F.getDoc(ref));
+  if(!s.exists()){toast("That code didn't match a team. Check it with the coach who sent it.");return}
+  const t=s.data().team,uid=auth.currentUser.uid;
+  const already=await F.getDocFromServer(F.doc(fs,'teams',t,'members',uid)).then(x=>x.exists()).catch(()=>false);
+  if(already){dropPending(t);openTeam(t);toast('You were already in this team.');return}
+  const again=getPending().some(x=>x.t===t&&!x.status);
+  await askToJoin(F,fs,auth.currentUser,t,code);
+  addPending(t,code);
+  toast(again?"You'd already asked: your request is still waiting for a coach.":'Request sent. A coach in the team needs to accept you.');
+  S.joinCode='';
+  return true;
 }
 /* ---------- join requests: waiting to be accepted ---------- */
 // Requests this phone is waiting on (and the code each used), kept until a coach answers and the
@@ -2502,14 +2657,16 @@ function gateView(){
   ${reportCard()}
   ${pendingCard()}
   ${S.adding?`<button class="back" data-act="gateback">← My teams</button><h2>Add a team</h2>`:`<div class="welcome"><h2>Manage your team on match day</h2>
-    <p>For grassroots coaches on match days and tournament days: pick the team, make the subs, keep everyone's playing time fair and the score up to date. Football or rugby.</p></div>`}
+    <p>For grassroots coaches on match days and tournament days, football or rugby.</p>
+    <p>Pick the team, make the subs, keep everyone's playing time fair and the score up to date.</p></div>`}
   <div class="card"><h3>Start a new team</h3>
     <p class="note">You'll get an invite code to give the other coaches.</p>
     <label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">Your name (the coaches see this)</span>
       <input id="mkname" value="${esc(myName())}" placeholder="e.g. Sam (coach)" maxlength="40" autocomplete="name"></label>
     <button class="btn go" data-act="mkteam">Create a team</button></div>
   <div class="card"><h3>Join a team</h3>
-    <p class="note">Ask a coach for the team's invite code (in their ☰ menu). The code sends a request: a coach in the team then accepts you.${FB?.auth?.currentUser?.email?' They also see the email you signed in with, so they know it\'s you.':''}</p>
+    <p class="note">Ask a coach for the team's invite code (in their ☰ menu).</p>
+    <p class="note">Tap Ask to join, then a coach in the team accepts you.${FB?.auth?.currentUser?.email?' They also see the email you signed in with, so they know it\'s you.':''}</p>
     <label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">Your name (the coaches see this)</span><input id="joinname" value="${esc(myName())}" placeholder="e.g. Sam (coach)" maxlength="40" autocomplete="name"></label>
     <form class="addf" id="joinf"><input id="joincode" value="${esc(S.joinCode||'')}" placeholder="e.g. ABCD-2345" autocomplete="off" autocapitalize="characters" aria-label="Invite code"><button class="btn go" type="submit" ${joining?'disabled':''}>${joining?'Sending…':'Ask to join'}</button></form></div>
   ${FB&&!isAccount()?`<div class="card"><h3>Your account</h3>

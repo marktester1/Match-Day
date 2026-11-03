@@ -2,7 +2,7 @@
 // coach runs two games: no game yet, fixtures, kick-off, goals, a card, half time, full time, an
 // away game, and the results staying up after the tournament is saved; and a new link replacing
 // the old one. They must never see a player's name or be able to change anything. Beta only; the coach leaves the team at the end.
-const {test, expect} = require('@playwright/test');
+const {test, expect} = require('./test'); // Playwright's, or real Android Chrome with ANDROID=1
 const {app, newPhone, cleanUp, nameRe} = require('./helpers');
 
 const TEAM = 'Claude E2E Follow U11s', SHORT = 'Claude E2E Follow';

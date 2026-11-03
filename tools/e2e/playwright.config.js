@@ -18,7 +18,7 @@ module.exports = defineConfig({
   timeout: 6 * 60 * 1000,          // the whole journey, one test per browser
   expect: {timeout: 15 * 1000},    // Firestore round trips on beta
   fullyParallel: true,
-  retries: 0,
+  retries: process.env.CI ? 1 : 0, // on GitHub, one more go absorbs a network hiccup
   reporter: [['list']],
   outputDir: 'test-results',
   use: {
@@ -28,7 +28,8 @@ module.exports = defineConfig({
     locale: 'en-GB',
     timezoneId: 'Europe/London',
   },
-  projects: process.env.PHONES ? PHONES : [
+  projects: process.env.ANDROID ? [{name: 'android-chrome', use: {...devices['Pixel 7']}}] // the coach on the emulator's Chrome (see test.js)
+    : process.env.PHONES ? PHONES : [
     {name: 'iphone-webkit', use: {...devices['iPhone 15']}},        // Safari's engine, iPhone screen, touch
     {name: 'desktop-chromium', use: {...devices['Desktop Chrome']}},
   ],

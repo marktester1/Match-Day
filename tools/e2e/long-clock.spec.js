@@ -1,7 +1,7 @@
 // A clock left running (no Full time) must never stop the game saving. The server refuses game
 // times over 10 hours, so the app stops the clock by itself an hour after the game should have
 // ended, and everything after that still saves. Beta only; the phone leaves at the end.
-const {test, expect} = require('@playwright/test');
+const {test, expect} = require('./test'); // Playwright's, or real Android Chrome with ANDROID=1
 const {app, cleanUp} = require('./helpers');
 
 const TEAM = 'Claude E2E Clock U10s';

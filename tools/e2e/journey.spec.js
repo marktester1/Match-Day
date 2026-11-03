@@ -1,7 +1,7 @@
 // A coach's whole match day on the beta site, start to finish. Each browser gets a fresh
 // anonymous sign-in, so it creates its own team and leaves it at the end. It never opens the
 // Beta Test Team (L9J-Q7H) or live. Run: cd tools/e2e && npx playwright test
-const {test, expect} = require('@playwright/test');
+const {test, expect} = require('./test'); // Playwright's, or real Android Chrome with ANDROID=1
 
 const TEAM = 'Claude E2E U9s', SHORT = 'Claude E2E';
 const PASTED = 'Alfie Smith\nAlfie Jones\nPlayer 7\nBea Lane, Cormac\nDara\nEsme\nFinn';
@@ -21,6 +21,7 @@ test('a coach runs a whole match day', async ({page, browser}, info) => {
   // Taps on a phone, clicks on a computer.
   const press = async loc => { touch ? await loc.tap() : await loc.click(); };
   const btn = (name, root = page) => root.getByRole('button', {name, exact: true});
+  const {startTeam} = require('./helpers').app(page, info); // the first-time set-up wizard
   const toast = text => expect(page.locator('#toast')).toContainText(text);
   const view = page.locator('#view');
 
@@ -60,18 +61,8 @@ test('a coach runs a whole match day', async ({page, browser}, info) => {
 
   try {
     // 1. Create a team and set it up
-    await page.goto('/');
-    await page.locator('#mkname').fill('Claude (test coach)');
-    await press(btn('Create a team'));
-    await expect(page.locator('#cfg-team')).toBeVisible({timeout: 30000});
-    joined = true;
-    await page.locator('#cfg-team').fill(TEAM);
-    await page.locator('#cfg-size').fill('5');
-    await page.locator('#bulknames').fill(PASTED);
-    await press(btn('Start using the app'));
-    await toast('All set.');
-    await expect(page.locator('#hteam')).toHaveText(TEAM);
-    await expect(view).toContainText("Set up today's games");
+    await startTeam(TEAM, PASTED, {onCreated: () => { joined = true; }});
+    await expect(view).toContainText('Set up your games');
     await reload();
     await goTab('squad');
     await expect.poll(squadNames).toEqual(FIRST_SQUAD); // "Player 7" kept, the two Alfies told apart, surnames dropped
@@ -295,7 +286,10 @@ test('a coach runs a whole match day', async ({page, browser}, info) => {
     await press(page.locator('[data-act=sport][data-v=rugby]'));
     await expect(page.locator('[data-act=rscore][data-v=points]')).toHaveClass(/\bon\b/);
     await goTab('games');
-    await press(btn('Set up games'));
+    // the next match day: last time's settings in one tap, then straight to the fixtures
+    await expect(view).toContainText('Next match day: same as last time?');
+    await press(btn('Yes, same settings'));
+    await press(btn('← All games'));
     await openGame(1);
     await expect(view.locator('[data-act=role][data-r=gk]')).toHaveCount(0); // no keeper in rugby
     for (const n of ['Bea', 'Cormac', 'Dara', 'Esme', 'Finn']) await role(n, 'start');

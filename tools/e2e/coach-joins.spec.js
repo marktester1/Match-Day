@@ -1,6 +1,6 @@
 // A second coach joins a team with its invite code, is accepted, and runs a match while the
 // team's manager watches it live on their own phone. Beta only; both phones leave at the end.
-const {test, expect} = require('@playwright/test');
+const {test, expect} = require('./test'); // Playwright's, or real Android Chrome with ANDROID=1
 const {app, newPhone, cleanUp} = require('./helpers');
 
 const TEAM = 'Claude E2E Join U10s', SHORT = 'Claude E2E Join', COACH = 'Sam (coach)';

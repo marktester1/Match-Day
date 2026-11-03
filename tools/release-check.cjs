@@ -2,6 +2,8 @@
 //   node tools/release-check.cjs pre    (before: beta is ready, live is safe to update)
 //   node tools/release-check.cjs post   (after: live runs the reviewed rules and the new version)
 //   add --e2e to "pre" to also play a coach's whole match day on beta (tools/e2e, a few minutes)
+//   add --ios-sim to either: "pre" plays every journey in real iPhone Safari on beta (iOS Simulator,
+//   slow); "post" opens live in iPhone Safari and checks the version, without creating anything
 // Uses the Firebase CLI's own sign-in (firebase login) to read project settings; reads nothing
 // from any team. Exit code 1 if any check fails.
 const fs = require('node:fs'), path = require('node:path'), {execSync} = require('node:child_process');
@@ -105,6 +107,26 @@ async function main() {
       out('PASS', 'end-to-end journeys on beta', 'coach, joining coach and follower, in WebKit (iPhone) and Chromium');
     } catch (e) { out('FAIL', 'end-to-end journey on beta', (e.stdout || '').toString().split('\n').filter(l => /✘|Error:|^\s+> /.test(l)).slice(0, 4).map(l => l.trim()).join(' | ') + ' (details: cd tools/e2e && npx playwright test)'); }
   }
+
+  // 6c. Optional: real iPhone Safari in the iOS Simulator (Appium). Before: every journey on beta.
+  //     After: a read-only check that live opens on the new version (no team created; its sign-in deleted).
+  if (process.argv.includes('--ios-sim')) {
+    const SIM = path.join(ROOT, 'tools/e2e/ios-sim'), name = STAGE === 'pre' ? 'iPhone Safari journeys on beta' : 'live in iPhone Safari';
+    if (!fs.existsSync(path.join(SIM, 'node_modules/webdriverio')) || !fs.existsSync(path.join(SIM, '.appium'))) out('FAIL', name, 'set up first: cd tools/e2e/ios-sim && npm install && npm run setup');
+    else {
+      const listening = () => { try { execSync('lsof -iTCP:4723 -sTCP:LISTEN', {stdio: 'pipe'}); return true; } catch (_) { return false; } };
+      let appium = null;
+      if (!listening()) { // start Appium for this check, and stop it afterwards
+        appium = require('node:child_process').spawn('npx', ['appium', '--port', '4723', '--log-level', 'warn'], {cwd: SIM, env: {...process.env, APPIUM_HOME: './.appium'}, stdio: 'ignore', detached: true});
+        for (let i = 0; i < 60 && !listening(); i++) execSync('sleep 1');
+      }
+      try {
+        execSync(STAGE === 'pre' ? 'npm test' : 'npm run smoke:live', {cwd: SIM, stdio: 'pipe', timeout: 90 * 60 * 1000, env: {...process.env, EXPECT_VERSION: localV}});
+        out('PASS', name, STAGE === 'pre' ? 'whole match day, coach joining, follower, managers' : `opens on ${localV}, no BETA label, start screen and legal pages`);
+      } catch (e) { out('FAIL', name, (e.stdout || '').toString().split('\n').filter(l => /✖|Error|timed out|Assertion/.test(l)).slice(0, 3).map(l => l.trim()).join(' | ') + ' (details: see tools/e2e/ios-sim)'); }
+      finally { if (appium) try { process.kill(-appium.pid); } catch (_) {} }
+    }
+  } else out('INFO', STAGE === 'pre' ? 'iPhone Safari journeys on beta' : 'live in iPhone Safari', 'skipped: add --ios-sim to run it (iOS Simulator, slow)');
 
   // 7. Private files never published; security headers; dependencies; usage limits
   for (const f of ['.git/HEAD', 'exports/', 'firestore.rules', 'BACKLOG.md', 'CLAUDE.md', 'tests/rules.test.js']) {
