@@ -3,25 +3,42 @@
 Ideas and requests to pick up later. Each one goes to the beta link first (see CLAUDE.md).
 "Questions" are things to agree before building.
 
-## Waiting on testing
+## Now
 
-- **Bug (next beta build):** "Ask to join" can sit on "Sending…" with no time limit (seen twice in
-  the iOS Simulator tests, over 20 s on a freshly started phone). Give it a timeout and a clear
-  "No signal: try again" message, like other saves.
-- **Bug (next beta build):** in light mode the "5/5" players counter on the pitch is white text on
-  a white pill (`.pitch .cnt` inherits `.cnt`'s white background). Fix: a see-through dark pill,
-  e.g. `background:#0000002e;border-color:#ffffff40`.
-- **v0.26.1 on beta:** a warning at full time (and on Finish tournament) when a game has no
-  opposition, with a box to add it there and then; the goal count on a player's label is now a
-  neutral grey pill under the minutes, so it no longer overlaps the corner or looks like a card.
-- **v0.26.0 live:** push notifications. Still to try on real phones: a follower turning on
-  alerts (iPhone needs the app on the Home Screen first) and getting kick-off, goal, card,
-  half-time and full-time alerts; a coach getting an alert when someone asks to join, and the
-  asker getting one when accepted.
-- **Accounts, still to try (needs a password, so Claude can't):** signing into an existing
-  account on a phone that already has teams (teams move across), and signing in on a second
-  phone and seeing the teams come back.
+- **Live and beta: v0.27.2.** Website (shared address https://matchday-website-preview.web.app,
+  beta copy https://matchday-website-beta.web.app) updated 3 Nov 2026 with the testers' wording.
+- **v0.27.3, built and tested, not yet on beta** (branch `goal-times`): editable goal times; a
+  conversion needs an unconverted try; the opposition's rugby scores recorded by type (countback);
+  End game on the right at full time; "Ask to join" gives up after 20 s with a no-signal message;
+  the 5/5 pitch counter readable in light mode; "Minutes played"; "Set up your games"; help text
+  one line per instruction; "Clear scores…" grey instead of red; no "Done editing" (the editing box
+  has its own Close). Next: deploy to beta, test, then release.
+- **Still to try on real phones:** follower alerts (iPhone needs the app on the Home Screen first)
+  for kick-off, goals, cards, half time and full time; a coach's alert for a join request, and the
+  asker's when accepted. Signing into an existing account on a phone that already has teams, and
+  on a second phone (needs a password, so Claude can't).
 - Beta: https://match-day-beta-17b23.web.app (Beta Test Team code `L9J-Q7H`).
+
+## Feedback from the testing round (Oct 2026)
+
+**Website: done 3 Nov 2026** (bullet-point opening, "Tournament day" / "Match day" cards,
+"Works with no signal" plus a real-time sync card, shorter step 2, a link to the app in step 1,
+"Start for free" / "Create your team" buttons, "supporters" instead of families). Still open:
+- Make it clear it's an app: people read "app" and think it's a normal website.
+- Rugby feels like an afterthought. Should rugby and football have separate websites?
+- Maybe a pop-up in the app for first-time coaches (ties in with the step-by-step journey).
+
+**In the app.** Done in v0.27.3: instructions on separate lines, "Set up your games",
+"Clear scores…" no longer red, "Minutes played", no "Done editing". Still open:
+- Make the journey step by step, so the next action is obvious.
+- Saving a tournament is dodgy (get details: what went wrong?).
+- A back button is needed.
+- Put picking the team at the top at the start of a game.
+- At full time on a single game, where is Finish tournament? It should be obvious for one game
+  (see "Make it clear it works for tournaments and single matches").
+
+**New idea**
+- A viewing app for supporters (followers).
 
 ## From the code review (do these before more features)
 
@@ -66,7 +83,8 @@ account moves each team before switching. 31 emulator tests.
   document each (a bigger change: needs a migration that keeps old backups loading).
 - **Drop 6-character codes** once every team has made a new code (or after a season): then
   only 8 are accepted for new teams and joins.
-- **Lost manager phone with no account**: if the manager's phone is lost and it had no
+- **Lost manager phone with no account: done (v0.27.x).** A team can have up to 5 managers, and
+  if the manager's sign-in disappears a coach can tap "Become the manager". Was: if the manager's phone is lost and it had no
   account, nobody can remove coaches or make a new code. Options: any coach can take over when
   the manager has been inactive for N weeks (needs server time checks), or the owner's Admin
   page can reassign. For now: encourage managers to sign in (Google/email), and "Make manager".
@@ -83,7 +101,11 @@ account moves each team before switching. 31 emulator tests.
 
 
 
-1. **Parent view: live score only.** Parents follow a game's score from their own phone, with
+**Pricing decided Oct 2026: a yearly subscription from the day the coach subscribes** (see
+MONETISATION.md on the `monetisation` branch). The £3.99 unlock and £1 parent price below are
+superseded; the safeguards, founding club and voucher ideas still apply. Price to be set.
+
+1. **Parent view: live score only (built as followers, v0.24–v0.26).** Parents follow a game's score from their own phone, with
    notifications for goals, half time and full time. No children's names, line-ups, minutes,
    notes or scorers, ever.
    - A separate parent link or code per team (or per game), different from the coaches'
@@ -124,7 +146,7 @@ account moves each team before switching. 31 emulator tests.
        expiry, uses left, one use per team and team membership, and count down by exactly one;
        an admin list of codes and redemptions with a switch-off.
 
-3. **Privacy policy and terms page** (needed before taking any money). First names only, adult
+3. **Privacy policy and terms page: done** (privacy.html, terms.html). Review before taking money. First names only, adult
    coaches as users, UK/EU GDPR. Host alongside the app (README plans Cloudflare Pages).
 
 4. **Selling internationally.** Local prices (£3.99 / €4.49 / $4.99 / A$6.99) via the merchant
@@ -211,17 +233,16 @@ Today a phone can use the app with no account (anonymous sign-in); Google or ema
   done in the app; when it's closed it needs web push plus a small scheduled server function
   (Firebase Blaze plan, pennies at this size) and notification permission on each phone.
   Shares the push set-up with the parent view.
-- **Built on beta (v0.26.0)**: follower notifications (kick-off, goals, cards, half time, full time,
+- **Live since v0.26.0**: follower notifications (kick-off, goals, cards, half time, full time,
   chosen per follower) and coach notifications (join requests, accepted) via Cloud Messaging and three
-  server functions (functions/). Still to do: test on real phones, then release to live (functions in
-  europe-west2, rules first). Not yet: "game about to start" reminders before kick-off (needs a scheduled
+  server functions (functions/). Still to do: test on real phones (functions in europe-west2). Not yet: "game about to start" reminders before kick-off (needs a scheduled
   function).
-- **Push notifications for coaches about new coaches**, even with the app closed: "Sam (coach) wants
+- **Done (v0.26.0), kept for reference: push notifications for coaches about new coaches**, even with the app closed: "Sam (coach) wants
   to join Example Team U10s: tap to accept or decline", and "Sam joined the team" once someone accepts.
   The person who asked also gets one when they're accepted (or declined). Today coaches only see
   requests when they open the app (banner and ☰ dot). Same push set-up as below (Cloud Messaging,
   a server function on new join requests, Blaze plan); each coach allows notifications once.
-- **Push notifications for followers**, even with the app closed: game about to start / kick-off,
+- **Done (v0.26.0), kept for reference: push notifications for followers**, even with the app closed: game about to start / kick-off,
   goals (for either team, with the score), cards, half time and full time. Each follower chooses which
   ones they want. No players' names: e.g. "Goal! Example Team 2–1 Riverside", "Yellow card for
   Example Team (12')". Today followers only get alerts while the page is open.
@@ -249,7 +270,9 @@ Today a phone can use the app with no account (anonymous sign-in); Google or ema
 - Alerts (goals, half time, full time) say which team they're for.
 - Keep it read-only and name-free, exactly like a single follower link today.
 
-## Yellow and red cards
+## Yellow and red cards: done
+Cards, the rugby sin bin countdown and name-free card alerts for followers are in the app. Still to
+decide: football grassroots sin bins (below).
 - Record cards against a player in a game (who, when, which card), shown on their label and in the
   game's timeline, and in the season record.
 - **Rugby yellow card** = 10 minutes in the sin bin. The player is off the pitch but **the time still
@@ -261,10 +284,13 @@ Today a phone can use the app with no account (anonymous sign-in); Google or ema
 - Followers see nothing about cards today (no players' names); name-free card alerts are planned under Notifications.
 
 ## Business and branding
+- **Apple Developer enrolment and TestFlight** for the iPhone app (`ios-app/`, branch `iphone-app`).
 - **Company name and address on the pages?** Privacy and terms currently say Mark Miles Consultancy
   Limited (08286044), registered office in Winscombe. Decide whether Match Day should sit under a
   different company or trading name, or show a different address (e.g. a registered office service
   rather than a home address). Update privacy.html, terms.html and Lemon Squeezy's store details.
+  The website already says "Match Day is a trading name of Mark Miles Consultancy Limited". The
+  D-U-N-S number (218681417) belongs to that company, which matters for Apple enrolment.
 - **Get a domain name** (e.g. matchday-something.co.uk) instead of match-day-17b23.web.app. Firebase
   Hosting can serve it for free once it's connected. Then: add it to Google sign-in's authorised domains and
   OAuth redirect URIs, update LIVE_HOSTS in firebase-config.js, Lemon Squeezy's links, the parent
