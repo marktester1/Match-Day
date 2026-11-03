@@ -5,12 +5,12 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Now
 
-- **Beta: v0.28.0** (branch `setup-wizard`, which also holds v0.27.3, the website and the iOS
+- **Beta and live: v0.28.0** (branch `setup-wizard`, which also holds v0.27.3, the website and the iOS
   Simulator tests): the first-time set-up wizard (Quick start or Full set-up, resumes after an
   interruption, one-tap players a side), "same as last time?" for the next match day, and all of
   v0.27.3 (editable goal times; conversions need a try; the opposition's rugby scores by type;
   End game on the right; "Ask to join" can't hang; 5/5 counter in light mode; testers' wording).
-  **Live: v0.27.2.** Next: test on beta, then release.
+  **Live: v0.28.0 since 3 Nov 2026** (the same build, copied from beta).
 - **Website (`site/`):** coaches' copy https://matchday-website-preview.web.app (opens the live app),
   testers' copy https://matchday-website-beta.web.app (opens beta; `sh tools/build_site_beta.sh`,
   publish with `--config site-beta/firebase.json`). Both on the beta project; publish the main one
@@ -42,6 +42,11 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 **New idea**
 - A viewing app for supporters (followers).
+- **Feedback button: on beta in v0.28.1.** A "💬 Feedback" button floats at the bottom right of every
+  screen (hidden while typing). It opens an email to us with the app version and phone type filled in
+  and a prompt to attach a screenshot; coaches get a thank-you when they come back to the app, or the
+  address if no email app opens. **When the app is monetised, make it smaller** (an icon only, or move
+  it into the ☰ menu) so it doesn't sit over paying coaches' screens.
 
 ## From the code review (do these before more features)
 
@@ -107,6 +112,10 @@ account moves each team before switching. 31 emulator tests.
 **Pricing decided Oct 2026: a yearly subscription from the day the coach subscribes** (see
 MONETISATION.md on the `monetisation` branch). The £3.99 unlock and £1 parent price below are
 superseded; the safeguards, founding club and voucher ideas still apply. Price to be set.
+
+**Before taking the first payment: make the GitHub repository private, and shrink the feedback button** (see the testing-round feedback). The repository decision was made Nov 2026: it's
+public for now so the automated tests run free. Going private limits free test minutes (Mac runs
+count ten times), so switch the iPhone Simulator and Android runs to by-hand only, or budget for minutes.
 
 1. **Parent view: live score only (built as followers, v0.24–v0.26).** Parents follow a game's score from their own phone, with
    notifications for goals, half time and full time. No children's names, line-ups, minutes,
