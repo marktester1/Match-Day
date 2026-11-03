@@ -108,6 +108,10 @@ account moves each team before switching. 31 emulator tests.
 MONETISATION.md on the `monetisation` branch). The £3.99 unlock and £1 parent price below are
 superseded; the safeguards, founding club and voucher ideas still apply. Price to be set.
 
+**Before taking the first payment: make the GitHub repository private** (decided Nov 2026). It's
+public for now so the automated tests run free. Going private limits free test minutes (Mac runs
+count ten times), so switch the iPhone Simulator and Android runs to by-hand only, or budget for minutes.
+
 1. **Parent view: live score only (built as followers, v0.24–v0.26).** Parents follow a game's score from their own phone, with
    notifications for goals, half time and full time. No children's names, line-ups, minutes,
    notes or scorers, ever.
