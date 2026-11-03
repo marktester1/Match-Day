@@ -42,11 +42,11 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 **New idea**
 - A viewing app for supporters (followers).
-- **A feedback button in the app** (requested 3 Nov 2026), e.g. in the ☰ menu: coaches tell us what's
-  wrong or what they'd like without leaving the app. Questions: where it goes (an email to us, a
-  form, or stored in Firestore for us to read); whether it attaches the app version and phone type
-  automatically (never players' names or team data); whether coaches can add a screenshot; and a
-  thank-you so they know it arrived.
+- **Feedback button: on beta in v0.28.1.** A "💬 Feedback" button floats at the bottom right of every
+  screen (hidden while typing). It opens an email to us with the app version and phone type filled in
+  and a prompt to attach a screenshot; coaches get a thank-you when they come back to the app, or the
+  address if no email app opens. **When the app is monetised, make it smaller** (an icon only, or move
+  it into the ☰ menu) so it doesn't sit over paying coaches' screens.
 
 ## From the code review (do these before more features)
 
@@ -113,7 +113,7 @@ account moves each team before switching. 31 emulator tests.
 MONETISATION.md on the `monetisation` branch). The £3.99 unlock and £1 parent price below are
 superseded; the safeguards, founding club and voucher ideas still apply. Price to be set.
 
-**Before taking the first payment: make the GitHub repository private** (decided Nov 2026). It's
+**Before taking the first payment: make the GitHub repository private, and shrink the feedback button** (see the testing-round feedback). The repository decision was made Nov 2026: it's
 public for now so the automated tests run free. Going private limits free test minutes (Mac runs
 count ten times), so switch the iPhone Simulator and Android runs to by-hand only, or budget for minutes.
 

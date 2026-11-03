@@ -31,7 +31,7 @@
   --grass:#2f8a50; --grass-2:#3fa36226; --grass-deep:#1f6a3b; --chalk:#f4fbf6;
   --live:#e8a440; --live-bg:#3a2a12; --bad:#ef6b5f; --good:#5cc183; --gk:#c79bf0; --gk-bg:#2e2140; --gold:#e6b84a; --gold-ink:#241a02; color-scheme:dark}
 *{box-sizing:border-box}
-body{background:var(--bg);color:var(--ink);font:16px/1.45 var(--body);padding-inline:16px;padding-block:12px 40px}
+body{background:var(--bg);color:var(--ink);font:16px/1.45 var(--body);padding-inline:16px;padding-block:12px 76px}
 .wrap{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
 button,input,textarea,select{font:inherit;color:inherit}
 button{cursor:pointer}
@@ -360,6 +360,10 @@ body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
 .prow .psc{font-family:var(--display);font-size:24px}
 .prow .flag{color:var(--muted)}.prow .flag.run{color:var(--live)}
 .plink{font-size:13px;overflow-wrap:anywhere;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;user-select:all}
+/* Feedback button: bottom right on every screen, out of the way while typing (the keyboard would lift it over the boxes).
+   It comes back a moment after typing ends, so the tap that closes the keyboard (on Next, say) can't land on it. */
+.fb{position:fixed;right:calc(12px + env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:20;display:flex;align-items:center;gap:6px;padding:9px 14px;border-radius:999px;background:var(--grass);color:#fff;font-size:14px;font-weight:700;text-decoration:none;box-shadow:0 4px 14px #0003;transition:visibility 0s .6s}
+body:has(input:focus,textarea:focus,select:focus) .fb{visibility:hidden;transition:none}
 #toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;max-width:calc(100% - 32px);z-index:40}
 @media (prefers-reduced-motion:no-preference){.chip{transition:transform .12s}}
 </style>
@@ -375,9 +379,19 @@ body.parent #tabs,body.parent .trow,body.parent #menubtn{display:none}
   <main id="view"></main>
 </div>
 <div id="toast" hidden></div>
+<a id="feedback" class="fb" href="mailto:markdavidmileswork@gmail.com?subject=Match%20Day%20feedback" aria-label="Send feedback by email">💬 Feedback</a>
 
 <script>
-const APP_VERSION='0.28.0';
+const APP_VERSION='0.28.1';
+// Feedback by email, with the app version and phone type filled in (never the team's or players' details)
+{const fb=document.getElementById('feedback'),dev=(navigator.userAgent.match(/\(([^)]+)\)/)||[])[1]||'';
+  fb.href='mailto:markdavidmileswork@gmail.com?subject='+encodeURIComponent('Match Day feedback')+'&body='+
+    encodeURIComponent('\n\n\n—\nA screenshot helps: attach one to this email.\nMatch Day '+APP_VERSION+(/beta|localhost|127\.0\.0\.1/.test(location.hostname)?' (beta)':'')+'\n'+dev);
+  // The email app takes over the screen; thank them when they come back. If nothing opened, say where to write.
+  let away=false,asked=0;
+  fb.addEventListener('click',()=>{asked=Date.now();away=false;setTimeout(()=>{if(asked&&!away){asked=0;toast('No email app? Write to markdavidmileswork@gmail.com')}},2500)});
+  addEventListener('blur',()=>{if(asked)away=true});
+  addEventListener('focus',()=>{if(asked&&away){asked=0;toast('Thanks for your feedback! We read every message.')}})}
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
 const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',date:'',len:10,count:6},games:{},tab:'games',game:null,pick:null,confirm:null,readOnly:false,addLate:false,benchAsk:null,rptEdit:null,fpush:undefined,fpushEdit:false,fkinds:null,dpush:undefined,
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,managers:[],askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
