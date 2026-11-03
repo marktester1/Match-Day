@@ -5,12 +5,12 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Now
 
-- **Beta: v0.28.0** (branch `setup-wizard`, which also holds v0.27.3, the website and the iOS
+- **Beta and live: v0.28.0** (branch `setup-wizard`, which also holds v0.27.3, the website and the iOS
   Simulator tests): the first-time set-up wizard (Quick start or Full set-up, resumes after an
   interruption, one-tap players a side), "same as last time?" for the next match day, and all of
   v0.27.3 (editable goal times; conversions need a try; the opposition's rugby scores by type;
   End game on the right; "Ask to join" can't hang; 5/5 counter in light mode; testers' wording).
-  **Live: v0.27.2.** Next: test on beta, then release.
+  **Live: v0.28.0 since 3 Nov 2026** (the same build, copied from beta).
 - **Website (`site/`):** coaches' copy https://matchday-website-preview.web.app (opens the live app),
   testers' copy https://matchday-website-beta.web.app (opens beta; `sh tools/build_site_beta.sh`,
   publish with `--config site-beta/firebase.json`). Both on the beta project; publish the main one
@@ -42,6 +42,11 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 **New idea**
 - A viewing app for supporters (followers).
+- **A feedback button in the app** (requested 3 Nov 2026), e.g. in the ☰ menu: coaches tell us what's
+  wrong or what they'd like without leaving the app. Questions: where it goes (an email to us, a
+  form, or stored in Firestore for us to read); whether it attaches the app version and phone type
+  automatically (never players' names or team data); whether coaches can add a screenshot; and a
+  thank-you so they know it arrived.
 
 ## From the code review (do these before more features)
 
