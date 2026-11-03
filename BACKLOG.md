@@ -5,14 +5,17 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Now
 
-- **Live and beta: v0.27.2.** Website (shared address https://matchday-website-preview.web.app,
-  beta copy https://matchday-website-beta.web.app) updated 3 Nov 2026 with the testers' wording.
-- **v0.27.3, built and tested, not yet on beta** (branch `goal-times`): editable goal times; a
-  conversion needs an unconverted try; the opposition's rugby scores recorded by type (countback);
-  End game on the right at full time; "Ask to join" gives up after 20 s with a no-signal message;
-  the 5/5 pitch counter readable in light mode; "Minutes played"; "Set up your games"; help text
-  one line per instruction; "Clear scores…" grey instead of red; no "Done editing" (the editing box
-  has its own Close). Next: deploy to beta, test, then release.
+- **Beta: v0.28.0** (branch `setup-wizard`, which also holds v0.27.3, the website and the iOS
+  Simulator tests): the first-time set-up wizard (Quick start or Full set-up, resumes after an
+  interruption, one-tap players a side), "same as last time?" for the next match day, and all of
+  v0.27.3 (editable goal times; conversions need a try; the opposition's rugby scores by type;
+  End game on the right; "Ask to join" can't hang; 5/5 counter in light mode; testers' wording).
+  **Live: v0.27.2.** Next: test on beta, then release.
+- **Website (`site/`):** coaches' copy https://matchday-website-preview.web.app (opens the live app),
+  testers' copy https://matchday-website-beta.web.app (opens beta; `sh tools/build_site_beta.sh`,
+  publish with `--config site-beta/firebase.json`). Both on the beta project; publish the main one
+  with `firebase deploy --only hosting --config site/firebase.json --project match-day-beta-17b23`.
+  Move to the live project once the domain is bought. Updated 3 Nov 2026 with the testers' wording.
 - **Still to try on real phones:** follower alerts (iPhone needs the app on the Home Screen first)
   for kick-off, goals, cards, half time and full time; a coach's alert for a join request, and the
   asker's when accepted. Signing into an existing account on a phone that already has teams, and
@@ -291,6 +294,16 @@ decide: football grassroots sin bins (below).
   rather than a home address). Update privacy.html, terms.html and Lemon Squeezy's store details.
   The website already says "Match Day is a trading name of Mark Miles Consultancy Limited". The
   D-U-N-S number (218681417) belongs to that company, which matters for Apple enrolment.
+- **Change the company name to something less personal** (the App Store shows the company's legal
+  name as the seller, and doesn't accept trading names). Options: rename Mark Miles Consultancy
+  Limited (special resolution + form NM01 at Companies House, about £20 online; company number, bank
+  and tax stay the same) or set up a separate company for Match Day (about £50; needs its own
+  D-U-N-S number, bank account and accounts). Before renaming: check the name is free at Companies
+  House, on the UK IPO trade mark register (avoid anything near "Match of the Day") and as a domain.
+  Do it **before** Apple Developer enrolment. After a rename: tell Dun & Bradstreet the new name
+  (the D-U-N-S number stays the same), the bank, and HMRC for VAT/PAYE if registered; update
+  privacy.html, terms.html and the website footer. Until then, "Match Day" can be used as a trading
+  name (no registration needed; the legal name, number and registered office must still be shown).
 - **Get a domain name** (e.g. matchday-something.co.uk) instead of match-day-17b23.web.app. Firebase
   Hosting can serve it for free once it's connected. Then: add it to Google sign-in's authorised domains and
   OAuth redirect URIs, update LIVE_HOSTS in firebase-config.js, Lemon Squeezy's links, the parent
