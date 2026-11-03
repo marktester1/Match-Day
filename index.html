@@ -157,6 +157,7 @@ input[type=date]::-webkit-date-and-time-value{text-align:left}
 .btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:11px 14px;font-weight:700;flex:1;text-align:center}
 .btn.go{background:var(--grass);border-color:var(--grass);color:var(--chalk)}
 .btn.warn{color:var(--bad)}
+.btn.quiet{background:none;border-color:transparent;color:var(--muted);font-weight:600;font-size:15px}
 .btn.small{flex:0 0 auto;padding:7px 11px;font-size:14px}
 
 .pitch{position:relative;background:
@@ -165,7 +166,7 @@ input[type=date]::-webkit-date-and-time-value{text-align:left}
   border:2px solid #ffffff66;border-radius:14px;padding:30px 12px 16px;min-height:150px;overflow:hidden}
 .pitch::before{content:"";position:absolute;left:50%;top:50%;width:84px;height:84px;border:2px solid #ffffff55;border-radius:50%;transform:translate(-50%,-50%)}
 .pitch .lbl{position:absolute;top:8px;left:12px;color:#ffffffcc}
-.pitch .cnt{position:absolute;top:8px;right:12px;color:#ffffffcc;font-size:12px;font-weight:700}
+.pitch .cnt{position:absolute;top:8px;right:12px;color:#ffffffcc;font-size:12px;font-weight:700;background:#0000002e;border-color:#ffffff40}
 .chips{position:relative;display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 .chip{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;min-width:86px;padding:8px 12px;border-radius:10px;border:2px solid transparent;background:var(--surface);color:var(--ink);box-shadow:0 1px 2px #0002;touch-action:none;user-select:none;-webkit-user-select:none}
 .chip .n{font-weight:700;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -416,7 +417,7 @@ const clockSub=g=>{if(nPer()===1)return 'of '+fmt((S.tour.len||10)*60000);const 
 function fmt(ms){const s=Math.floor(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}
 function fmtM(ms){const m=ms/60000;return m<1&&ms>0?fmt(ms):Math.round(m)+'m'}
 const bySubTime=g=>[...g.subs].sort((a,b)=>a.at-b.at);
-const SECTIONS={tournament:{label:'Tournament',tabs:[['games','Games'],['minutes','Minutes'],['notes','Notes']]},
+const SECTIONS={tournament:{label:'Tournament',tabs:[['games','Games'],['minutes','Minutes played'],['notes','Notes']]},
   season:{label:'Season',tabs:[['season','Results'],['awards','Awards'],['squad','Squad']]}};
 const secOf=t=>SECTIONS.season.tabs.some(([k])=>k===t)?'season':'tournament';
 const lastTab={tournament:'games',season:'season'}; // where you were in each section
@@ -945,7 +946,7 @@ function fixPanel(id,g,st){
       ${open(k)?`<div class="fbody">${body}</div>`:''}</div>`;
   const min=!!fixOpen().min;
   return `<section class="card fix ${min?'min':''}" aria-label="Editing"><div class="fixtop"><h3>Editing</h3>
-    <button class="btn small" data-act="fixmin" aria-expanded="${!min}">${min?'Show':'Minimise'}</button></div>
+    <span class="cbtns"><button class="btn small" data-act="fixmin" aria-expanded="${!min}">${min?'Show':'Minimise'}</button><button class="btn small" data-act="fix">Close</button></span></div>
   ${min?'':`${sec('len','Game length',`${S.tour.len||10} min · ${nPer()===2?'halves':nPer()===4?'quarters':'one period'} · ${gameSize(g)}-a-side`,`
     <label class="lenrow"><span>Minutes per game</span><input class="num" type="number" min="1" max="60" data-tour="len" value="${S.tour.len||10}"></label>
     <span class="seg fill" role="group" aria-label="Periods">${[[1,'One period'],[2,'Halves'],[4,'Quarters']].map(([v,l])=>`<button class="${nPer()===v?'on':''}" data-act="periods" data-v="${v}">${l}</button>`).join('')}</span>
@@ -1030,7 +1031,7 @@ function setupFields(){
     <input id="tname" data-tour="name" placeholder="Tournament name (optional)" aria-label="Tournament name" value="${esc(S.tour.name||'')}">
     <input id="tdate" data-tour="date" type="date" aria-label="Tournament date" value="${esc(S.tour.date||'')}"></div>
   <div class="meta three">
-    <label><span class="lbl">Minutes</span><input id="len" class="num" type="number" min="1" max="60" data-tour="len" value="${S.tour.len||10}"></label>
+    <label><span class="lbl">Minutes a game</span><input id="len" class="num" type="number" min="1" max="60" data-tour="len" value="${S.tour.len||10}"></label>
     <label><span class="lbl">Games</span><input id="cnt" class="num" type="number" min="1" max="10" data-tour="count" value="${S.tour.count||6}"></label>
     <label><span class="lbl">A side</span><input id="tsize" class="num" type="number" min="3" max="11" data-tour="size" value="${tourSize()}"></label></div>
   <span class="seg fill" role="group" aria-label="Periods">${[[1,'One period'],[2,'Halves'],[4,'Quarters']].map(([v,l])=>`<button class="${nPer()===v?'on':''}" data-act="periods" data-v="${v}">${l}</button>`).join('')}</span>
@@ -1038,8 +1039,10 @@ function setupFields(){
 `;
 }
 function setupCard(){
-  return `<div class="card setupcard"><h3>Set up today's games</h3>
-    <p class="note">Playing one match? Set games to 1. A tournament day? Put in how many games you'll play. You can change these later.</p>
+  return `<div class="card setupcard"><h3>Set up your games</h3>
+    <p class="note">One match? Set games to 1.</p>
+    <p class="note">A tournament? Put in how many games you'll play.</p>
+    <p class="note">You can change all of this later.</p>
     ${setupFields()}
     <button class="btn go" data-act="setupgo">Set up games</button></div>`;
 }
@@ -1072,7 +1075,7 @@ function gamesList(){
   ${(()=>{const no=ids.filter(id=>started(G(id))&&!G(id).opponent).map(id=>G(id).n);return no.length?`<p class="warnline">⚠️ No opposition entered for game${no.length>1?'s':''} ${no.join(', ')}. Tap <b>Enter opponents and kick-off times</b> to add ${no.length>1?'them':'it'} before you save.</p>`:''})()}
   <button class="btn go" data-act="finish">${S.confirm==='finish'?'Tap again to save and start fresh':'Finish tournament and save to Results'}</button>
   <p class="note">Saves results and every player's minutes to Season → Results, then clears the games ready for the next tournament.</p>
-  <button class="btn warn" data-act="reset">${S.confirm==='reset'?'Tap again to clear without saving':'Clear scores and line-ups without saving'}</button>
+  <button class="btn quiet" data-act="reset">${S.confirm==='reset'?'Tap again to clear without saving':'Clear scores and line-ups without saving'}</button>
   ${setupLine()}
   </div>`;
 }
@@ -1131,7 +1134,7 @@ function gameView(id){
   ${S.scorer&&S.scorer.g===id&&g.goals?.[S.scorer.i]?scorerBar(g,S.scorer.i):''}
   ${S.askGk===id?keeperAsk(g):''}
   ${S.askSize&&S.askSize.g===id?sizeAsk(g,S.askSize):''}
-  <div class="cbtns">${cb}<button class="btn" data-act="fix">${S.fix===id?'Done editing':'Edit'}</button></div>
+  <div class="cbtns">${cb}<button class="btn" data-act="fix" aria-expanded="${S.fix===id}">Edit</button></div>
   ${hint}
   <div class="pitch"><span class="lbl">On the pitch</span><span class="cnt num">${pitch.length}/${gameSize(g)}</span>
     <div class="chips">${pitch.length?pitch.map(p=>chip(p,'pitch')).join(''):'<span style="color:#ffffffcc;font-size:14px;padding-top:24px">Pick the starters below</span>'}</div></div>
@@ -2128,21 +2131,27 @@ async function joinTeam(raw){
   if(!myName()){toast('Add your name first, so the coaches know who is asking.');document.getElementById('joinname')?.focus();return}
   joining=true;render();
   try{
-    await signedIn();
-    const ref=F.doc(fs,'codes',code);
-    const s=await F.getDocFromServer(ref).catch(()=>F.getDoc(ref));
-    if(!s.exists()){toast("That code didn't match a team. Check it with the coach who sent it.");return}
-    const t=s.data().team,uid=auth.currentUser.uid;
-    const already=await F.getDocFromServer(F.doc(fs,'teams',t,'members',uid)).then(x=>x.exists()).catch(()=>false);
-    if(already){dropPending(t);openTeam(t);toast('You were already in this team.');return}
-    const again=getPending().some(x=>x.t===t&&!x.status);
-    await askToJoin(F,fs,auth.currentUser,t,code);
-    addPending(t,code);
-    toast(again?"You'd already asked: your request is still waiting for a coach.":'Request sent. A coach in the team needs to accept you.');
-    S.joinCode='';
+    // A slow or missing signal (seen on a freshly started phone) mustn't leave "Sending…" up for ever
+    const r=await within(sendJoin(F,fs,auth,code),20000);
+    if(r===null)toast("No signal: the request didn't send. Try again when you have signal.");
   }catch(e){toast(e.code==='too-many'?"You're already waiting to join 3 teams. Cancel one of those requests first."
     :`Couldn't send the request (${errCode(e)}). Check your signal and try again.`)}
   finally{joining=false;render()}
+}
+async function sendJoin(F,fs,auth,code){
+  await signedIn();
+  const ref=F.doc(fs,'codes',code);
+  const s=await F.getDocFromServer(ref).catch(()=>F.getDoc(ref));
+  if(!s.exists()){toast("That code didn't match a team. Check it with the coach who sent it.");return}
+  const t=s.data().team,uid=auth.currentUser.uid;
+  const already=await F.getDocFromServer(F.doc(fs,'teams',t,'members',uid)).then(x=>x.exists()).catch(()=>false);
+  if(already){dropPending(t);openTeam(t);toast('You were already in this team.');return}
+  const again=getPending().some(x=>x.t===t&&!x.status);
+  await askToJoin(F,fs,auth.currentUser,t,code);
+  addPending(t,code);
+  toast(again?"You'd already asked: your request is still waiting for a coach.":'Request sent. A coach in the team needs to accept you.');
+  S.joinCode='';
+  return true;
 }
 /* ---------- join requests: waiting to be accepted ---------- */
 // Requests this phone is waiting on (and the code each used), kept until a coach answers and the
@@ -2521,14 +2530,16 @@ function gateView(){
   ${reportCard()}
   ${pendingCard()}
   ${S.adding?`<button class="back" data-act="gateback">← My teams</button><h2>Add a team</h2>`:`<div class="welcome"><h2>Manage your team on match day</h2>
-    <p>For grassroots coaches on match days and tournament days: pick the team, make the subs, keep everyone's playing time fair and the score up to date. Football or rugby.</p></div>`}
+    <p>For grassroots coaches on match days and tournament days, football or rugby.</p>
+    <p>Pick the team, make the subs, keep everyone's playing time fair and the score up to date.</p></div>`}
   <div class="card"><h3>Start a new team</h3>
     <p class="note">You'll get an invite code to give the other coaches.</p>
     <label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">Your name (the coaches see this)</span>
       <input id="mkname" value="${esc(myName())}" placeholder="e.g. Sam (coach)" maxlength="40" autocomplete="name"></label>
     <button class="btn go" data-act="mkteam">Create a team</button></div>
   <div class="card"><h3>Join a team</h3>
-    <p class="note">Ask a coach for the team's invite code (in their ☰ menu). The code sends a request: a coach in the team then accepts you.${FB?.auth?.currentUser?.email?' They also see the email you signed in with, so they know it\'s you.':''}</p>
+    <p class="note">Ask a coach for the team's invite code (in their ☰ menu).</p>
+    <p class="note">Tap Ask to join, then a coach in the team accepts you.${FB?.auth?.currentUser?.email?' They also see the email you signed in with, so they know it\'s you.':''}</p>
     <label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">Your name (the coaches see this)</span><input id="joinname" value="${esc(myName())}" placeholder="e.g. Sam (coach)" maxlength="40" autocomplete="name"></label>
     <form class="addf" id="joinf"><input id="joincode" value="${esc(S.joinCode||'')}" placeholder="e.g. ABCD-2345" autocomplete="off" autocapitalize="characters" aria-label="Invite code"><button class="btn go" type="submit" ${joining?'disabled':''}>${joining?'Sending…':'Ask to join'}</button></form></div>
   ${FB&&!isAccount()?`<div class="card"><h3>Your account</h3>

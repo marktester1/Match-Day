@@ -71,7 +71,7 @@ test('a coach runs a whole match day', async ({page, browser}, info) => {
     await press(btn('Start using the app'));
     await toast('All set.');
     await expect(page.locator('#hteam')).toHaveText(TEAM);
-    await expect(view).toContainText("Set up today's games");
+    await expect(view).toContainText('Set up your games');
     await reload();
     await goTab('squad');
     await expect.poll(squadNames).toEqual(FIRST_SQUAD); // "Player 7" kept, the two Alfies told apart, surnames dropped
