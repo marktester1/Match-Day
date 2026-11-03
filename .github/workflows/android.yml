@@ -52,7 +52,8 @@ jobs:
         run: |
           SDK=$ANDROID_HOME/cmdline-tools/latest/bin IMG='system-images;android-35;google_apis;x86_64'
           yes | $SDK/sdkmanager --licenses >/dev/null
-          $SDK/sdkmanager emulator "$IMG" >/dev/null
+          $SDK/sdkmanager platform-tools emulator "$IMG" >/dev/null
+          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH   # adb, for the later steps
           mkdir -p $ANDROID_AVD_HOME
           echo no | $SDK/avdmanager create avd --force -n phone --package "$IMG"
           W=${SIZE%x*} H=${SIZE#*x}
