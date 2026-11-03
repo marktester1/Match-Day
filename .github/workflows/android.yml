@@ -44,28 +44,40 @@ jobs:
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      # The phone's screen is built into the emulator (changing it afterwards with `wm` put taps in the wrong place).
+      # google_apis is a debug build of Android, so Playwright can start Chrome with its own settings.
+      - name: Make the ${{ matrix.phone }} emulator
+        run: |
+          SDK=$ANDROID_HOME/cmdline-tools/latest/bin IMG='system-images;android-35;google_apis;x86_64'
+          yes | $SDK/sdkmanager --licenses >/dev/null
+          $SDK/sdkmanager emulator "$IMG" >/dev/null
+          echo no | $SDK/avdmanager create avd --force -n phone --package "$IMG"
+          W=${SIZE%x*} H=${SIZE#*x}
+          printf 'hw.lcd.width=%s\nhw.lcd.height=%s\nhw.lcd.density=%s\nhw.ramSize=4096\nhw.cpu.ncore=3\nhw.keyboard=yes\n' $W $H $DENSITY >> ~/.android/avd/phone.avd/config.ini
+        env:
+          SIZE: ${{ matrix.size }}
+          DENSITY: ${{ matrix.density }}
+      - name: Start it
+        run: |
+          nohup $ANDROID_HOME/emulator/emulator -avd phone -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim > emulator.log 2>&1 &
+          adb wait-for-device
+          for i in $(seq 120); do [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = 1 ] && break; sleep 3; done
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+          adb shell wm size; adb shell wm density
       - name: Serve this commit on localhost:8000
         run: python3 -m http.server 8000 >/dev/null 2>&1 &
       - name: Run the tests on the emulator
-        uses: reactivecircus/android-emulator-runner@v2
+        working-directory: tools/e2e
+        # the emulator's own localhost is the phone; reverse forwarding points it at this machine's server
+        run: |
+          adb reverse tcp:8000 tcp:8000
+          npx playwright test --workers=1
         env:
           ANDROID: 1
           ANDROID_PHONE: ${{ matrix.phone }}
           MATCHDAY_URL: http://127.0.0.1:8000
-        with:
-          api-level: 35
-          target: google_apis   # a debug build of Android, so Playwright can start Chrome with its own settings
-          arch: x86_64
-          ram-size: 4096M
-          disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
-          working-directory: tools/e2e
-          # the emulator's own localhost is the phone; reverse forwarding points it at this machine's server
-          script: |
-            adb reverse tcp:8000 tcp:8000
-            adb shell wm size ${{ matrix.size }}
-            adb shell wm density ${{ matrix.density }}
-            npx playwright test --workers=1
       # Screenshots and page snapshots only: the repository is public, and traces hold sign-in tokens
       - name: Keep the screenshots of any failure
         if: failure()
