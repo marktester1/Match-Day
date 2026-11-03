@@ -1,7 +1,7 @@
 // The manager role is never lost: a manager who leaves picks who takes over, and if the manager's
 // sign-in disappears some other way (Safari clearing a website's data after 7 days unused), a
 // coach still in the team can take over. Beta only; every phone leaves at the end.
-const {test, expect} = require('@playwright/test');
+const {test, expect} = require('./test'); // Playwright's, or real Android Chrome with ANDROID=1
 const {app, newPhone, cleanUp} = require('./helpers');
 
 const TEAM = 'Claude E2E Manager U10s', SAM = 'Sam (coach)', KIM = 'Kim (coach)';

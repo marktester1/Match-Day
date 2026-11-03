@@ -15,3 +15,4 @@ tests/node_modules/
 tools/e2e/test-results/
 tools/e2e/playwright-report/
 site-beta/
+tools/e2e/ios-sim/.appium/
