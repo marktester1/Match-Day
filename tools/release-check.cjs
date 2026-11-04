@@ -53,6 +53,27 @@ async function main() {
     out(off.length ? 'FAIL' : 'PASS', `${env} sign-in methods`, off.length ? 'switched off: ' + off.join(', ') : 'anonymous, email, Google');
   }
 
+  // 2b. Google sign-in works on every address coaches use. For each one: the app keeps Google's
+  // hand-off on that same address (iPhones lose it otherwise), the hand-off page is served there,
+  // Firebase lists it as an authorised domain, and Google accepts it as a return address (asked
+  // without signing in: an accepted address goes to Google's sign-in page, any other to its error page).
+  const liveHosts = JSON.parse((cfgSrc.match(/const LIVE_HOSTS = (\[[^\]]*\])/) || [, '[]'])[1]);
+  const authRule = new RegExp((read('index.html').match(/if\(\/(.+?)\/\.test\(location\.hostname\)\)cfg=\{\.\.\.cfg,authDomain:location\.hostname\}/) || [, '$^'])[1]);
+  const authorised = {};
+  for (const env of ['beta', 'live']) authorised[env] = (await idt.get(`/admin/v2/projects/${P[env]}/config`)).body.authorizedDomains || [];
+  for (const [env, host] of [...liveHosts.map(h => ['live', h]), ['beta', new globalThis.URL(URL.beta).host]]) {
+    const bad = [];
+    if (!authRule.test(host)) bad.push("the app sends Google's hand-off to another address (authDomain rule in index.html)");
+    const h = await fetch(`https://${host}/__/auth/handler`).then(r => r.status).catch(() => 0);
+    if (h !== 200) bad.push(`hand-off page not served (${h})`);
+    if (!authorised[env].includes(host)) bad.push('not in Firebase → Authentication → Authorised domains');
+    const au = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:createAuthUri?key=${KEY[env]}`, {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({providerId: 'google.com', continueUri: `https://${host}/__/auth/handler`})}).then(r => r.json()).catch(() => ({}));
+    const g = au.authUri ? (await fetch(au.authUri, {redirect: 'manual'}).catch(() => null))?.headers.get('location') || '' : '';
+    if (!/^https:\/\/accounts\.google\.com\/(v3\/)?signin\/identifier/.test(g)) bad.push(`Google refuses https://${host}/__/auth/handler (add it to the Web OAuth client's redirect URIs in Google Cloud)`);
+    out(bad.length ? 'FAIL' : 'PASS', `Google sign-in on ${host}`, bad.join('; ') || 'hand-off stays on this address, Google accepts it');
+  }
+
   // 3. Beta can't reach live data: a beta sign-in and no sign-in are both refused by live
   const su = await (await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${KEY.beta}`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{"returnSecureToken":true}'})).json();
   const liveDoc = `https://firestore.googleapis.com/v1/projects/${P.live}/databases/(default)/documents/teams?pageSize=1`;
