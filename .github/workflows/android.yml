@@ -63,7 +63,7 @@ jobs:
           DENSITY: ${{ matrix.density }}
       - name: Start it
         run: |
-          nohup $ANDROID_HOME/emulator/emulator -avd phone -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim > emulator.log 2>&1 &
+          nohup $ANDROID_HOME/emulator/emulator -avd phone -no-window -gpu swiftshader_indirect -feature -Vulkan -no-snapshot -noaudio -no-boot-anim > emulator.log 2>&1 &
           adb wait-for-device
           for i in $(seq 120); do [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = 1 ] && break; sleep 3; done
           adb shell settings put global window_animation_scale 0

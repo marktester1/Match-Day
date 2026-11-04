@@ -1,5 +1,5 @@
 // A coach corrects a goal's time: during the game (from the goals list) and afterwards in the
-// saved results. Times can't be after the clock. Beta only; the phone leaves at the end.
+// saved results. Times can't be after the clock until full time; after it, any time goes. Beta only; the phone leaves at the end.
 const {test, expect} = require('@playwright/test');
 const {app, cleanUp} = require('./helpers');
 
@@ -42,6 +42,11 @@ test('goal times can be corrected in the game and in saved results', async ({pag
 
     // Afterwards, in the saved results
     await c.fullTime(1);
+    // After full time any time goes, even past the 20 minutes (games run over, or the clock was stopped early)
+    await goalTime().fill('25:30');
+    await goalTime().blur();
+    await c.toast('Moved to 25:30.');
+    await expect(goalTime()).toHaveValue('25:30');
     await c.saved();
     await c.goTab('games');
     await c.press(c.btn('Finish tournament and save to Results'));
@@ -49,13 +54,14 @@ test('goal times can be corrected in the game and in saved results', async ({pag
     await c.press(c.btn('Write it later', c.modal));
     await c.reload(TEAM);
     await c.goTab('season');
+    await expect(c.view.locator('.summary')).toContainText('Match days 1');
     const tc = c.view.locator('.tcard').first();
     await c.press(tc.locator('[data-act=topen]'));
     await expect(tc.locator('.tb')).toBeVisible();
-    await expect(tc.locator('.gls').filter({hasText: '⚽'})).toContainText("Ben 7'");
+    await expect(tc.locator('.gls').filter({hasText: '⚽'})).toContainText("Ben 26'");
     await c.press(tc.getByRole('button', {name: 'Edit'}));
     const t = c.view.locator('[data-ed^="gat|"]').first();
-    await expect(t).toHaveValue('6:30');
+    await expect(t).toHaveValue('25:30');
     await t.fill('15:10');
     await t.blur();
     await c.press(c.btn('Save changes'));
