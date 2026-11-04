@@ -67,7 +67,8 @@ jobs:
           # error: run each in its own session, detached from this step, and note when the emulator goes
           setsid adb start-server
           setsid nohup $ANDROID_HOME/emulator/emulator -avd phone -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim > emulator.log 2>&1 < /dev/null &
-          setsid nohup sh -c 'sleep 20; while pgrep -f qemu-system >/dev/null; do sleep 2; done; date -u +"emulator gone at %H:%M:%S"; ps -ef | tail -40' > emu-watch.log 2>&1 < /dev/null &
+          echo $! > emu.pid
+          setsid nohup sh -c 'while kill -0 $(cat emu.pid) 2>/dev/null; do sleep 2; done; date -u +"emulator gone at %H:%M:%S"; ps -ef | tail -40' > emu-watch.log 2>&1 < /dev/null &
           adb wait-for-device
           for i in $(seq 120); do [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = 1 ] && break; sleep 3; done
           adb shell settings put global window_animation_scale 0
