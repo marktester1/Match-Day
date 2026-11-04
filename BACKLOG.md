@@ -5,17 +5,15 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Now
 
-- **Beta and live: v0.28.0** (branch `setup-wizard`, which also holds v0.27.3, the website and the iOS
-  Simulator tests): the first-time set-up wizard (Quick start or Full set-up, resumes after an
-  interruption, one-tap players a side), "same as last time?" for the next match day, and all of
-  v0.27.3 (editable goal times; conversions need a try; the opposition's rugby scores by type;
-  End game on the right; "Ask to join" can't hang; 5/5 counter in light mode; testers' wording).
-  **Live: v0.28.0 since 3 Nov 2026** (the same build, copied from beta).
+- **Live: v0.28.2** (3 Nov 2026): the first-time set-up wizard, "same as last time?" for the next
+  match day, the 💬 Feedback button, and long team names wrapping on 360-wide phones.
+  **Beta: v0.28.3** (branch `setup-wizard`): **Reset this game** at the bottom of a started game, with a
+  pop-up first and Undo afterwards. Next: the user tries it on beta, then release.
 - **Website (`site/`):** coaches' copy https://matchday-website-preview.web.app (opens the live app),
   testers' copy https://matchday-website-beta.web.app (opens beta; `sh tools/build_site_beta.sh`,
   publish with `--config site-beta/firebase.json`). Both on the beta project; publish the main one
   with `firebase deploy --only hosting --config site/firebase.json --project match-day-beta-17b23`.
-  Move to the live project once the domain is bought. Updated 3 Nov 2026 with the testers' wording.
+  Move to the live project and `matchday-app.uk` (bought 4 Nov 2026). Updated 3 Nov 2026 with the testers' wording.
 - **Still to try on real phones:** follower alerts (iPhone needs the app on the Home Screen first)
   for kick-off, goals, cards, half time and full time; a coach's alert for a join request, and the
   asker's when accepted. Signing into an existing account on a phone that already has teams, and
@@ -313,11 +311,19 @@ decide: football grassroots sin bins (below).
   (the D-U-N-S number stays the same), the bank, and HMRC for VAT/PAYE if registered; update
   privacy.html, terms.html and the website footer. Until then, "Match Day" can be used as a trading
   name (no registration needed; the legal name, number and registered office must still be shown).
-- **Get a domain name** (e.g. matchday-something.co.uk) instead of match-day-17b23.web.app. Firebase
-  Hosting can serve it for free once it's connected. Then: add it to Google sign-in's authorised domains and
+- **Domain: bought 4 Nov 2026, `matchday-app.uk`** (registered at Cloudflare). Still to do: connect it
+  to Firebase Hosting (live app, and the website), then add it to Google sign-in's authorised domains and
   OAuth redirect URIs, update LIVE_HOSTS in firebase-config.js, Lemon Squeezy's links, the parent
   link addresses, and the release checks. Keep the old address redirecting so existing home-screen
   icons and parent links keep working.
+- **An email address on the domain** (e.g. hello@ or support@matchday-app.uk), so coaches don't see a
+  personal Gmail address. Questions: receive only, or send from it too?
+  - Receive only, free: Cloudflare Email Routing forwards it to the Gmail inbox.
+  - Send and receive: a mailbox from Google Workspace, Zoho Mail, Fastmail or iCloud+ (custom domain).
+    Set the domain's SPF, DKIM and DMARC records so replies don't land in spam.
+  - Then use it for: the feedback button, privacy.html and terms.html contact lines, the website
+    footer, Firebase's sign-in emails (password reset sent from the domain), app store listings and
+    the payment provider. The user sets up the mail account and its password themselves.
 
 ## Later
 
