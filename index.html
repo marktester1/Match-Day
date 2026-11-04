@@ -382,7 +382,7 @@ body:has(input:focus,textarea:focus,select:focus) .fb{visibility:hidden;transiti
 <a id="feedback" class="fb" href="mailto:hello@matchday-app.uk?subject=Match%20Day%20feedback" aria-label="Send feedback by email">💬 Feedback</a>
 
 <script>
-const APP_VERSION='0.28.5';
+const APP_VERSION='0.28.6';
 // Feedback by email, with the app version and phone type filled in (never the team's or players' details)
 {const fb=document.getElementById('feedback'),dev=(navigator.userAgent.match(/\(([^)]+)\)/)||[])[1]||'';
   fb.href='mailto:hello@matchday-app.uk?subject='+encodeURIComponent('Match Day feedback')+'&body='+
@@ -2208,7 +2208,8 @@ async function connectFirebase(){
   const [AppM,A,F]=await Promise.all(['app','auth','firestore'].map(m=>import(FB_SDK+'firebase-'+m+'.js'))),{initializeApp}=AppM;
   // Google's sign-in hand-off has to come back to the same address the app runs on, or iPhones
   // (which block cross-site storage) lose the result. Firebase Hosting serves it on every site address.
-  if(/\.(web\.app|firebaseapp\.com)$/.test(location.hostname))cfg={...cfg,authDomain:location.hostname};
+  // (The app's own domain needs https://app.matchday-app.uk/__/auth/handler in the Google OAuth client's redirect URIs.)
+  if(/\.(web\.app|firebaseapp\.com)$|(^|\.)matchday-app\.uk$/.test(location.hostname))cfg={...cfg,authDomain:location.hostname};
   const app=initializeApp(cfg);
   let fs;
   try{fs=F.initializeFirestore(app,{ignoreUndefinedProperties:true,experimentalAutoDetectLongPolling:true,localCache:F.persistentLocalCache({tabManager:F.persistentMultipleTabManager()})})}
