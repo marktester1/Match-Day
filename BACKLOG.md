@@ -319,9 +319,9 @@ decide: football grassroots sin bins (below).
 - **Email: hello@matchday-app.uk set up 4 Nov 2026** (Cloudflare Email Routing, forwarding to the Gmail
   inbox; receive only). The app's feedback button, privacy.html, terms.html and the website use it from
   v0.28.5. Still to do: if replies should come *from* hello@, add a sending service (Gmail "Send mail as"
-  through a mail provider's SMTP, or a mailbox from Zoho, Fastmail, Google Workspace or iCloud+) and a
-  DMARC record (`_dmarc` TXT, start with `v=DMARC1; p=none`). Then Firebase's sign-in emails, app store
-  listings and the payment provider.
+  through a mail provider's SMTP, or a mailbox from Zoho, Fastmail, Google Workspace or iCloud+), then a
+  tighter DMARC (`p=none` added 4 Nov 2026; move to `p=quarantine` once sending works). Then Firebase's
+  sign-in emails, app store listings and the payment provider.
 
 ## Later
 
