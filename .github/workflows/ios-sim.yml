@@ -48,6 +48,13 @@ jobs:
             console.log(n.join(','));")
           echo "SIMS=$SIMS" >> "$GITHUB_ENV"
           echo "Simulators: $SIMS"
+      # Start the two the tests use (the coach and the follower) now, and wait until they're ready, so
+      # the tests don't spend their own time on it (a slow start here used to fail the run)
+      - name: Start the simulators
+        run: |
+          IFS=, read -r A B _ <<< "$SIMS"
+          for n in "$A" "$B"; do xcrun simctl boot "$n" || true; done
+          for n in "$A" "$B"; do timeout 900 xcrun simctl bootstatus "$n" -b; done
       - name: Serve this commit on localhost:8000
         working-directory: .
         run: python3 -m http.server 8000 >/dev/null 2>&1 &

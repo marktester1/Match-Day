@@ -62,6 +62,7 @@ export async function phone(i = 0, {fresh = true} = {}) {
 const startSession = (udid, i) => remote({hostname: '127.0.0.1', port: 4723, logLevel: 'warn', connectionRetryCount: 0, connectionRetryTimeout: 900000,
     capabilities: {platformName: 'iOS', browserName: 'Safari', 'appium:automationName': 'XCUITest', 'appium:udid': udid,
       'appium:wdaLocalPort': 8100 + i, 'appium:wdaLaunchTimeout': 600000, 'appium:webviewConnectTimeout': 30000,
+      'appium:simulatorStartupTimeout': 600000, // GitHub's Mac can take over the default 2 minutes to start one
       'appium:newCommandTimeout': 1800, // a phone may sit idle for minutes while another simulator starts
       'appium:safariInitialUrl': 'about:blank', 'appium:safariIgnoreFraudWarning': true}});
 

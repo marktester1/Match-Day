@@ -10,10 +10,13 @@ const {app, cleanUp} = require('./helpers');
 
 test('Continue with Google hands off on this same address and asks Google to come back to it', async ({page}, info) => {
   const c = app(page, info);
+  // Only on the app's real addresses: a local copy (127.0.0.1, as on GitHub) isn't an authorised
+  // sign-in address, so Firebase never starts the hand-off there. Run it against beta:
+  //   npx playwright test sign-in.spec.js     (release-check.cjs also checks every live address)
+  const here = new URL(info.project.use.baseURL).host;
+  test.skip(!/\.web\.app$|\.firebaseapp\.com$|(^|\.)matchday-app\.uk$/.test(here), "Google sign-in needs the app's real address, not a local copy");
   await page.goto('/');
-  const here = new URL(page.url()).host;
-  // On the app's own addresses the hand-off stays put; on a local copy it uses beta's Firebase address.
-  const expected = /\.web\.app$|\.firebaseapp\.com$|(^|\.)matchday-app\.uk$/.test(here) ? here : 'match-day-beta-17b23.firebaseapp.com';
+  const expected = here; // the hand-off stays on the address the app is on
 
   const handoffs = [];
   page.on('request', r => { if (r.isNavigationRequest() && r.url().includes('/__/auth/handler')) handoffs.push(new URL(r.url())); });

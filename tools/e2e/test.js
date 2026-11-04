@@ -16,7 +16,17 @@ if (process.env.ANDROID) {
       await device.close();
     }, {scope: 'worker'}],
     context: async ({android, baseURL}, use) => {
-      const ctx = await android.launchBrowser({baseURL, hasTouch: true, locale: 'en-GB', timezoneId: 'Europe/London'}); // a phone: taps, not clicks
+      // a phone: taps, not clicks. Chrome on the emulator sometimes hangs after a long test, and then
+      // every later test failed at once: stop Chrome and try again before giving up.
+      let ctx;
+      for (let i = 1; ; i++) {
+        try { ctx = await android.launchBrowser({baseURL, hasTouch: true, locale: 'en-GB', timezoneId: 'Europe/London'}); break; }
+        catch (e) {
+          if (i >= 3) throw e;
+          await android.shell('am force-stop com.android.chrome').catch(() => {});
+          await new Promise(r => setTimeout(r, 5000));
+        }
+      }
       // Chrome on the device keeps its data between tests: start each one as a fresh coach
       const p = ctx.pages()[0] || await ctx.newPage();
       await p.goto('/privacy.html');
