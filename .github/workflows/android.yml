@@ -86,10 +86,12 @@ jobs:
       - name: Why the emulator stopped
         if: failure()
         run: |
-          adb devices || true
+          echo "--- is the emulator still running?"; pgrep -af 'qemu-system|emulator' || echo "no emulator process"
+          echo "--- adb as it is"; adb devices || true
+          echo "--- adb after restarting its server"; adb kill-server || true; adb start-server || true; sleep 3; adb devices || true
           free -m || true
-          tail -60 emulator.log || true
-          sudo dmesg | grep -iE 'killed process|out of memory' | tail -5 || true
+          echo "--- emulator log: anything about stopping"; grep -viE 'SwiftShader|VkInstance' emulator.log | tail -40 || true
+          sudo dmesg | grep -iE 'killed process|out of memory|qemu|segfault' | tail -10 || true
       # Screenshots and page snapshots only: the repository is public, and traces hold sign-in tokens
       - name: Keep the screenshots of any failure
         if: failure()
