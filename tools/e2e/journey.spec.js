@@ -102,8 +102,8 @@ test('a coach runs a whole match day', async ({page, browser}, info) => {
     const code = (await view.locator('b.num').first().textContent()).trim();
     expect(code).toMatch(/^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
     expect(PROTECTED_CODES).not.toContain(code);
-    await press(view.getByRole('button', {name: /Create a follower link/}));
-    await toast('Follower link ready.');
+    await press(view.getByRole('button', {name: /Create a supporters' link/}));
+    await toast("Supporters' link ready.");
     const link = (await view.locator('.plink').textContent()).trim();
     expect(link).toMatch(/\?follow=[A-Za-z0-9]{24}$/);
     // Wait until the coach's phone shows the link saved. Known app issue (v0.26.0): a follower page

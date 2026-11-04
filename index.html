@@ -382,7 +382,7 @@ body:has(input:focus,textarea:focus,select:focus) .fb{visibility:hidden;transiti
 <a id="feedback" class="fb" href="mailto:hello@matchday-app.uk?subject=Match%20Day%20feedback" aria-label="Send feedback by email">💬 Feedback</a>
 
 <script>
-const APP_VERSION='0.28.6';
+const APP_VERSION='0.28.7';
 // Feedback by email, with the app version and phone type filled in (never the team's or players' details)
 {const fb=document.getElementById('feedback'),dev=(navigator.userAgent.match(/\(([^)]+)\)/)||[])[1]||'';
   fb.href='mailto:hello@matchday-app.uk?subject='+encodeURIComponent('Match Day feedback')+'&body='+
@@ -583,14 +583,14 @@ function publishFeed(){ // sends parents the changes made on this phone (only wh
   Object.keys(feedGamesLast).filter(g=>!ids.includes(g)).forEach(g=>{delete feedGamesLast[g];track(F.deleteDoc(F.doc(fs,'feeds',id,'games',g)),()=>{})});
 }
 function makeFeed(){
-  if(!navigator.onLine){toast('You need a signal to create the follower link.');return}
+  if(!navigator.onLine){toast('You need a signal to create the supporters\' link.');return}
   const old=S.feed&&S.feed.id,id=newFeedId();
   S.feed={id,season:seasonNow()};put('club/feed',S.feed);feedLast='';feedGamesLast={};
   // the new link starts with the team name; fixtures follow once a tournament is set up
   if(tourReady())publishFeed();else track(FB.F.setDoc(FB.F.doc(FB.fs,'feeds',id),{...feedBody(null),updatedAt:Date.now()}),()=>{});
   if(old){const {F,fs}=FB,b=F.writeBatch(fs); // the old link stops working
     for(let i=1;i<=10;i++)b.delete(F.doc(fs,'feeds',old,'games','g'+i));b.delete(F.doc(fs,'feeds',old));track(b.commit(),()=>{})}
-  S.confirm=null;render();toast('Follower link ready. Share it with family, carers and friends.');
+  S.confirm=null;render();toast('Supporters\' link ready. Share it with family, carers and friends.');
 }
 // The message for the team's group chat (WhatsApp shows *text* in bold). Team names and scores only.
 const followText=()=>`⚽ *Follow ${S.cfg.team||'our team'} live*\n\nTap the link to follow our scores on your phone. No app or sign-up needed:\n👉 ${feedUrl(S.feed.id)}\n\nYou'll see the live score and match clock, kick-off times and pitches for the day's games, and the results as they finish. It only shows team names and scores, never the children's names. Feel free to share it with family who can't make it.`;
@@ -602,14 +602,14 @@ async function shareFeed(copyOnly){
 function parentCard(){
   if(!FB||!S.teamId)return'';
   const cur=feedOn();
-  return `<div class="card"><h3>Followers</h3>
+  return `<div class="card"><h3>Supporters</h3>
     <p class="note">Anyone with this link can follow the score live: family, carers and friends. They see team names, the score, clock, half time and full time, and the day's games. They never see players' names, line-ups or minutes, and they can't change anything.</p>
     ${cur?`<div class="plink">${esc(feedUrl(S.feed.id))}</div>
       <div class="cbtns"><a class="btn go wa" href="https://wa.me/?text=${encodeURIComponent(followText())}" target="_blank" rel="noopener">Share on WhatsApp</a><button class="btn" data-act="pshare">Share another way</button><button class="btn" data-act="pcopy">Copy</button></div>
       <p class="note">This link works for the ${esc(S.feed.season)} season.</p>
       <button class="x ${S.confirm==='pnew'?'sure':''}" data-act="pnew">${S.confirm==='pnew'?'Tap again: the old link stops working':'Make a new link'}</button>`
     :`${S.feed?`<p class="note">Last season's link (${esc(S.feed.season)}) has stopped updating.</p>`:''}
-      <button class="btn go" data-act="pmake">Create a follower link for ${seasonNow()}</button>`}</div>`;
+      <button class="btn go" data-act="pmake">Create a supporters' link for ${seasonNow()}</button>`}</div>`;
 }
 
 /* ---------- the parent's screen ---------- */
@@ -628,7 +628,7 @@ const pScore=(f,side)=>(f.us===side)?f.score.us:f.score.them;
 function parentView(){
   const f=S.pfeed;
   if(f===undefined)return `<div class="empty"><b>Loading the score…</b></div>`;
-  if(f===null)return `<div class="empty"><b>This link isn't working</b>It may be from last season. Ask the coach for the new follower link.</div>`;
+  if(f===null)return `<div class="empty"><b>This link isn't working</b>It may be from last season. Ask the coach for the new supporters' link.</div>`;
   const st=f.status==='none'?'':`<span class="pst ${f.status==='live'?'live':''}">${esc(pStatus(f))}</span>`;
   return `<div class="sec" style="gap:14px">
   <div class="pboard" aria-live="polite">
@@ -888,7 +888,7 @@ function ftAsk(g){
   return `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="ftq"><div class="box">
     <h3 id="ftq">End game ${g.n}?</h3>
     <p class="ftscore"><span>${esc(homeName(g))}</span><b class="num">${scoreHA(g)}</b><span>${esc(awayName(g))}</span></p>
-    ${g.opponent?'':`<p class="warnline">⚠️ No opposition entered for this game. Add who you played so the result makes sense in Results and for followers.</p>
+    ${g.opponent?'':`<p class="warnline">⚠️ No opposition entered for this game. Add who you played so the result makes sense in Results and for supporters.</p>
     <label>Opposition<input id="ftopp" maxlength="40" placeholder="e.g. Riverside" list="ftopps" autocomplete="off"></label><datalist id="ftopps">${opponents().map(o=>`<option value="${esc(o)}"></option>`).join('')}</datalist>`}
     <p class="note">The clock stops at ${tAt(el(g))} and the result counts in today's record. You can reopen the game later if needed.</p>
     <div class="cbtns"><button class="btn" data-act="ftno">Keep playing</button><button class="btn warn" data-act="ftyes">End game</button></div>
@@ -1202,7 +1202,7 @@ function resetAsk(g){
     <p class="ftscore"><span>${esc(homeName(g))}</span><b class="num">${scoreHA(g)}</b><span>${esc(awayName(g))}</span></p>
     <p><b>Cleared:</b> the score, ${isRugby()?'tries and kicks':'goals'}, cards, subs and the clock. The game goes back to Not started.</p>
     <p><b>Kept:</b> the line-up, opponent, kick-off time and pitch.</p>
-    <p class="note">It changes on every coach's phone and for followers. You can undo it straight afterwards.</p>
+    <p class="note">It changes on every coach's phone and for supporters. You can undo it straight afterwards.</p>
     <div class="cbtns"><button class="btn" data-act="gameresetno">Cancel</button><button class="btn warn" data-act="gameresetyes">Reset game</button></div>
   </div></div>`;
 }

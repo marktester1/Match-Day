@@ -28,8 +28,8 @@ async function teamWithLink() {
   await coach.createTeam(TEAM, SQUAD);
   joined = true;
   await coach.menu();
-  await coach.tapTextLike(/^Create a follower link/);
-  await coach.toast('Follower link ready.');
+  await coach.tapTextLike(/^Create a supporters' link/);
+  await coach.toast("Supporters' link ready.");
   const link = (await coach.text('.plink')).trim();
   await coach.saved();
   return link;
@@ -40,7 +40,7 @@ test('a follower watches the day from the link, in iPhone Safari', {timeout: 30 
   fp = await phone(1);
   // A link that doesn't exist
   await fp.goto('/?follow=' + 'Zz9'.repeat(8));
-  await fp.until(() => { const t = document.getElementById('view')?.innerText || ''; return t.includes("This link isn't working") && t.includes('Ask the coach for the new follower link.'); }, 'the dead-link message', 30000);
+  await fp.until(() => { const t = document.getElementById('view')?.innerText || ''; return t.includes("This link isn't working") && t.includes("Ask the coach for the new supporters' link."); }, 'the dead-link message', 30000);
 
   // The coach makes a team and a follower link before any games are set up
   const link = await teamWithLink();
@@ -144,7 +144,7 @@ test('a new follower link replaces the old one, in iPhone Safari', {timeout: 15 
   // the old one stops working at once, the new one works
   await coach.tapText('Make a new link');
   await coach.tapText('Tap again: the old link stops working');
-  await coach.toast('Follower link ready.');
+  await coach.toast("Supporters' link ready.");
   await coach.until(l => (document.querySelector('.plink')?.textContent || '').trim() !== l, 'a new link', 20000, link);
   const link2 = (await coach.text('.plink')).trim();
   await fp.until(() => document.getElementById('view')?.textContent.includes("This link isn't working"), 'the old link to stop', 30000);

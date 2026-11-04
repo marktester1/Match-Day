@@ -61,8 +61,8 @@ test('a coach runs a whole match day in iPhone Safari', {timeout: 30 * 60000}, (
   const code = await c.inviteCode();
   assert.match(code, /^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
   await c.menu();
-  await c.tapTextLike(/^Create a follower link/);
-  await c.toast('Follower link ready.');
+  await c.tapTextLike(/^Create a supporters' link/);
+  await c.toast("Supporters' link ready.");
   const link = (await c.text('.plink')).trim();
   assert.match(link, /\?follow=[A-Za-z0-9]{24}$/);
   await c.saved();

@@ -36,14 +36,14 @@ test('a follower watches the day from the link', async ({page, browser}, info) =
     // A link that doesn't exist
     await fp.goto('/?follow=' + 'Zz9'.repeat(8));
     await expect(fview).toContainText("This link isn't working", {timeout: 30000});
-    await expect(fview).toContainText('Ask the coach for the new follower link.');
+    await expect(fview).toContainText("Ask the coach for the new supporters' link.");
 
     // The coach makes a team and a follower link before any games are set up
     await coach.createTeam(TEAM, SQUAD);
     joined = true;
     await coach.press(page.locator('#menubtn'));
-    await coach.press(coach.view.getByRole('button', {name: /Create a follower link/}));
-    await coach.toast('Follower link ready.');
+    await coach.press(coach.view.getByRole('button', {name: /Create a supporters' link/}));
+    await coach.toast("Supporters' link ready.");
     const link = (await coach.view.locator('.plink').textContent()).trim();
     await coach.saved();
     await coach.press(page.locator('[data-act=menuclose]'));
@@ -159,8 +159,8 @@ test('a new follower link replaces the old one', async ({page, browser}, info) =
     await coach.createTeam(TEAM, SQUAD);
     joined = true;
     await coach.press(page.locator('#menubtn'));
-    await coach.press(coach.view.getByRole('button', {name: /Create a follower link/}));
-    await coach.toast('Follower link ready.');
+    await coach.press(coach.view.getByRole('button', {name: /Create a supporters' link/}));
+    await coach.toast("Supporters' link ready.");
     const link = (await coach.view.locator('.plink').textContent()).trim();
     await coach.saved();
     await fp.goto(link);
@@ -168,7 +168,7 @@ test('a new follower link replaces the old one', async ({page, browser}, info) =
     // the old one stops working at once, the new one works
     await coach.press(coach.btn('Make a new link'));
     await coach.press(coach.btn('Tap again: the old link stops working'));
-    await coach.toast('Follower link ready.');
+    await coach.toast("Supporters' link ready.");
     await expect(coach.view.locator('.plink')).not.toHaveText(link);
     const link2 = (await coach.view.locator('.plink').textContent()).trim();
     await expect(fview).toContainText("This link isn't working", {timeout: 30000});
