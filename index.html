@@ -382,7 +382,7 @@ body:has(input:focus,textarea:focus,select:focus) .fb{visibility:hidden;transiti
 <a id="feedback" class="fb" href="mailto:markdavidmileswork@gmail.com?subject=Match%20Day%20feedback" aria-label="Send feedback by email">💬 Feedback</a>
 
 <script>
-const APP_VERSION='0.28.2';
+const APP_VERSION='0.28.3';
 // Feedback by email, with the app version and phone type filled in (never the team's or players' details)
 {const fb=document.getElementById('feedback'),dev=(navigator.userAgent.match(/\(([^)]+)\)/)||[])[1]||'';
   fb.href='mailto:markdavidmileswork@gmail.com?subject='+encodeURIComponent('Match Day feedback')+'&body='+
@@ -1190,8 +1190,23 @@ function gameView(id){
     <div class="rows">${subs.map(e=>`<div class="row"><span class="at num">${tAt(e.at)}</span><span class="txt"><span class="onn">▲ ${esc(nameOf(e.on))}</span> &nbsp;<span class="off">▼ ${esc(nameOf(e.off))}</span>${e.gk?' <span class="note">(in goal)</span>':''}</span></div>`).join('')}</div></section>`:''}
   ${selection}${late}
   ${S.fix===id?fixPanel(id,g,st):''}
+  ${st||g.done?`<button class="btn quiet" data-act="gamereset">Reset this game…</button>`:''}
+  ${S.askReset===id?resetAsk(g):''}
   </div>`;
 }
+
+/* ---------- reset one game (after playing around, or a false start): asks first, then Undo ---------- */
+function resetAsk(g){
+  return `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="rsq"><div class="box">
+    <h3 id="rsq">Reset game ${g.n}?</h3>
+    <p class="ftscore"><span>${esc(homeName(g))}</span><b class="num">${scoreHA(g)}</b><span>${esc(awayName(g))}</span></p>
+    <p><b>Cleared:</b> the score, ${isRugby()?'tries and kicks':'goals'}, cards, subs and the clock. The game goes back to Not started.</p>
+    <p><b>Kept:</b> the line-up, opponent, kick-off time and pitch.</p>
+    <p class="note">It changes on every coach's phone and for followers. You can undo it straight afterwards.</p>
+    <div class="cbtns"><button class="btn" data-act="gameresetno">Cancel</button><button class="btn warn" data-act="gameresetyes">Reset game</button></div>
+  </div></div>`;
+}
+const KEEP_ON_RESET=['opponent','team','time','pitch','side','size','gk','starters','bench']; // the set-up, not what happened
 function minutesView(){
   if(!S.squad.length)return `<div class="empty"><b>No squad yet</b>Add the players on the Squad tab and their playing time will add up here.</div>`;
   const per=gids().map(id=>({g:G(id),m:mins(G(id)),k:G(id)})),gl=goalTally(per.map(x=>x.g));
@@ -1794,6 +1809,11 @@ document.addEventListener('click',e=>{
     case'ftyes':{const fid=S.askFt;S.askFt=null;if(!fid)break;const g=G(fid),opp=(document.getElementById('ftopp')?.value||'').trim().slice(0,40);
       withUndo(fid,`Full time · ${opp&&!g.opponent?homeName({...g,opponent:opp}):homeName(g)} ${scoreHA(g)} ${opp&&!g.opponent?awayName({...g,opponent:opp}):awayName(g)}`);mut(fid,g=>{g.clock.acc=el(g);g.clock.running=false;g.done=true;if(opp&&!g.opponent)g.opponent=opp});break}
     case'ftno':S.askFt=null;render();break;
+    case'gamereset':S.pick=null;S.askReset=id;render();break;
+    case'gameresetno':S.askReset=null;render();break;
+    case'gameresetyes':{const rid=S.askReset;S.askReset=null;if(!rid)break;
+      withUndo(rid,`Game ${G(rid).n} reset`);S.scorer=null;S.rpick=null;S.qp=null;
+      mut(rid,g=>{const n=blank(g.n);for(const k of KEEP_ON_RESET)if(g[k]!==undefined)n[k]=structuredClone(g[k]);for(const k of Object.keys(g))delete g[k];Object.assign(g,n)});break}
     case'undoact':undoAction();break;
     case'reopen':mut(id,g=>{g.done=false});break;
     case'role':{const r=b.dataset.r,g=G(id);
