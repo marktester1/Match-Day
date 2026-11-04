@@ -17,7 +17,7 @@ test('the feedback button opens an email with the version and phone, and hides w
   // an email to us, with the version and a screenshot hint
   const href = decodeURIComponent(await fb.getAttribute('href'));
   const version = await page.evaluate(() => APP_VERSION);
-  expect(href).toMatch(/^mailto:markdavidmileswork@gmail\.com\?subject=Match Day feedback&body=/);
+  expect(href).toMatch(/^mailto:hello@matchday-app\.uk\?subject=Match Day feedback&body=/);
   expect(href).toContain(`Match Day ${version} (beta)`);
   expect(href).toContain('attach one to this email');
 

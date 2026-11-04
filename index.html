@@ -379,17 +379,17 @@ body:has(input:focus,textarea:focus,select:focus) .fb{visibility:hidden;transiti
   <main id="view"></main>
 </div>
 <div id="toast" hidden></div>
-<a id="feedback" class="fb" href="mailto:markdavidmileswork@gmail.com?subject=Match%20Day%20feedback" aria-label="Send feedback by email">💬 Feedback</a>
+<a id="feedback" class="fb" href="mailto:hello@matchday-app.uk?subject=Match%20Day%20feedback" aria-label="Send feedback by email">💬 Feedback</a>
 
 <script>
-const APP_VERSION='0.28.4';
+const APP_VERSION='0.28.5';
 // Feedback by email, with the app version and phone type filled in (never the team's or players' details)
 {const fb=document.getElementById('feedback'),dev=(navigator.userAgent.match(/\(([^)]+)\)/)||[])[1]||'';
-  fb.href='mailto:markdavidmileswork@gmail.com?subject='+encodeURIComponent('Match Day feedback')+'&body='+
+  fb.href='mailto:hello@matchday-app.uk?subject='+encodeURIComponent('Match Day feedback')+'&body='+
     encodeURIComponent('\n\n\n—\nA screenshot helps: attach one to this email.\nMatch Day '+APP_VERSION+(/beta|localhost|127\.0\.0\.1/.test(location.hostname)?' (beta)':'')+'\n'+dev);
   // The email app takes over the screen; thank them when they come back. If nothing opened, say where to write.
   let away=false,asked=0;
-  fb.addEventListener('click',()=>{asked=Date.now();away=false;setTimeout(()=>{if(asked&&!away){asked=0;toast('No email app? Write to markdavidmileswork@gmail.com')}},2500)});
+  fb.addEventListener('click',()=>{asked=Date.now();away=false;setTimeout(()=>{if(asked&&!away){asked=0;toast('No email app? Write to hello@matchday-app.uk')}},2500)});
   addEventListener('blur',()=>{if(asked)away=true});
   addEventListener('focus',()=>{if(asked&&away){asked=0;toast('Thanks for your feedback! We read every message.')}})}
 /*CFG*/const DEFAULT_CFG={team:'Example Team U10s',short:'Example Team',size:5};/*END*/
