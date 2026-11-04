@@ -23,7 +23,7 @@ const BETA = {
   appId: "1:67324947064:web:f6d0ebd9ca7a5425b71b8d"
 };
 
-const LIVE_HOSTS = ["match-day-17b23.web.app", "match-day-17b23.firebaseapp.com"];
+const LIVE_HOSTS = ["app.matchday-app.uk", "match-day-17b23.web.app", "match-day-17b23.firebaseapp.com"];
 
 export const ENV = LIVE_HOSTS.includes(location.hostname) ? "live" : "beta";
 export default ENV === "live" ? LIVE : BETA;
