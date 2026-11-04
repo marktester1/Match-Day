@@ -63,7 +63,11 @@ jobs:
           DENSITY: ${{ matrix.density }}
       - name: Start it
         run: |
-          nohup $ANDROID_HOME/emulator/emulator -avd phone -no-window -gpu swiftshader_indirect -feature -Vulkan -no-snapshot -noaudio -no-boot-anim > emulator.log 2>&1 &
+          # The emulator and adb's server both vanished together a few minutes into the tests, with no
+          # error: run each in its own session, detached from this step, and note when the emulator goes
+          setsid adb start-server
+          setsid nohup $ANDROID_HOME/emulator/emulator -avd phone -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim > emulator.log 2>&1 < /dev/null &
+          setsid nohup sh -c 'sleep 20; while pgrep -f qemu-system >/dev/null; do sleep 2; done; date -u +"emulator gone at %H:%M:%S"; ps -ef | tail -40' > emu-watch.log 2>&1 < /dev/null &
           adb wait-for-device
           for i in $(seq 120); do [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = 1 ] && break; sleep 3; done
           adb shell settings put global window_animation_scale 0
@@ -86,6 +90,7 @@ jobs:
       - name: Why the emulator stopped
         if: failure()
         run: |
+          echo "--- watcher"; cat emu-watch.log || true
           echo "--- is the emulator still running?"; pgrep -af 'qemu-system|emulator' || echo "no emulator process"
           echo "--- adb as it is"; adb devices || true
           echo "--- adb after restarting its server"; adb kill-server || true; adb start-server || true; sleep 3; adb devices || true
