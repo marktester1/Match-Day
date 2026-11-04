@@ -38,6 +38,10 @@ jobs:
       - run: npm ci
       # The newest iPhone driver needs Appium 4; this is the one these tests were written against
       - run: APPIUM_HOME=./.appium npx appium driver install xcuitest@12.18.1
+      # Build Apple's test helper (WebDriverAgent) now: built inside the first test, it took over 10
+      # minutes on GitHub's Mac and the connection gave up. Later builds reuse this one.
+      - name: Build WebDriverAgent
+        run: APPIUM_HOME=./.appium npx appium driver run xcuitest build-wda
       - name: Choose three iPhone simulators
         run: |
           SIMS=$(xcrun simctl list devices available -j | node -e "
