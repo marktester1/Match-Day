@@ -316,6 +316,19 @@ decide: football grassroots sin bins (below).
   OAuth redirect URIs, update LIVE_HOSTS in firebase-config.js, Lemon Squeezy's links, the parent
   link addresses, and the release checks. Keep the old address redirecting so existing home-screen
   icons and parent links keep working.
+- **Move coaches to app.matchday-app.uk (plan agreed 4 Nov 2026).** The new address works (live data,
+  Google sign-in authorised), but each address has its own storage on a phone, so opening it signs the
+  phone out: accounts (Google/email) come back by signing in; anonymous coaches can only rejoin with the
+  invite code and another coach accepting, and a team's only anonymous coach couldn't get back in.
+  1. Build a **handover**: the app on the old address offers "Move to the new address"; a Cloud Function
+     mints a one-time sign-in for the same user, and the new address opens already signed in to the same
+     teams (no account needed). Same for followers' links. Beta first (beta needs its own new address too,
+     e.g. beta.matchday-app.uk, to test it).
+  2. Release it; then point the website's buttons at app.matchday-app.uk, and have the old address
+     offer (not force) the move.
+  3. **Never redirect or switch off** match-day-17b23.web.app: home-screen icons and old supporter links
+     keep working. Website links stay on the old address until step 1 is live.
+  Do it before the public launch, monetisation and app store listings, so they all use the new address.
 - **Email: hello@matchday-app.uk set up 4 Nov 2026** (Cloudflare Email Routing, forwarding to the Gmail
   inbox; receive only). The app's feedback button, privacy.html, terms.html and the website use it from
   v0.28.5. Still to do: if replies should come *from* hello@, add a sending service (Gmail "Send mail as"
