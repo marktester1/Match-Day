@@ -54,7 +54,7 @@ jobs:
         run: |
           IFS=, read -r A B _ <<< "$SIMS"
           for n in "$A" "$B"; do xcrun simctl boot "$n" || true; done
-          for n in "$A" "$B"; do timeout 900 xcrun simctl bootstatus "$n" -b; done
+          for n in "$A" "$B"; do xcrun simctl bootstatus "$n" -b; done   # the job's own time limit stops a stuck one
       - name: Serve this commit on localhost:8000
         working-directory: .
         run: python3 -m http.server 8000 >/dev/null 2>&1 &

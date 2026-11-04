@@ -82,6 +82,14 @@ jobs:
           ANDROID: 1
           ANDROID_PHONE: ${{ matrix.phone }}
           MATCHDAY_URL: http://127.0.0.1:8000
+      # The emulator has been shutting down part-way through: its own log and memory say why
+      - name: Why the emulator stopped
+        if: failure()
+        run: |
+          adb devices || true
+          free -m || true
+          tail -60 emulator.log || true
+          sudo dmesg | grep -iE 'killed process|out of memory' | tail -5 || true
       # Screenshots and page snapshots only: the repository is public, and traces hold sign-in tokens
       - name: Keep the screenshots of any failure
         if: failure()

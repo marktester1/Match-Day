@@ -383,7 +383,7 @@ body:has(input:focus,textarea:focus,select:focus) .fb{visibility:hidden;transiti
 <a id="feedback" class="fb" href="mailto:hello@matchday-app.uk?subject=Match%20Day%20feedback" aria-label="Send feedback by email">💬 Feedback</a>
 
 <script>
-const APP_VERSION='0.28.8';
+const APP_VERSION='0.28.9';
 // Feedback by email, with the app version and phone type filled in (never the team's or players' details)
 {const fb=document.getElementById('feedback'),dev=(navigator.userAgent.match(/\(([^)]+)\)/)||[])[1]||'';
   fb.href='mailto:hello@matchday-app.uk?subject='+encodeURIComponent('Match Day feedback')+'&body='+
@@ -1149,7 +1149,7 @@ function gameView(id){
   </div>
   <div class="meta">
     <label><span class="lbl">Kick-off</span><input id="time-${id}" data-field="time" value="${esc(g.time)}" placeholder="9:30"></label>
-    <label><span class="lbl">Pitch</span><input id="pitch-${id}" data-field="pitch" value="${esc(g.pitch)}" placeholder="2"></label>
+    <label><span class="lbl">Pitch</span><input id="pitch-${id}" data-field="pitch" maxlength="10" value="${esc(g.pitch)}" placeholder="2"></label>
   </div>
   <section class="board" aria-label="Score">
     ${scoreSide(g,isAway(g)?'them':'us')}
@@ -1360,7 +1360,7 @@ function fixtureRows(){
     <b class="num" style="font-family:var(--display);font-size:20px;width:28px">${g.n}</b>
     <input id="fx-t-${id}" data-fx="${id}|time" value="${esc(g.time)}" placeholder="9:30" style="width:76px" aria-label="Game ${g.n} kick-off">
     <input id="fx-o-${id}" data-fx="${id}|opponent" value="${esc(g.opponent)}" placeholder="Opponent" list="opps" style="flex:1;min-width:120px" aria-label="Game ${g.n} opponent">
-    <input id="fx-p-${id}" data-fx="${id}|pitch" value="${esc(g.pitch)}" placeholder="Pitch" style="width:64px" aria-label="Game ${g.n} pitch">
+    <input id="fx-p-${id}" data-fx="${id}|pitch" maxlength="10" value="${esc(g.pitch)}" placeholder="Pitch" style="width:64px" aria-label="Game ${g.n} pitch">
     <span class="seg hs" role="group" aria-label="Game ${g.n}: home or away">${[['home','Home'],['away','Away']].map(([v,l])=>`<button class="${(isAway(g)?'away':'home')===v?'on':''}" data-act="fxside" data-g="${id}" data-v="${v}" aria-pressed="${(isAway(g)?'away':'home')===v}">${l}</button>`).join('')}</span>
   </div>`}).join('')}</div>`;
 }
@@ -1587,7 +1587,7 @@ function parseFixtures(text){
   return lines.map(l=>{
     let time='',pitch='',rest=l;
     const tm=rest.match(/\b(\d{1,2})[:.](\d{2})\s*(am|pm)?/i);if(tm){time=tm[1]+':'+tm[2];rest=rest.replace(tm[0],' ')}
-    const pm=rest.match(/\(?\s*(?:pitch|pt)\s*([A-Za-z0-9]+)\s*\)?/i)||rest.match(/\bP(\d+)\b/);if(pm){pitch=pm[1];rest=rest.replace(pm[0],' ')}
+    const pm=rest.match(/\(?\s*(?:pitch|pt)\s*([A-Za-z0-9]+)\s*\)?/i)||rest.match(/\bP(\d+)\b/);if(pm){pitch=pm[1].slice(0,10);rest=rest.replace(pm[0],' ')}
     rest=rest.replace(/[()\[\]|]/g,' ');
     let parts=rest.split(/\s+(?:vs\.?|v\.?|versus|-|–)\s+/i).map(x=>x.trim()).filter(Boolean);
     let opp=parts.length>1?(parts.find(x=>!short||!x.toLowerCase().includes(short))||parts[1]):(parts[0]||'');
@@ -1745,7 +1745,7 @@ function seasonView(){
   const rows=[...ppl].map(([id,name])=>({id,name,t:tot[id]||0,n:gp[id]||0,a:ac[id]||0})).sort((a,b)=>a.t-b.t);
   const max=Math.max(1,...rows.map(r=>r.t)),avg=rows.length?rows.reduce((s,r)=>s+r.t,0)/rows.length:0;
   return `<div class="sec" style="gap:14px">
-  ${ts.length?`<div class="summary num"><span>Tournaments <b>${ts.length}</b></span><span>W <b>${all.W}</b> · D <b>${all.D}</b> · L <b>${all.L}</b></span><span>${Words().goals}s <b>${all.F}–${all.A}</b></span><span>Awards <b>${S.awards.length}</b> sessions</span></div>`:''}
+  ${ts.length?`<div class="summary num"><span>Tournaments <b>${ts.length}</b></span><span>W <b>${all.W}</b> · D <b>${all.D}</b> · L <b>${all.L}</b></span><span>${Words().goals} <b>${all.F}–${all.A}</b></span><span>Awards <b>${S.awards.length}</b> sessions</span></div>`:''}
   <section class="sec"><h3>Season minutes</h3>
   ${ts.length&&rows.length?`<p class="note">Saved tournaments only, least time first.</p><div class="rows">${rows.map(r=>{const low=avg>0&&r.t<avg*0.8;return `<div class="mrow ${low?'low':''}"><span class="who">${esc(r.name)}${low?'<span class="flag">Needs time</span>':''}</span><span class="tot num">${fmtM(r.t)}</span>
     <span class="bar"><i style="width:${(r.t/max*100).toFixed(1)}%"></i></span><span class="brk num">${r.n} game${r.n===1?'':'s'}${gl[r.id]?` · ${gl[r.id]} goal${gl[r.id]>1?'s':''}`:''}${r.a?` · <span class="star">★${r.a}</span> award${r.a>1?'s':''}`:''}</span></div>`}).join('')}</div>`
