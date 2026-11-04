@@ -219,7 +219,7 @@ function makePhone(b, name) {
       await p.tapText('Enter opponents and kick-off times');
       for (const [i, [t, o, pitch, away]] of list.entries()) {
         await p.enter(`#fx-t-g${i + 1}`, t); await p.enter(`#fx-o-g${i + 1}`, o); await p.enter(`#fx-p-g${i + 1}`, pitch);
-        if (away) { await p.tap(`[data-act=fxside][data-g=g${i + 1}]`); await p.until(g => document.querySelector(`[data-act=fxside][data-g=${g}]`)?.textContent === 'Away', 'away', 20000, `g${i + 1}`); }
+        if (away) { await p.tap(`[data-act=fxside][data-g=g${i + 1}][data-v=away]`); await p.until(g => document.querySelector(`[data-act=fxside][data-g=${g}][data-v=away]`)?.classList.contains('on'), 'away', 20000, `g${i + 1}`); }
       }
       await p.saved();
       await p.tapText('← All games');

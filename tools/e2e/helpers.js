@@ -96,7 +96,7 @@ function app(page, info) {
         await a.enter(`#fx-t-g${i + 1}`, t);
         await a.enter(`#fx-o-g${i + 1}`, o);
         await a.enter(`#fx-p-g${i + 1}`, p);
-        if (away) { await press(page.locator(`[data-act=fxside][data-g=g${i + 1}]`)); await expect(page.locator(`[data-act=fxside][data-g=g${i + 1}]`)).toHaveText('Away'); }
+        if (away) { const aw = page.locator(`[data-act=fxside][data-g=g${i + 1}][data-v=away]`); await press(aw); await expect(aw).toHaveClass(/\bon\b/); }
       }
       await press(btn('← All games'));
     },

@@ -4,7 +4,7 @@
 const {test, expect} = require('./test'); // Playwright's, or real Android Chrome with ANDROID=1
 const {app, cleanUp} = require('./helpers');
 
-const TEAM = 'Claude E2E Wizard U9s', RUGBY = 'Claude E2E Wizard Rugby U8s', LATER = 'Claude E2E Wizard Later U12s';
+const TEAM = 'Claude E2E Wizard U9s', RUGBY = 'Claude E2E Wizard Rugby U8s', LATER = 'Claude E2E Wizard Later U12s', ONE = 'Claude E2E Wizard One Match U10s';
 
 test('quick start survives an interruption, and the next match day reuses the settings', async ({page}, info) => {
   const c = app(page, info), {view, press, btn, toast} = c;
@@ -132,6 +132,7 @@ test('full set-up: rugby, a size of our own, a tournament with fixtures, interru
     // Step 4 of 4: fixtures for two of the three games, then an interruption
     await expect(h2()).toHaveText('Fixtures');
     await expect(view.locator('[data-fx$="|opponent"]')).toHaveCount(3);
+    await expect(page.locator('#fxpaste')).toBeVisible(); // a tournament can paste the organisers' list
     await c.enter('#fx-t-g1', '9:30');
     await c.enter('#fx-o-g1', 'Riverside');
     await c.enter('#fx-o-g2', 'Hillside');
@@ -211,5 +212,64 @@ test('"Do this later" leaves the wizard for good, and Back goes all the way to t
     finished = true;
   } finally {
     await cleanUp(finished, [async () => { if (joined) await c.leave(LATER); }]);
+  }
+});
+
+test('one match: the last step is "Your match", with a Home | Away switch and no fixture list to paste', async ({page}, info) => {
+  const c = app(page, info), {view, press, btn} = c;
+  const h2 = () => view.locator('h2');
+  let joined = false, finished = false;
+  try {
+    await page.goto('/');
+    await page.locator('#mkname').fill('Claude (test coach)');
+    await press(btn('Create a team'));
+    await expect(page.locator('[data-act=wizroute][data-v=full]')).toBeVisible({timeout: 30000});
+    joined = true;
+    await press(page.locator('[data-act=wizroute][data-v=full]'));
+    await page.locator('#cfg-team').fill(ONE);
+    await press(btn('Next'));
+    await page.locator('#bulknames').fill('Ava\nBen\nCal\nDev\nEli');
+    await press(btn('Next'));
+    await expect(h2()).toHaveText('Your match day');
+    await press(btn('Next')); // one match is the default
+
+    await expect(h2()).toHaveText('Your match');
+    await expect(view).toContainText("Who you're playing and when, if you know. Or add it on the day.");
+    await expect(page.locator('#fxpaste')).toHaveCount(0);
+    await expect(view.locator('[data-fx$="|opponent"]')).toHaveCount(1);
+
+    // Both choices on show, Home picked to start with
+    const home = page.locator('[data-act=fxside][data-g=g1][data-v=home]'), away = page.locator('[data-act=fxside][data-g=g1][data-v=away]');
+    await expect(home).toHaveText('Home');
+    await expect(away).toHaveText('Away');
+    await expect(home).toHaveClass(/\bon\b/);
+    await expect(away).not.toHaveClass(/\bon\b/);
+    await expect(home).toHaveAttribute('aria-pressed', 'true');
+    const size = await away.boundingBox();
+    expect(size.height).toBeGreaterThanOrEqual(40); // big enough for a thumb
+
+    // Away picks away; tapping it again keeps it (no flipping back by accident); it survives a reload
+    await c.enter('#fx-o-g1', 'Riverside');
+    await press(away);
+    await expect(away).toHaveClass(/\bon\b/);
+    await expect(home).not.toHaveClass(/\bon\b/);
+    await press(away);
+    await expect(away).toHaveClass(/\bon\b/);
+    await c.saved();
+    await page.reload();
+    await expect(h2()).toHaveText('Your match', {timeout: 30000});
+    await expect(page.locator('[data-act=fxside][data-g=g1][data-v=away]')).toHaveClass(/\bon\b/);
+    await press(btn('Finish'));
+    await expect(h2()).toHaveText('Your match day is ready!');
+    await press(btn('Start match day'));
+    await expect(view.locator('.gcard').nth(0)).toContainText('Riverside');
+
+    // Home again from the Games screen's fixture list
+    await press(btn('Enter opponents and kick-off times'));
+    await press(page.locator('[data-act=fxside][data-g=g1][data-v=home]'));
+    await expect(page.locator('[data-act=fxside][data-g=g1][data-v=home]')).toHaveClass(/\bon\b/);
+    finished = true;
+  } finally {
+    await cleanUp(finished, [async () => { if (joined) await c.leave(ONE); }]);
   }
 });

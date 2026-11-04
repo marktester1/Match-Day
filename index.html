@@ -206,6 +206,7 @@ input[type=date]::-webkit-date-and-time-value{text-align:left}
 .seg button{border:0;background:var(--surface);padding:7px 9px;font-size:13px;font-weight:700;color:var(--muted)}
 .seg button+button{border-left:1px solid var(--line)}
 .seg button.on{background:var(--grass);color:var(--chalk)}
+.seg.hs button{min-height:40px;padding-inline:14px;font-size:14px}
 .seg button.on.b{background:var(--live-bg);color:var(--live)}
 .seg button.on.k{background:var(--gk);color:var(--surface)}
 .log .row{font-size:14px}
@@ -382,7 +383,7 @@ body:has(input:focus,textarea:focus,select:focus) .fb{visibility:hidden;transiti
 <a id="feedback" class="fb" href="mailto:hello@matchday-app.uk?subject=Match%20Day%20feedback" aria-label="Send feedback by email">💬 Feedback</a>
 
 <script>
-const APP_VERSION='0.28.7';
+const APP_VERSION='0.28.8';
 // Feedback by email, with the app version and phone type filled in (never the team's or players' details)
 {const fb=document.getElementById('feedback'),dev=(navigator.userAgent.match(/\(([^)]+)\)/)||[])[1]||'';
   fb.href='mailto:hello@matchday-app.uk?subject='+encodeURIComponent('Match Day feedback')+'&body='+
@@ -1325,11 +1326,12 @@ function setupView(){
     <span class="seg fill" role="group" aria-label="Periods">${[[1,'One period'],[2,'Halves'],[4,'Quarters']].map(([v,l])=>`<button class="${nPer()===v?'on':''}" data-act="periods" data-v="${v}">${l}</button>`).join('')}</span>
     <p class="note">${nPer()>1?`${nPer()===2?'Two halves':'Four quarters'} of ${fmt(perLen())}. The clock pauses by itself at each break.`:'One period, no breaks.'}</p></div>
     ${wizNav(w,'Next',true)}</div>`}
-  if(w.step===4)return `<div class="sec wiz" style="gap:14px">${wizHead(w,'Fixtures')}
-    <p class="note">Optional. Add them now if you know them, or on the day.</p>
+  if(w.step===4){const one=gids().length===1; // one match: just its row; pasting a fixture list is for tournaments
+    return `<div class="sec wiz" style="gap:14px">${wizHead(w,one?'Your match':'Fixtures')}
+    <p class="note">${one?"Optional. Who you're playing and when, if you know. Or add it on the day.":'Optional. Add them now if you know them, or on the day.'}</p>
     ${fixtureRows()}
-    ${fixturePaste()}
-    ${wizNav(w,'Finish',true)}</div>`;
+    ${one?'':fixturePaste()}
+    ${wizNav(w,'Finish',true)}</div>`}
   // step 5: done
   const games=gids().length,opp=gids().filter(id=>G(id).opponent).length;
   return `<div class="sec wiz" style="gap:14px">
@@ -1359,7 +1361,7 @@ function fixtureRows(){
     <input id="fx-t-${id}" data-fx="${id}|time" value="${esc(g.time)}" placeholder="9:30" style="width:76px" aria-label="Game ${g.n} kick-off">
     <input id="fx-o-${id}" data-fx="${id}|opponent" value="${esc(g.opponent)}" placeholder="Opponent" list="opps" style="flex:1;min-width:120px" aria-label="Game ${g.n} opponent">
     <input id="fx-p-${id}" data-fx="${id}|pitch" value="${esc(g.pitch)}" placeholder="Pitch" style="width:64px" aria-label="Game ${g.n} pitch">
-    <button class="x" data-act="fxside" data-g="${id}" aria-label="Game ${g.n}: we are ${isAway(g)?'away':'home'}. Tap to change.">${isAway(g)?'Away':'Home'}</button>
+    <span class="seg hs" role="group" aria-label="Game ${g.n}: home or away">${[['home','Home'],['away','Away']].map(([v,l])=>`<button class="${(isAway(g)?'away':'home')===v?'on':''}" data-act="fxside" data-g="${id}" data-v="${v}" aria-pressed="${(isAway(g)?'away':'home')===v}">${l}</button>`).join('')}</span>
   </div>`}).join('')}</div>`;
 }
 function fixturePaste(){
@@ -1837,7 +1839,7 @@ document.addEventListener('click',e=>{
     case'google':b.disabled=true;googleSignIn().finally(()=>{b.disabled=false});break;
     case'signout':if(S.confirm==='signout-force'){S.confirm=null;signOutAccount(true)}else if(S.confirm==='signout'){b.disabled=true;b.textContent='Signing out…';signOutAccount()}else{S.confirm='signout';render()}break;
     case'side':mut(id,g=>{g.side=b.dataset.v==='away'?'away':'home'});break;
-    case'fxside':mut(b.dataset.g,g=>{g.side=isAway(g)?'home':'away'});break;
+    case'fxside':{const v=b.dataset.v==='away'?'away':'home';if((isAway(G(b.dataset.g))?'away':'home')!==v)mut(b.dataset.g,g=>{g.side=v});break}
     case'notedone':S.notes=S.notes.map(n=>n.id===b.dataset.id?{...n,done:!n.done}:n);saveNotes();break;
     case'notedel':{const k='nd-'+b.dataset.id;if(S.confirm===k){S.confirm=null;S.notes=S.notes.filter(n=>n.id!==b.dataset.id);saveNotes()}else{S.confirm=k;render()}break}
     case'notesdone':S.showDone=!S.showDone;render();break;
