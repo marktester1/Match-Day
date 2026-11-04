@@ -3,9 +3,10 @@
     "site": "matchday-website-preview",
     "public": ".",
     "ignore": [
-      "firebase.json",
+      "**/.*",
       ".firebaserc",
-      "**/.*"
+      "firebase.json",
+      "firebase.live.json"
     ],
     "cleanUrls": true,
     "headers": [
