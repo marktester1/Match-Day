@@ -316,14 +316,12 @@ decide: football grassroots sin bins (below).
   OAuth redirect URIs, update LIVE_HOSTS in firebase-config.js, Lemon Squeezy's links, the parent
   link addresses, and the release checks. Keep the old address redirecting so existing home-screen
   icons and parent links keep working.
-- **An email address on the domain** (e.g. hello@ or support@matchday-app.uk), so coaches don't see a
-  personal Gmail address. Questions: receive only, or send from it too?
-  - Receive only, free: Cloudflare Email Routing forwards it to the Gmail inbox.
-  - Send and receive: a mailbox from Google Workspace, Zoho Mail, Fastmail or iCloud+ (custom domain).
-    Set the domain's SPF, DKIM and DMARC records so replies don't land in spam.
-  - Then use it for: the feedback button, privacy.html and terms.html contact lines, the website
-    footer, Firebase's sign-in emails (password reset sent from the domain), app store listings and
-    the payment provider. The user sets up the mail account and its password themselves.
+- **Email: hello@matchday-app.uk set up 4 Nov 2026** (Cloudflare Email Routing, forwarding to the Gmail
+  inbox; receive only). The app's feedback button, privacy.html, terms.html and the website use it from
+  v0.28.5. Still to do: if replies should come *from* hello@, add a sending service (Gmail "Send mail as"
+  through a mail provider's SMTP, or a mailbox from Zoho, Fastmail, Google Workspace or iCloud+) and a
+  DMARC record (`_dmarc` TXT, start with `v=DMARC1; p=none`). Then Firebase's sign-in emails, app store
+  listings and the payment provider.
 
 ## Later
 
