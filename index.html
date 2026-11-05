@@ -383,7 +383,7 @@ body:has(input:focus,textarea:focus,select:focus) .fb{visibility:hidden;transiti
 <a id="feedback" class="fb" href="mailto:hello@matchday-app.uk?subject=Match%20Day%20feedback" aria-label="Send feedback by email">💬 Feedback</a>
 
 <script>
-const APP_VERSION='0.28.10';
+const APP_VERSION='0.28.11';
 // Feedback by email, with the app version and phone type filled in (never the team's or players' details)
 {const fb=document.getElementById('feedback'),dev=(navigator.userAgent.match(/\(([^)]+)\)/)||[])[1]||'';
   fb.href='mailto:hello@matchday-app.uk?subject='+encodeURIComponent('Match Day feedback')+'&body='+
@@ -435,6 +435,12 @@ function atBreak(g){ // paused exactly at the end of a half/quarter that isn't t
   if(nPer()===1||g.clock.running||g.done)return 0;const e=el(g),k=Math.round(e/perLen());
   return k>0&&k<nPer()&&Math.abs(e-k*perLen())<500?k:0;
 }
+// The referee can blow for half time before the clock gets there: "Half time" (or "End of Q1") moves
+// the clock to the break, so the next half or quarter starts at the right time. Not in the last period.
+const perEnd=g=>(Math.floor(el(g)/perLen()+1e-9)+1)*perLen();
+const endPerBtn=g=>{if(nPer()===1||g.done||!started(g)||atBreak(g))return'';const p=Math.floor(el(g)/perLen()+1e-9);
+  return p<nPer()-1?`<button class="btn" data-act="endper">${nPer()===2?'Half time':'End of Q'+(p+1)}</button>`:''};
+const fullLen=()=>(S.tour.len||10)*60000;
 const tAt=ms=>nPer()===1?fmt(ms):perShort(perOf(ms))+' '+fmt(ms-perOf(ms)*perLen()); // e.g. "2H 3:24"
 const clockText=g=>{const e=el(g);return nPer()===1?fmt(e):fmt(e-perOf(e)*perLen())};
 const clockSub=g=>{if(nPer()===1)return 'of '+fmt((S.tour.len||10)*60000);const b=atBreak(g);
@@ -886,13 +892,16 @@ function quickPick(g,q){
 
 /* ---------- full time: confirm, showing the final score ---------- */
 function ftAsk(g){
+  const e=el(g),short=fullLen()-e>=30000; // stopped half a minute or more before the end
   return `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="ftq"><div class="box">
     <h3 id="ftq">End game ${g.n}?</h3>
     <p class="ftscore"><span>${esc(homeName(g))}</span><b class="num">${scoreHA(g)}</b><span>${esc(awayName(g))}</span></p>
     ${g.opponent?'':`<p class="warnline">⚠️ No opposition entered for this game. Add who you played so the result makes sense in Results and for supporters.</p>
     <label>Opposition<input id="ftopp" maxlength="40" placeholder="e.g. Riverside" list="ftopps" autocomplete="off"></label><datalist id="ftopps">${opponents().map(o=>`<option value="${esc(o)}"></option>`).join('')}</datalist>`}
-    <p class="note">The clock stops at ${tAt(el(g))} and the result counts in today's record. You can reopen the game later if needed.</p>
-    <div class="cbtns"><button class="btn" data-act="ftno">Keep playing</button><button class="btn warn" data-act="ftyes">End game</button></div>
+    ${short?`<p class="note">The clock shows <b>${fmt(e)}</b> of ${fmt(fullLen())}. If the game ran the full time, end it at ${fmt(fullLen())}: players on the pitch get their minutes up to then.</p>`
+      :`<p class="note">The clock stops at ${tAt(e)} and the result counts in today's record.</p>`}
+    <p class="note">You can reopen the game, or change the match time, afterwards.</p>
+    <div class="cbtns"><button class="btn" data-act="ftno">Keep playing</button>${short?`<button class="btn warn" data-act="ftyes">End at ${fmt(e)}</button><button class="btn warn" data-act="ftyes" data-full="1">End at ${fmt(fullLen())}</button>`:'<button class="btn warn" data-act="ftyes">End game</button>'}</div>
   </div></div>`;
 }
 
@@ -1019,7 +1028,7 @@ function render(){
   if(S.gate){keepSetup(()=>{v.innerHTML=gateView()});if(S.syncOpen)v.insertAdjacentHTML('afterbegin',syncPanel());return}
   if(S.teams){v.innerHTML=teamsView();return}
   if(S.adminOpen){v.innerHTML=adminView();return}
-  if(S.menu){v.innerHTML=menuView();if(S.syncOpen)v.insertAdjacentHTML('afterbegin',syncPanel());return}
+  if(S.menu){keepSetup(()=>{v.innerHTML=menuView()});if(S.syncOpen)v.insertAdjacentHTML('afterbegin',syncPanel());return}
   if(inWizard()){keepSetup(()=>{v.innerHTML=setupView()});return} // updates arriving mid-typing mustn't wipe it
   const keepRpt=document.getElementById('rpttext')?.value; // a half-written report survives redraws
   const keepOpp=document.getElementById('ftopp')?.value;
@@ -1119,9 +1128,10 @@ function gameView(id){
   let hint='';
   if(pk)hint=`<div class="hint">${pk.side==='pitch'?`<b>${esc(nameOf(pk.p))}</b> selected. Tap a bench player to swap${pk.p===k?', or a pitch player to hand over the gloves':''}.`:`Bringing on <b>${esc(nameOf(pk.p))}</b>. Tap who's coming off.`} <button class="x" data-act="cancel">Cancel</button></div>`;
   else if(pitch.length)hint=`<div class="hint quiet">${st?'Tap a player to make a sub (or drag one onto another).':'Tap a player to swap them in or out of the starting line-up.'}</div>`;
-  const cb=g.done?`<button class="btn" data-act="reopen">Reopen game</button>`
-    :g.clock.running?`<button class="btn" data-act="pause">Pause</button><button class="btn warn" data-act="ft">Full time</button>`
-    :st?`<button class="btn go" data-act="kick">${atBreak(g)?'Start '+perName(atBreak(g)):'Resume'}</button><button class="btn warn" data-act="ft">Full time</button>`
+  const brk=endPerBtn(g);
+  const cb=g.done?`<button class="btn" data-act="reopen">Reopen game</button><button class="btn" data-act="fixclock">Change match time</button>`
+    :g.clock.running?`<button class="btn" data-act="pause">Pause</button>${brk}<button class="btn warn" data-act="ft">Full time</button>`
+    :st?`<button class="btn go" data-act="kick">${atBreak(g)?'Start '+perName(atBreak(g)):'Resume'}</button>${brk}<button class="btn warn" data-act="ft">Full time</button>`
     :`<button class="btn go" data-act="kick" ${g.starters.length?'':'disabled'}>Kick off</button>`;
   const selection=!st?`<section class="sec"><h3>Who's playing</h3>
     ${S.squad.length?`<div class="rows">${S.squad.map(p=>{const r=g.gk===p.id?'gk':g.starters.includes(p.id)?'start':g.bench.includes(p.id)?'bench':'out';
@@ -1765,7 +1775,7 @@ function seasonView(){
 
 /* ---------- actions ---------- */
 function keepSetup(fn){ // re-draw the set-up screen without losing what's been typed into it
-  const keep={};['cfg-team','cfg-short','cfg-size','wizsize','bulknames','joinname','joincode','mkname'].forEach(x=>{const e=document.getElementById(x);if(e)keep[x]=e.value});
+  const keep={};['cfg-team','cfg-short','cfg-size','wizsize','bulknames','joinname','joincode','mkname','acctemail','acctpw'].forEach(x=>{const e=document.getElementById(x);if(e)keep[x]=e.value});
   fn();Object.entries(keep).forEach(([x,v])=>{const e=document.getElementById(x);if(e)e.value=v});
 }
 document.addEventListener('click',e=>{
@@ -1808,8 +1818,12 @@ document.addEventListener('click',e=>{
     case'gkcancel':S.askGk=null;render();break;
     case'pause':withUndo(id,'Clock paused');mut(id,g=>{g.clock.acc=el(g);g.clock.running=false});break;
     case'ft':S.pick=null;S.askFt=id;render();break;
+    case'endper':{const g=G(id);if(!endPerBtn(g))break;const p=Math.floor(el(g)/perLen()+1e-9),end=perEnd(g),lbl=nPer()===2?'Half time':`End of Q${p+1}`;
+      withUndo(id,lbl);mut(id,g=>{g.clock.acc=end;g.clock.running=false});toast(`${lbl} in game ${g.n}. The clock is at ${fmt(end)}.`);break}
+    case'fixclock':{const o=fixOpen();o.clock=true;o.min=false;lsSet('matchday-fixopen',JSON.stringify(o));S.fix=id;render();
+      setTimeout(()=>{document.querySelector('.fix')?.scrollIntoView({behavior:'smooth',block:'start'});document.getElementById('clkset')?.focus()},0);break}
     case'ftyes':{const fid=S.askFt;S.askFt=null;if(!fid)break;const g=G(fid),opp=(document.getElementById('ftopp')?.value||'').trim().slice(0,40);
-      withUndo(fid,`Full time · ${opp&&!g.opponent?homeName({...g,opponent:opp}):homeName(g)} ${scoreHA(g)} ${opp&&!g.opponent?awayName({...g,opponent:opp}):awayName(g)}`);mut(fid,g=>{g.clock.acc=el(g);g.clock.running=false;g.done=true;if(opp&&!g.opponent)g.opponent=opp});break}
+      withUndo(fid,`Full time · ${opp&&!g.opponent?homeName({...g,opponent:opp}):homeName(g)} ${scoreHA(g)} ${opp&&!g.opponent?awayName({...g,opponent:opp}):awayName(g)}`);const full=b.dataset.full==='1'&&el(g)<fullLen();mut(fid,g=>{g.clock.acc=full?fullLen():el(g);g.clock.running=false;g.done=true;if(opp&&!g.opponent)g.opponent=opp});break}
     case'ftno':S.askFt=null;render();break;
     case'gamereset':S.pick=null;S.askReset=id;render();break;
     case'gameresetno':S.askReset=null;render();break;

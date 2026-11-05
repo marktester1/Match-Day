@@ -75,3 +75,50 @@ test('goal times can be corrected in the game and in saved results', async ({pag
     await cleanUp(finished, [async () => { if (joined) await c.leave(TEAM); }]);
   }
 });
+
+test('Half time can be tapped early, and Full time can end the game at its full length', async ({page}, info) => {
+  await page.clock.install();
+  const c = app(page, info), {view, press, btn, modal, toast} = c;
+  const T = 'Claude E2E Half Time U10s';
+  let joined = false, finished = false;
+  try {
+    await c.createTeam(T, SQUAD);
+    joined = true;
+    await c.setUpGames({len: '20', count: '1', periods: '2'});
+    await c.openGame(1);
+    await c.pickTeam('Ava', ['Ben', 'Cal', 'Dev', 'Eli'], ['Fay']);
+    await c.saved();
+    await expect(btn('Half time')).toHaveCount(0); // nothing to end before kick-off
+    await press(btn('Kick off'));
+    await c.saved();
+
+    // The referee blows at 7 minutes: Half time puts the clock at 10:00, so the 2nd half starts there
+    await page.clock.fastForward(7 * 60000);
+    await press(btn('Half time'));
+    await toast('Half time in game 1. The clock is at 10:00.');
+    await expect(c.pill()).toHaveText('Half time');
+    await expect(btn('Half time')).toHaveCount(0);
+    await press(btn('Start 2nd half'));
+    await expect(btn('Half time')).toHaveCount(0); // not in the last period
+    await c.saved();
+
+    // Full time after 3 more minutes: the pop-up offers 13:00 as it is, or the full 20:00
+    await page.clock.fastForward(3 * 60000);
+    await press(btn('Full time'));
+    await expect(modal).toContainText('The clock shows 13:00 of 20:00.');
+    await press(btn('End at 20:00', modal));
+    await expect(c.pill()).toHaveText('Full time');
+    await expect(c.chip('Ben').locator('.m')).toHaveText('20:00'); // on all game: minutes up to 20:00
+
+    // Afterwards the match time can still be changed, e.g. the game ran on
+    await press(btn('Change match time'));
+    await expect(page.locator('#clkset')).toBeVisible();
+    await page.locator('#clkset').fill('22:30');
+    await press(btn('Set clock'));
+    await toast('Clock set to 22:30.');
+    await expect(c.chip('Ben').locator('.m')).toHaveText('22:30');
+    finished = true;
+  } finally {
+    await cleanUp(finished, [async () => { if (joined) await c.leave(T); }]);
+  }
+});

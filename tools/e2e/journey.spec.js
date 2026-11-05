@@ -209,7 +209,7 @@ test('a coach runs a whole match day', async ({page, browser}, info) => {
 
     await press(btn('Full time'));
     await expect(modal.locator('h3')).toHaveText('End game 1?');
-    await press(btn('End game', modal));
+    await press(modal.locator('[data-act=ftyes]:not([data-full])')); // "End game", or "End at <clock>" when the clock is short
     await expect(view.locator('.ghead .pill')).toHaveText('Full time');
     await expect(board).toContainText('Full time');
     await noNamesForFollowers();
@@ -315,7 +315,7 @@ test('a coach runs a whole match day', async ({page, browser}, info) => {
     await expect(modal.locator('.warnline')).toContainText('Dara is in the sin bin for another 9:');
     await press(btn('Cancel', modal));
     await press(btn('Full time'));
-    await press(btn('End game', modal));
+    await press(modal.locator('[data-act=ftyes]:not([data-full])')); // "End game", or "End at <clock>" when the clock is short
     await expect(view.locator('.ghead .pill')).toHaveText('Full time');
     await reload();
     await goTab('squad');

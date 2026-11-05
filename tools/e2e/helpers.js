@@ -113,7 +113,7 @@ function app(page, info) {
     async fullTime(n) {
       await press(btn('Full time'));
       await expect(modal.locator('h3')).toHaveText(`End game ${n}?`);
-      await press(btn('End game', modal));
+      await press(modal.locator('[data-act=ftyes]:not([data-full])')); // "End game", or "End at <clock>" when the clock is short
       await expect(a.pill()).toHaveText('Full time');
     },
     // ☰ → Leave this team on this phone, tapped twice. Safe to call after a failure.

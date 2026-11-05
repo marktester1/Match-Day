@@ -238,7 +238,7 @@ function makePhone(b, name) {
     async fullTime(n) {
       await p.tapText('Full time');
       await p.until(n => document.querySelector('.modal h3')?.textContent === `End game ${n}?`, `"End game ${n}?"`, 20000, n);
-      await p.tapText('End game', '.modal');
+      await p.tap('.modal [data-act=ftyes]:not([data-full])'); // "End game", or "End at <clock>" when the clock is short
       await p.waitPill('Full time');
     },
     menu: () => p.tap('#menubtn'),
