@@ -30,6 +30,11 @@ README.md has the setup and release commands.
 - Release checks: run `node tools/release-check.cjs pre` before promoting (all PASS except the
   expected "live rules differ" when the release changes rules), then rules to live, then
   `hosting:clone`, then `node tools/release-check.cjs post` (must be all PASS).
+- Every release needs every GitHub test passed on the exact code being released: Tests, Android
+  (all three phones) and iPhone Simulator. `release-check pre` fails until they have. Start the
+  device runs on the release branch with `gh workflow run android.yml --ref <branch>` and
+  `gh workflow run ios-sim.yml --ref <branch>`. Never release past a failed or missing run, and
+  never weaken a test to make it pass: fix the cause.
 - Rules changes go to beta first too (and a release that needs a new rule must not reach live before the rule does): `firebase deploy --only firestore:rules --project beta`, then
   `--project live` with the user's go-ahead.
 - The Beta Test Team (code `L9J-Q7H`) is the user's to play with: don't change its data. Claude's own
