@@ -123,7 +123,10 @@ public for now so the automated tests run free. Going private limits free test m
 count ten times), so switch the iPhone Simulator and Android runs to by-hand only, or budget for minutes.
 
 **Monetisation admin (the user is setting these up, week of 5 Nov 2026):**
-- [ ] **Price** for the yearly team subscription (still to decide).
+- **Charging: per manager** (decided 5 Nov 2026): the person who creates teams pays one yearly
+  subscription covering all their teams; invited coaches and supporters never pay. Still to decide: a
+  cap on teams per subscription and a club price. Details in MONETISATION.md (`monetisation` branch).
+- [ ] **Price** for the yearly manager subscription (still to decide).
 - **Free trial: six weeks** (decided 5 Nov 2026, was 30 days), so it covers two tournaments.
   Changed on the `monetisation` branch (`TRIAL_DAYS=42`).
 - **Referral scheme** (idea, likely the cheapest way to reach coaches): a coach's share link gives the
