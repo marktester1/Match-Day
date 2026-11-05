@@ -35,11 +35,12 @@ function simUdid(name) {
 // Start phone i (0, 1, 2) and clear anything an earlier run left in its Safari for this site.
 export async function phone(i = 0, {fresh = true} = {}) {
   const udid = simUdid(SIM_NAMES[i]);
-  // Safari's inspector connection sometimes isn't ready in time (a fixed 5 s in Appium): try again
+  // Safari's inspector connection sometimes isn't ready in time (a fixed 5 s in Appium), and on GitHub's
+  // Mac the test helper (WebDriverAgent) sometimes fails to start: try again
   let b;
   for (let tries = 1; ; tries++) {
     try { b = await startSession(udid, i); break; }
-    catch (e) { if (tries >= 3 || !/remote debugger|connected web applications|not connectable/i.test(e.message)) throw e; await new Promise(r => setTimeout(r, 5000)); }
+    catch (e) { if (tries >= 3 || !/remote debugger|connected web applications|not connectable|launch WebDriverAgent|preinstalled WebDriverAgent/i.test(e.message)) throw e; await new Promise(r => setTimeout(r, 5000)); }
   }
   await b.setTimeout({script: 30000});
   const p = makePhone(b, SIM_NAMES[i]);
@@ -68,7 +69,9 @@ const startSession = (udid, i) => remote({hostname: '127.0.0.1', port: 4723, log
       // On GitHub, WebDriverAgent is built in its own step. Install that app on each simulator and start
       // it directly: started through xcodebuild, the second phone waited on the first's build folder
       // for over 15 minutes and the journey with a supporter timed out.
-      ...(process.env.PREBUILT_WDA ? {'appium:usePreinstalledWDA': true, 'appium:prebuiltWDAPath': process.env.PREBUILT_WDA} : {})}});
+      ...(process.env.PREBUILT_WDA ? {'appium:usePreinstalledWDA': true, 'appium:prebuiltWDAPath': process.env.PREBUILT_WDA,
+        'appium:wdaLaunchTimeout': 180000} // it starts in 10-20 s when it works: give up sooner and try again
+      : {})}});
 
 // Close Safari's own tip pop-ups (native, outside the page). True if one was closed.
 async function dismissSafariTips(b) {

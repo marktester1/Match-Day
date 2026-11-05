@@ -141,6 +141,11 @@ count ten times), so switch the iPhone Simulator and Android runs to by-hand onl
   daily Firestore backup kept 14 days (`firebase firestore:backups:schedules:create --project live
   --recurrence DAILY --retention 14d`) and point-in-time recovery (7 days). Check the price first; at
   this data size it should be pennies a month. Needs the user's go-ahead (it changes live).
+- [ ] **Bigger GitHub Mac for the iPhone tests** (decided 5 Nov 2026: revisit when we monetise). GitHub's
+  free Mac can't reliably run two iPhone simulators, so the iPhone run (ios-sim.yml) only does the
+  one-phone set-up wizard tests. The match day with a supporter, a second coach and several managers run
+  in WebKit and real Android Chrome instead. A larger macOS runner (paid per minute) should run
+  `npm test` in tools/e2e/ios-sim in full: switch `runs-on` and put journey.test.mjs and the rest back.
 - [ ] **Off-Mac copies**: `exports/` (children's names) in a private place (iCloud Drive), never GitHub;
   `marketing/` (leaflet and card) can go on GitHub.
 - [ ] **Apple Developer Program** (£79/yr): enrol (individual, or organisation with a D-U-N-S number),
