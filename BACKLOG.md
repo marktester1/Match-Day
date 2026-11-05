@@ -122,6 +122,26 @@ superseded; the safeguards, founding club and voucher ideas still apply. Price t
 public for now so the automated tests run free. Going private limits free test minutes (Mac runs
 count ten times), so switch the iPhone Simulator and Android runs to by-hand only, or budget for minutes.
 
+**Monetisation admin (the user is setting these up, week of 5 Nov 2026):**
+- [ ] **Price** for the yearly team subscription (still to decide).
+- [ ] **Lemon Squeezy** account and store, Test mode on (web payments; merchant of record, handles VAT).
+- [ ] **Webhook signing secret**: the user sets it with `firebase functions:secrets:set` (never in chat).
+- [ ] **Budget alerts** on both Firebase projects (both are on Blaze).
+- [ ] **Apple Developer Program** (£79/yr): enrol (individual, or organisation with a D-U-N-S number),
+  then in App Store Connect sign the Paid Apps agreement and add bank and tax details; apply for the
+  Small Business Program (15% commission instead of 30%).
+- [ ] **Google Play Console** ($25 one-off): create the developer account and verify identity; set up a
+  payments profile (merchant account) for subscriptions. New personal accounts must run a **closed test
+  with 12+ testers for 14 days** before the app can go public, so start this early.
+- [ ] **Store rules for selling in the apps:** subscriptions bought inside the iPhone and Android apps
+  must use Apple's and Google's own in-app purchase (they take 15%); the web stays on Lemon Squeezy.
+  Both stores also need "Delete my account" in the app, a privacy policy link, a privacy label / data
+  safety form, an age rating and screenshots.
+- [ ] **HMRC** (self-employment once over the £1,000 trading allowance) and the **ICO data protection
+  fee** (the app stores children's first names): check whether each applies.
+- [ ] **Privacy notice and terms**: update for payments, Lemon Squeezy, Apple and Google.
+- [ ] **GitHub repository private**, device test runs to by-hand or budgeted, **shrink the Feedback button**.
+
 1. **Parent view: live score only (built as followers, v0.24–v0.26).** Parents follow a game's score from their own phone, with
    notifications for goals, half time and full time. No children's names, line-ups, minutes,
    notes or scorers, ever.
