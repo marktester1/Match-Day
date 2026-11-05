@@ -1,5 +1,5 @@
-// Added (injury) time: the clock pauses itself at half time as before; "Play added time" carries the
-// 1st half on ("+1:30 added time"), a goal in it reads 10+2', Half time ends it, the 2nd half starts
+// Added (injury) time: at the half's usual time the clock keeps going into added time ("+1:30 added
+// time", no pause), a goal in it reads 10+2', Half time ends it, the 2nd half starts
 // on screen at 0:00 (10:00 from kick-off on the usual clock), players' minutes include the added time,
 // and saved results keep the 10+2'. A supporter sees "Added time" and 10:00 +1:30, then the 2nd half from 0:00. Beta data only (needs the
 // beta rules that allow a game's `added` field); the phone leaves at the end.
@@ -36,14 +36,12 @@ test('added time at half time and full time', async ({page, browser}, info) => {
     await press(btn('Kick off'));
     await c.saved();
 
-    // 10 minutes: the clock pauses itself, as before, and offers added time
-    await page.clock.fastForward(10 * 60000 + 2000);
-    await toast('Half time in game 1. Added time? Tap Play added time.');
-    await expect(c.pill()).toHaveText('Half time');
-    await expect(btn('Start 2nd half')).toBeVisible();
-    await press(btn('Play added time'));
-    await toast('Added time. Tap Half time when the referee blows.');
+    // 10 minutes: the clock doesn't pause; it keeps going into added time, and says so once
+    await page.clock.fastForward(10 * 60000);
+    await toast("Time's up for the 1st half in game 1. The clock keeps going for added time: tap Half time when the referee blows.");
     await expect(c.pill()).toHaveText('Live');
+    await expect(btn('Start 2nd half')).toHaveCount(0);
+    await expect(btn('Play added time')).toHaveCount(0);
 
     // 1:30 of added time, with a goal in it
     await page.clock.fastForward(75 * 1000);

@@ -93,8 +93,11 @@ test('a follower watches the day from the link', async ({page, browser}, info) =
     await sawBanner(`Yellow card for ${SHORT}`);
     await noNames();
 
-    // half time comes by itself after 30 seconds
-    await expect(status).toHaveText('Half time', {timeout: 45000});
+    // after 30 seconds the clock keeps going into added time; supporters see it, then the coach taps Half time
+    await expect(status).toHaveText('Added time', {timeout: 45000});
+    await expect(clock).toHaveText(/^0:30 \+0:\d\d$/);
+    await coach.press(coach.btn('Half time'));
+    await expect(status).toHaveText('Half time', {timeout: 30000});
     await sawBanner('Half time');
     await expect(coach.pill()).toHaveText('Half time');
     await coach.press(coach.btn('Start 2nd half'));

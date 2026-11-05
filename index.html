@@ -383,7 +383,7 @@ body:has(input:focus,textarea:focus,select:focus) .fb{visibility:hidden;transiti
 <a id="feedback" class="fb" href="mailto:hello@matchday-app.uk?subject=Match%20Day%20feedback" aria-label="Send feedback by email">💬 Feedback</a>
 
 <script>
-const APP_VERSION='0.29.0';
+const APP_VERSION='0.29.1';
 // Feedback by email, with the app version and phone type filled in (never the team's or players' details)
 {const fb=document.getElementById('feedback'),dev=(navigator.userAgent.match(/\(([^)]+)\)/)||[])[1]||'';
   fb.href='mailto:hello@matchday-app.uk?subject='+encodeURIComponent('Match Day feedback')+'&body='+
@@ -665,7 +665,7 @@ function parentView(){
   const f=S.pfeed;
   if(f===undefined)return `<div class="empty"><b>Loading the score…</b></div>`;
   if(f===null)return `<div class="empty"><b>This link isn't working</b>It may be from last season. Ask the coach for the new supporters' link.</div>`;
-  const st=f.status==='none'?'':`<span class="pst ${f.status==='live'?'live':''}">${esc(pStatus(f))}</span>`;
+  const st=f.status==='none'?'':`<span class="pst ${f.status==='live'?'live':''}" data-pst>${esc(pStatus(f))}</span>`;
   return `<div class="sec" style="gap:14px">
   <div class="pboard" aria-live="polite">
     ${f.status==='none'?`<div class="tn">${esc(f.home)}</div><p>No game yet. The score shows here when a game starts.</p>`:`
@@ -779,7 +779,7 @@ async function followFeed(){
   FB.F.onSnapshot(FB.F.doc(FB.fs,'feeds',FOLLOW),s=>{setSync(true,'Live');onFeed(s.exists()?s.data():null)},
     e=>{setSync('bad',e&&e.code==='permission-denied'?'Not available':'No signal');if(S.pfeed===undefined)S.pfeed=null;render()});
   FB.F.onSnapshot(FB.F.collection(FB.fs,'feeds',FOLLOW,'games'),s=>{S.pgames=s.docs.map(d=>d.data()).sort((a,b)=>a.n-b.n);render()},()=>{S.pgames=[];render()});
-  setInterval(()=>{const f=S.pfeed;if(f&&f.clock.running)document.querySelectorAll('[data-pclock]').forEach(n=>n.textContent=pClock(f))},1000);
+  setInterval(()=>{const f=S.pfeed;if(f&&f.clock.running){document.querySelectorAll('[data-pclock]').forEach(n=>n.textContent=pClock(f));document.querySelectorAll('[data-pst]').forEach(n=>n.textContent=pStatus(f))}},1000);
 }
 
 let tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,3500)}
@@ -2136,16 +2136,18 @@ function onChange(e){
 document.addEventListener('focusout',()=>setTimeout(()=>{if(pending)render()},0));
 
 /* live clock */
+const timeUpSaid=new Set(); // halves/quarters whose usual time is up, already told to the coach
 setInterval(()=>{
   let any=false;
   gids().forEach(id=>{const g=G(id);if(!g.clock.running)return;any=true;
     const stopAt=g.clock.acc<overrunAt()?overrunAt():CLOCK_MAX; // restarted after stopping itself: only the 10-hour backstop
     if(el(g)>=stopAt){mut(id,g=>{g.clock.acc=stopAt;g.clock.running=false});toast(`Game ${g.n}'s clock stopped by itself. Did you forget Full time?`);return}
-    if(nPer()>1&&itOn(g)){const k=perOf(g.clock.acc,g),end=perNom(g,k);
-      // time's up for this half: pause on it (Half time, or Play added time). Not again once added time is under way.
-      if(k<nPer()-1&&!closedP(g,k)&&g.clock.acc<end-1e-6&&el(g)>=end){
-        mut(id,g=>{g.clock.acc=end;g.clock.running=false});
-        toast(nPer()===2?`Half time in game ${g.n}. Added time? Tap Play added time.`:`End of Q${k+1} in game ${g.n}.`);return}}
+    if(nPer()>1&&itOn(g)){const k=perOf(g.clock.acc,g),end=perNom(g,k),key=`${id}|${k}|${g.clock.startedAt}`;
+      // time's up for this half: the clock keeps going into added time (no pause); the coach taps
+      // Half time (or End of Qn) when the referee blows. Said once.
+      if(k<nPer()-1&&!closedP(g,k)&&el(g)>=end&&!timeUpSaid.has(key)){timeUpSaid.add(key);
+        if(g.clock.acc<end-1e-6){const lbl=nPer()===2?'Half time':`End of Q${k+1}`;
+          toast(`Time's up for the ${nPer()===2?['1st half','2nd half'][k]:'quarter'} in game ${g.n}. The clock keeps going for added time: tap ${lbl} when the referee blows.`);render()}}}
     else if(nPer()>1){const startP=Math.floor(g.clock.acc/perLen()+1e-9),end=(startP+1)*perLen();
       if(startP<nPer()-1&&el(g)>=end){ // time for the break: stop the clock exactly on the boundary
         mut(id,g=>{g.clock.acc=end;g.clock.running=false});

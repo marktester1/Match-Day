@@ -86,7 +86,9 @@ test('a follower watches the day from the link, in iPhone Safari', {timeout: 30 
   await fp.sawBanner(`Yellow card for ${SHORT}`);
   await noNames();
 
-  // half time comes by itself after a minute
+  // after the half's usual time the clock keeps going into added time; supporters see it, then the coach taps Half time
+  await fp.until(() => document.querySelector('.pboard .pst')?.textContent === 'Added time', 'added time', 90000);
+  await coach.tapText('Half time');
   await status('Half time').catch(() => fp.until(() => document.querySelector('.pboard .pst')?.textContent === 'Half time', 'half time', 90000));
   await fp.sawBanner('Half time');
   await coach.waitPill('Half time');
