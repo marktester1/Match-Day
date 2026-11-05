@@ -19,12 +19,12 @@ Rules from this branch go to beta only while testing. Afterwards, re-deploy main
 > the rules (paid = `paidUntil > request.time`), lapsed teams go view-only as in the trial, and
 > the price (still to decide).
 
-**What's free and what's paid** (decided: 30-day free trial):
-- Every feature is free for 30 days from when the team is created (`teams/{t}.created`).
+**What's free and what's paid** (decided: **six-week free trial**, changed from 30 days on 5 Nov 2026 so it covers two tournaments):
+- Every feature is free for six weeks (42 days) from when the team is created (`teams/{t}.created`).
 - After that, without the unlock, the team becomes **view-only**: coaches can still see games,
   results and the season record and save a backup, but can't start or change games until the
   team is unlocked. Nothing is ever deleted.
-- Teams created before this launches start their 30 days on the launch date, not their creation
+- Teams created before this launches start their six weeks on the launch date, not their creation
   date. Winscombe is a founding club (never pays).
 - Reminders in the app at 7 days and 1 day before the trial ends.
 - Coaches who join by invite never pay; the unlock is per team, not per coach.
@@ -79,7 +79,7 @@ subscription before showing live updates. Prototype first without payment.
 ## Progress
 - **Step 1 done**: parent link (☰ → Parent link), `feeds/{id}` + `feeds/{id}/games/g1..g10`, parent
   scoreboard with Played / Still to play. Current tournament only (earlier tournaments: not wanted for now).
-- **Step 2 done**: 30-day trial from `teams/{t}.created` (or `PLAN_FROM` in index.html for older teams:
+- **Step 2 done**: free trial (now six weeks, `TRIAL_DAYS=42`) from `teams/{t}.created` (or `PLAN_FROM` in index.html for older teams:
   **set the real launch date before release**), reminder banner in the last 7 days, view-only after
   (a game already under way can be finished), unlock screen (payment button is a placeholder),
   ☰ plan card, owner-only Test unlock, Admin buttons per team: Test unlock, Founding club, End trial
@@ -136,3 +136,19 @@ subscription before showing live updates. Prototype first without payment.
 ## Needed from you
 - A Lemon Squeezy account in your name (test mode first) when we reach step 4.
 - OK to switch the **beta** project to Blaze when we reach step 4 (with a budget alert).
+
+## Referral scheme (idea, 5 Nov 2026)
+
+Coaches telling other coaches is likely the cheapest way to grow (clubs have many teams, and
+coaches meet at every tournament). To think through before building:
+- **What a coach shares:** a personal referral link or code (from ☰), e.g. on WhatsApp after a
+  tournament. The new team gets a longer free trial (say an extra month on top of six weeks).
+- **What the referrer gets:** free time on their own subscription (say three months) for each referred
+  team that **goes on to pay**, never just for signing up, so it can't be gamed with throwaway teams.
+  Perhaps a cap (e.g. a free year at most).
+- **Club-level:** a club whose teams all join could get a club discount; ties in with founding clubs.
+- **How:** builds on the voucher system (codes, uses, expiry, owner Admin list), with a `referredBy`
+  on the new team's billing record and the reward applied when the payment webhook confirms payment.
+- **Store rules:** inside the iPhone app, rewards and discounts must use Apple offer codes; Google Play
+  has promo codes. Simplest to run referrals on the web (Lemon Squeezy) first.
+- **Measure it:** count referred teams and how many pay, to see if it beats other ways of finding coaches.

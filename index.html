@@ -423,7 +423,7 @@ function saveSquad(){S.squad=alpha(S.squad);put('club/squad',{players:S.squad});
 function saveTour(){put('club/tournament',S.tour)}
 
 /* ---------- paying for a team: 30-day free trial, then view-only until unlocked (£3.99 once) ---------- */
-const PRICE='£3.99',TRIAL_DAYS=30;
+const PRICE='£3.99',TRIAL_DAYS=42; // six weeks: long enough to cover two tournaments (decided 5 Nov 2026)
 let SHOP={}; // from firebase-config.js: the checkout link for this project (test mode on beta)
 function buyUnlock(){
   if(!SHOP.checkout){toast("Payments aren't switched on in this version yet.");return}
@@ -435,7 +435,7 @@ function buyUnlock(){
   location.href=u.toString();
 }
 const paying=()=>{try{const p=JSON.parse(lsGet('matchday-paying')||'null');return p&&p.t===S.teamId&&Date.now()-p.at<30*60000}catch(_){return false}};
-const PLAN_FROM=Date.UTC(2026,9,16); // teams made before the paywall started get their 30 days from here (set the real launch date at release)
+const PLAN_FROM=Date.UTC(2026,9,16); // teams made before the paywall started get their six weeks from here (set the real launch date at release)
 function plan(){
   if(!FB||!S.teamId||!S.billLoaded)return{state:'unknown'};
   const b=S.bill||{};if(b.unlocked)return{state:'unlocked',source:b.source||'purchase'};
