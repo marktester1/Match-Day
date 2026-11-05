@@ -61,43 +61,30 @@ jobs:
         env:
           SIZE: ${{ matrix.size }}
           DENSITY: ${{ matrix.density }}
-      - name: Start it
-        run: |
-          # The emulator and adb's server both vanished together a few minutes into the tests, with no
-          # error: run each in its own session, detached from this step, and note when the emulator goes
-          setsid adb start-server
-          setsid nohup $ANDROID_HOME/emulator/emulator -avd phone -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim > emulator.log 2>&1 < /dev/null &
-          echo $! > emu.pid
-          setsid nohup sh -c 'while kill -0 $(cat emu.pid) 2>/dev/null; do sleep 2; done; date -u +"emulator gone at %H:%M:%S"; ps -ef | tail -40' > emu-watch.log 2>&1 < /dev/null &
-          adb wait-for-device
-          for i in $(seq 120); do [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = 1 ] && break; sleep 3; done
-          adb shell settings put global window_animation_scale 0
-          adb shell settings put global transition_animation_scale 0
-          adb shell settings put global animator_duration_scale 0
-          adb shell wm size; adb shell wm density
       - name: Serve this commit on localhost:8000
         run: python3 -m http.server 8000 >/dev/null 2>&1 &
+      # Started by hand, the emulator shut itself down 6-8 minutes into the tests on every phone (no
+      # error, plenty of memory). The standard runner starts and looks after it; it uses the AVD above.
+      # The emulator's own localhost is the phone; reverse forwarding points it at this machine's server.
       - name: Run the tests on the emulator
-        working-directory: tools/e2e
-        # the emulator's own localhost is the phone; reverse forwarding points it at this machine's server
-        run: |
-          adb reverse tcp:8000 tcp:8000
-          npx playwright test --workers=1
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          avd-name: phone
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          disable-animations: true
+          working-directory: tools/e2e
+          script: |
+            adb shell wm size && adb shell wm density
+            adb reverse tcp:8000 tcp:8000
+            npx playwright test --workers=1
         env:
           ANDROID: 1
           ANDROID_PHONE: ${{ matrix.phone }}
           MATCHDAY_URL: http://127.0.0.1:8000
-      # The emulator has been shutting down part-way through: its own log and memory say why
-      - name: Why the emulator stopped
-        if: failure()
-        run: |
-          echo "--- watcher"; cat emu-watch.log || true
-          echo "--- is the emulator still running?"; pgrep -af 'qemu-system|emulator' || echo "no emulator process"
-          echo "--- adb as it is"; adb devices || true
-          echo "--- adb after restarting its server"; adb kill-server || true; adb start-server || true; sleep 3; adb devices || true
-          free -m || true
-          echo "--- emulator log: anything about stopping"; grep -viE 'SwiftShader|VkInstance' emulator.log | tail -40 || true
-          sudo dmesg | grep -iE 'killed process|out of memory|qemu|segfault' | tail -10 || true
       # Screenshots and page snapshots only: the repository is public, and traces hold sign-in tokens
       - name: Keep the screenshots of any failure
         if: failure()
