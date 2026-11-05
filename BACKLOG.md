@@ -127,7 +127,7 @@ count ten times), so switch the iPhone Simulator and Android runs to by-hand onl
   subscription covering all their teams; invited coaches and supporters never pay. Still to decide: a
   cap on teams per subscription and a club price. Details in MONETISATION.md (`monetisation` branch).
 - **Price: £5 a year** (decided 5 Nov 2026). One person pays; it covers up to four managers. Coaches
-  who aren't managers are free. Supporters free for now (not formally decided).
+  who aren't managers are free. **Supporters stay free** (decided 5 Nov 2026).
 - **Free trial: six weeks** (decided 5 Nov 2026, was 30 days), so it covers two tournaments.
   Changed on the `monetisation` branch (`TRIAL_DAYS=42`).
 - **Referral scheme** (idea, likely the cheapest way to reach coaches): a coach's share link gives the
