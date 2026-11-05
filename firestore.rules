@@ -75,8 +75,8 @@ service cloud.firestore {
     }
     // The parents' live score: team names, score, clock and status only. Never players.
     function validFeed(d) {
-      return d.keys().hasOnly(['team', 'home', 'away', 'us', 'score', 'status', 'clock', 'periods', 'len', 'gameN', 'sport', 'updatedAt', 'tname', 'tdate', 'cards', 'lastCard'])
-        && fStr(d, 'tname', 60) && fStr(d, 'tdate', 10) && fInt(d, 'cards', 0, 60)
+      return d.keys().hasOnly(['team', 'home', 'away', 'us', 'score', 'status', 'clock', 'periods', 'len', 'gameN', 'sport', 'updatedAt', 'tname', 'tdate', 'cards', 'lastCard', 'period'])
+        && fStr(d, 'tname', 60) && fInt(d, 'period', 0, 3) && fStr(d, 'tdate', 10) && fInt(d, 'cards', 0, 60)
         && (!('lastCard' in d) || (d.lastCard is map && d.lastCard.keys().hasOnly(['c', 'at'])
             && d.lastCard.get('c', 'y') in ['y', 'r'] && upTo(d.lastCard.get('at', 0), 36000000)))
         && d.team is string && fStr(d, 'home', 40) && fStr(d, 'away', 40) && fOneOf(d, 'us', ['home', 'away'])

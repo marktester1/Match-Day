@@ -600,7 +600,7 @@ function feedBody(id){
   if(!g)return b;
   return{...b,home:homeName(g).slice(0,40),away:awayName(g).slice(0,40),us:isAway(g)?'away':'home',score:{us:g.score.us,them:g.score.them},
     // supporters' page knows nothing of added time: take finished periods' added time off, so each starts at its usual time
-    status:gStatus(g),clock:{running:!!g.clock.running,startedAt:g.clock.startedAt||0,acc:Math.max(0,(g.clock.acc||0)-(itOn(g)?g.added.reduce((a,x,i)=>a+(i<perOf(g.clock.acc||0,g)?addOf(g,i):0),0):0))},gameN:g.n,
+    status:gStatus(g),clock:{running:!!g.clock.running,startedAt:g.clock.startedAt||0,acc:Math.max(0,(g.clock.acc||0)-(itOn(g)?g.added.reduce((a,x,i)=>a+(i<perOf(g.clock.acc||0,g)?addOf(g,i):0),0):0))},gameN:g.n,...(itOn(g)?{period:perOf(g.clock.acc||0,g)}:{}),
     cards:Math.min(60,(g.cards||[]).length),...((g.cards||[]).length?{lastCard:(({c,at})=>({c,at:Math.min(36000000,at||0)}))(g.cards[g.cards.length-1])}:{})};
 }
 const feedFixture=id=>{const g=G(id);return{n:g.n,home:homeName(g).slice(0,40),away:awayName(g).slice(0,40),us:isAway(g)?'away':'home',
@@ -646,14 +646,18 @@ function parentCard(){
 
 /* ---------- the parent's screen ---------- */
 const pel=c=>(c.acc||0)+(c.running?Math.max(0,Date.now()-(c.startedAt||0)):0);
+// With added time the coach's phone says which half/quarter it is (`period`): past its usual time is added
+// time, shown as 10:00 +1:30. Without it (older apps), the period comes from the clock as before.
+const pPer=f=>{const n=f.periods||1,per=(f.len||10)*60000/n,e=pel(f.clock);
+  const i=Number.isInteger(f.period)?Math.min(n-1,f.period):Math.min(n-1,Math.floor(e/per+1e-9));
+  return{n,per,e,i,into:e-i*per,over:Number.isInteger(f.period)&&f.status==='live'?Math.max(0,e-(i+1)*per):0}};
 function pClock(f){
-  const e=pel(f.clock),n=f.periods||1,per=(f.len||10)*60000/n;
-  if(n===1)return fmt(Math.min(e,f.len*60000));
-  const i=Math.min(n-1,Math.floor(e/per+1e-9));return fmt(Math.min(per,e-i*per));
+  const {per,into,over}=pPer(f);
+  return over?`${fmt(per)} +${fmt(over)}`:fmt(Math.min(per,Math.max(0,into)));
 }
 function pStatus(f){
-  const n=f.periods||1,per=(f.len||10)*60000/n,e=pel(f.clock),i=Math.min(n-1,Math.floor(e/per+1e-9));
-  const pname=n===2?['1st half','2nd half'][i]:n===4?'Quarter '+(i+1):'Live';
+  const {n,per,e,i,over}=pPer(f);
+  const pname=over?'Added time':n===2?['1st half','2nd half'][i]:n===4?'Quarter '+(i+1):'Live';
   return{none:'No game yet',pre:'Kick-off soon',live:pname,paused:'Clock paused',break:n===2?'Half time':'End of quarter '+Math.round(e/per),ft:'Full time'}[f.status]||'';
 }
 const pScore=(f,side)=>(f.us===side)?f.score.us:f.score.them;

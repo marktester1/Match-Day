@@ -204,6 +204,9 @@ test('a coach can publish the parent feed; it holds no player data', async () =>
   await assertFails(setDoc(doc(f, 'feeds', FEED), {...feed, scorers: ['Sam']}));          // no names
   const fx = {n: 1, home: 'Example Team', away: 'Riverside', us: 'home', time: '9:30', pitch: '2', score: {us: 1, them: 0}, status: 'ft'};
   await assertSucceeds(setDoc(doc(f, 'feeds', FEED), {...feed, tname: 'Spring Cup', tdate: '2026-10-17'}));
+  await assertSucceeds(setDoc(doc(f, 'feeds', FEED), {...feed, period: 1}));        // which half/quarter (added time)
+  await assertFails(setDoc(doc(f, 'feeds', FEED), {...feed, period: 4}));
+  await assertFails(setDoc(doc(f, 'feeds', FEED), {...feed, period: '1'}));
   await assertSucceeds(setDoc(doc(f, 'feeds', FEED, 'games', 'g1'), fx));
   await assertSucceeds(setDoc(doc(f, 'feeds', FEED, 'games', 'g10'), {...fx, n: 10, status: 'pre'}));
   await assertFails(setDoc(doc(f, 'feeds', FEED, 'games', 'g1'), {...fx, scorers: ['Sam']}));  // no names in fixtures either
