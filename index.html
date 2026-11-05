@@ -383,7 +383,7 @@ body:has(input:focus,textarea:focus,select:focus) .fb{visibility:hidden;transiti
 <a id="feedback" class="fb" href="mailto:hello@matchday-app.uk?subject=Match%20Day%20feedback" aria-label="Send feedback by email">💬 Feedback</a>
 
 <script>
-const APP_VERSION='0.28.11';
+const APP_VERSION='0.28.12';
 // Feedback by email, with the app version and phone type filled in (never the team's or players' details)
 {const fb=document.getElementById('feedback'),dev=(navigator.userAgent.match(/\(([^)]+)\)/)||[])[1]||'';
   fb.href='mailto:hello@matchday-app.uk?subject='+encodeURIComponent('Match Day feedback')+'&body='+
@@ -1297,7 +1297,7 @@ function setupView(){
   const w=wiz()||{step:0},c=S.cfg;
   if(w.step===0)return `<div class="sec wiz" style="gap:14px">
     <h2>How much do you want to set up now?</h2>
-    <button class="btn go wizroute" data-act="wizroute" data-v="quick"><b>Quick start</b><span>Team name, players and our usual match settings. Ready in under a minute.</span></button>
+    <button class="btn go wizroute" data-act="wizroute" data-v="quick"><b>Quick start</b><span>Team name, players and the usual match settings. Ready in under a minute.</span></button>
     <button class="btn wizroute" data-act="wizroute" data-v="full"><b>Full set-up</b><span>Set how many games you're playing, how long each one lasts, halves or quarters, and your opponents, kick-off times and pitches.</span></button>
     <p class="note">You can change everything later, and your progress is saved as you go.</p></div>`;
   if(w.step===1)return `<div class="sec wiz" style="gap:14px">${wizHead(w,'Your team')}
