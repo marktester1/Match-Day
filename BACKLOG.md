@@ -13,9 +13,6 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
   https://match-day-beta-17b23--injury-time-t3p36wj6.web.app (expires 19 Nov 2026). "Play added time" at
   half time, 10+2' times, minutes include added time. Needs the rules change (games may have `added`):
   on beta since 5 Nov 2026, **not live**. Until it's merged, release-check shows "beta rules differ".
-- **Install Java on the Mac** (asked 5 Nov 2026): `brew install openjdk@21`, then
-  `sudo ln -sfn /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk-21.jdk`
-  (needs the Mac password). Lets the rules tests (`cd tests && npm test`) run locally, not only on GitHub.
 - **Notifications in set-up:** offer "Turn on notifications" (join requests) on the wizard's last screen.
 - **Coach name on a new address or phone:** the name is kept per address, so it's blank on
   app.matchday-app.uk. If the phone has no name but is in a team, fill it from the team's member entry.
