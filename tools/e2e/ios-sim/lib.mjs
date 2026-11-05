@@ -70,6 +70,19 @@ const startSession = (udid, i) => remote({hostname: '127.0.0.1', port: 4723, log
       // for over 15 minutes and the journey with a supporter timed out.
       ...(process.env.PREBUILT_WDA ? {'appium:usePreinstalledWDA': true, 'appium:prebuiltWDAPath': process.env.PREBUILT_WDA} : {})}});
 
+// Close Safari's own tip pop-ups (native, outside the page). True if one was closed.
+async function dismissSafariTips(b) {
+  let closed = false, ctx;
+  try {
+    ctx = await b.getContext();
+    await b.switchContext('NATIVE_APP');
+    for (const el of await b.$$('-ios predicate string:type == "XCUIElementTypeButton" AND (name IN {"Close", "close", "Dismiss"} OR label IN {"Close", "Dismiss"})'))
+      if (await el.isDisplayed().catch(() => false)) { await el.click(); closed = true; }
+  } catch (_) {}
+  finally { if (ctx) await b.switchContext(ctx).catch(() => {}); }
+  return closed;
+}
+
 function makePhone(b, name) {
   const css = s => b.$(s);
   const p = {
@@ -108,7 +121,14 @@ function makePhone(b, name) {
       if (team) await p.saved(); // (a phone not in a team yet has nothing to save)
       await b.execute(() => { document.documentElement.dataset.e2eOld = '1'; }); // gone once the new page is in
       await b.refresh();
-      await p.until(t => !document.documentElement.dataset.e2eOld && document.readyState === 'complete' && (!t || document.getElementById('hteam')?.textContent === t), 'the page after reload', 30000, team);
+      const loaded = t => !document.documentElement.dataset.e2eOld && document.readyState === 'complete' && (!t || document.getElementById('hteam')?.textContent === t);
+      try { await p.until(loaded, 'the page after reload', 30000, team); }
+      catch (e) {
+        // Safari's own first-use tips ("View Bookmarks, Share Menu, and Open Tabs") can pop up over the
+        // page and stop the test reading it: close any, then check the page again
+        if (!await dismissSafariTips(b)) throw e;
+        await p.until(loaded, 'the page after reload', 30000, team);
+      }
       await p.watchToasts();
     },
 
