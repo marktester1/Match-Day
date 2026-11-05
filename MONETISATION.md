@@ -8,6 +8,23 @@ Deploy this branch's app: `firebase hosting:channel:deploy monetise --project be
 Rules from this branch go to beta only while testing. Afterwards, re-deploy main's rules to beta
 (`git switch main && firebase deploy --only firestore:rules --project beta`).
 
+## Decided 5 Nov 2026: per manager, not per team
+
+**Who pays:** the **manager**, the person who creates teams. One yearly subscription covers **all
+the teams they manage**. Coaches they invite **never pay**, so inviting assistant coaches stays free
+(that's how the app spreads through a club). Supporters never pay.
+- The manager needs an account (Google, Apple or email) to subscribe, so the subscription follows
+  them to any phone. Coaches who are only invited can stay without an account.
+- **Free trial: six weeks** from the manager's first team (teams made before launch: from launch day).
+- A team is active while **its manager** (`createdBy`) is subscribed or in their trial. If the manager
+  role is handed over, the team follows the new manager's subscription.
+- **To decide:** the price; a cap on teams per subscription (e.g. 3), so a whole club can't sit under
+  one person; a **club price** for clubs with many teams.
+- **Code to rework:** sections below were built per team (`teams/{t}/billing/state`). Billing moves to
+  the manager (e.g. `billing/{uid}`, written only by the payment webhook, vouchers or Admin), and the
+  rules check the team's manager's billing record. Vouchers, the founding club, referrals and the
+  webhook carry over. The referral reward goes to the referring manager.
+
 ## 1. Team unlock: £3.99 one-off per team
 
 > **Changing (decided 17 Oct 2026): a yearly subscription instead of a one-off unlock.** The
