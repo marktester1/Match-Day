@@ -136,6 +136,13 @@ count ten times), so switch the iPhone Simulator and Android runs to by-hand onl
 - [ ] **Lemon Squeezy** account and store, Test mode on (web payments; merchant of record, handles VAT).
 - [ ] **Webhook signing secret**: the user sets it with `firebase functions:secrets:set` (never in chat).
 - [ ] **Budget alerts** on both Firebase projects (both are on Blaze).
+- [ ] **Backups of coaches' live data** (decided 5 Nov 2026: switch on when we monetise). Live has no
+  backups today (no schedule, point-in-time recovery off), so a wiped team can't be got back. Turn on a
+  daily Firestore backup kept 14 days (`firebase firestore:backups:schedules:create --project live
+  --recurrence DAILY --retention 14d`) and point-in-time recovery (7 days). Check the price first; at
+  this data size it should be pennies a month. Needs the user's go-ahead (it changes live).
+- [ ] **Off-Mac copies**: `exports/` (children's names) in a private place (iCloud Drive), never GitHub;
+  `marketing/` (leaflet and card) can go on GitHub.
 - [ ] **Apple Developer Program** (£79/yr): enrol (individual, or organisation with a D-U-N-S number),
   then in App Store Connect sign the Paid Apps agreement and add bank and tax details; apply for the
   Small Business Program (15% commission instead of 30%).
