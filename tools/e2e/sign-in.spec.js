@@ -46,6 +46,9 @@ test('an email account keeps its team through signing out and back in', async ({
   const pw = 'e2e-' + Math.random().toString(36).slice(2, 12);
   let account = false, joined = false, finished = false;
   const form = async (create, pass) => {
+    // the app puts the cursor in the email box a moment after the form opens: wait for it, or a fast
+    // test types the password into the email box
+    await expect(page.locator('#acctemail')).toBeFocused();
     await page.locator('#acctemail').fill(email);
     await page.locator('#acctpw').fill(pass);
     await press(btn(create ? 'Create account' : 'Sign in', page.locator('#acctf')));
