@@ -61,6 +61,13 @@ jobs:
         env:
           SIZE: ${{ matrix.size }}
           DENSITY: ${{ matrix.density }}
+      # The emulator vanished mid-run with no error (its port gone): the signs of the machine running out
+      # of memory. Swap gives it room, and the kernel's log below shows if anything was still killed.
+      - name: Add 8 GB of swap
+        run: |
+          sudo swapoff -a; sudo rm -f /mnt/swapfile
+          sudo fallocate -l 8G /mnt/swapfile && sudo chmod 600 /mnt/swapfile && sudo mkswap /mnt/swapfile && sudo swapon /mnt/swapfile
+          free -m
       - name: Serve this commit on localhost:8000
         run: python3 -m http.server 8000 >/dev/null 2>&1 &
       # Started by hand, the emulator shut itself down 6-8 minutes into the tests on every phone (no
@@ -80,11 +87,21 @@ jobs:
           script: |
             adb shell wm size && adb shell wm density
             adb reverse tcp:8000 tcp:8000
+            nohup adb logcat -v time > /tmp/logcat.txt 2>&1 &
             npx playwright test --workers=1
         env:
           ANDROID: 1
           ANDROID_PHONE: ${{ matrix.phone }}
           MATCHDAY_URL: http://127.0.0.1:8000
+          ANDROID_RESTART: ${{ github.workspace }}/tools/e2e/android-restart.sh
+      - name: Memory and anything the system killed
+        if: always()
+        run: |
+          free -m
+          sudo dmesg | grep -iE "out of memory|oom|killed process|kvm" | tail -20 || true
+          echo "--- the phone's system log, before it went (crashes, restarts, shutdowns only)"
+          grep -iE "fatal|panic|watchdog|reboot|shutdown|power ?off|lowmemorykiller|lmkd|system_server|died" /tmp/logcat.txt 2>/dev/null | grep -viE "chromium:|console" | tail -60 || true
+          echo "--- the emulator after a restart"; tail -20 /tmp/emulator-restart.log 2>/dev/null || true
       # Screenshots and page snapshots only: the repository is public, and traces hold sign-in tokens
       - name: Keep the screenshots of any failure
         if: failure()

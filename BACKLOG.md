@@ -5,10 +5,17 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Now
 
-- **Live: v0.28.2** (3 Nov 2026): the first-time set-up wizard, "same as last time?" for the next
-  match day, the 💬 Feedback button, and long team names wrapping on 360-wide phones.
-  **Beta: v0.28.3** (branch `setup-wizard`): **Reset this game** at the bottom of a started game, with a
-  pop-up first and Undo afterwards. Next: the user tries it on beta, then release.
+- **Live: v0.28.10** (4 Nov 2026), on match-day-17b23.web.app and app.matchday-app.uk: supporters (not
+  followers), Home | Away switch, "Your match" step for one match, goal times past full time, "Match days".
+  **Beta: v0.28.11** (branch `setup-wizard`): Half time button, "End at 20:00" in the Full time pop-up,
+  "Change match time", typed passwords kept through redraws. Next: the user tries it, then release.
+- **Injury time (branch `injury-time`, for assessment):** preview with beta data at
+  https://match-day-beta-17b23--injury-time-t3p36wj6.web.app (expires 19 Nov 2026). "Play added time" at
+  half time, 10+2' times, minutes include added time. Needs the rules change (games may have `added`):
+  on beta since 5 Nov 2026, **not live**. Until it's merged, release-check shows "beta rules differ".
+- **Notifications in set-up:** offer "Turn on notifications" (join requests) on the wizard's last screen.
+- **Coach name on a new address or phone:** the name is kept per address, so it's blank on
+  app.matchday-app.uk. If the phone has no name but is in a team, fill it from the team's member entry.
 - **Website (`site/`):** coaches' copy https://matchday-website-preview.web.app (opens the live app),
   testers' copy https://matchday-website-beta.web.app (opens beta; `sh tools/build_site_beta.sh`,
   publish with `--config site-beta/firebase.json`). Both on the beta project; publish the main one
@@ -114,6 +121,47 @@ superseded; the safeguards, founding club and voucher ideas still apply. Price t
 **Before taking the first payment: make the GitHub repository private, and shrink the feedback button** (see the testing-round feedback). The repository decision was made Nov 2026: it's
 public for now so the automated tests run free. Going private limits free test minutes (Mac runs
 count ten times), so switch the iPhone Simulator and Android runs to by-hand only, or budget for minutes.
+
+**Monetisation admin (the user is setting these up, week of 5 Nov 2026):**
+- **Charging: per manager** (decided 5 Nov 2026): the person who creates teams pays one yearly
+  subscription covering all their teams; invited coaches and supporters never pay. Still to decide: a
+  cap on teams per subscription and a club price. Details in MONETISATION.md (`monetisation` branch).
+- **Price: £5 a year** (decided 5 Nov 2026). One person pays; it covers up to four managers. Coaches
+  who aren't managers are free. **Supporters stay free** (decided 5 Nov 2026).
+- **Free trial: six weeks** (decided 5 Nov 2026, was 30 days), so it covers two tournaments.
+  Changed on the `monetisation` branch (`TRIAL_DAYS=42`).
+- **Referral scheme** (idea, likely the cheapest way to reach coaches): a coach's share link gives the
+  new team a longer trial; the referrer earns free time when that team pays (not on sign-up). Builds on
+  vouchers and the payment webhook. Details in MONETISATION.md on the `monetisation` branch.
+- [ ] **Lemon Squeezy** account and store, Test mode on (web payments; merchant of record, handles VAT).
+- [ ] **Webhook signing secret**: the user sets it with `firebase functions:secrets:set` (never in chat).
+- [ ] **Budget alerts** on both Firebase projects (both are on Blaze).
+- [ ] **Backups of coaches' live data** (decided 5 Nov 2026: switch on when we monetise). Live has no
+  backups today (no schedule, point-in-time recovery off), so a wiped team can't be got back. Turn on a
+  daily Firestore backup kept 14 days (`firebase firestore:backups:schedules:create --project live
+  --recurrence DAILY --retention 14d`) and point-in-time recovery (7 days). Check the price first; at
+  this data size it should be pennies a month. Needs the user's go-ahead (it changes live).
+- [ ] **Bigger GitHub Mac for the iPhone tests** (decided 5 Nov 2026: revisit when we monetise). GitHub's
+  free Mac can't reliably run two iPhone simulators, so the iPhone run (ios-sim.yml) only does the
+  one-phone set-up wizard tests. The match day with a supporter, a second coach and several managers run
+  in WebKit and real Android Chrome instead. A larger macOS runner (paid per minute) should run
+  `npm test` in tools/e2e/ios-sim in full: switch `runs-on` and put journey.test.mjs and the rest back.
+- [ ] **Off-Mac copies**: `exports/` (children's names) in a private place (iCloud Drive), never GitHub;
+  `marketing/` (leaflet and card) can go on GitHub.
+- [ ] **Apple Developer Program** (£79/yr): enrol (individual, or organisation with a D-U-N-S number),
+  then in App Store Connect sign the Paid Apps agreement and add bank and tax details; apply for the
+  Small Business Program (15% commission instead of 30%).
+- [ ] **Google Play Console** ($25 one-off): create the developer account and verify identity; set up a
+  payments profile (merchant account) for subscriptions. New personal accounts must run a **closed test
+  with 12+ testers for 14 days** before the app can go public, so start this early.
+- [ ] **Store rules for selling in the apps:** subscriptions bought inside the iPhone and Android apps
+  must use Apple's and Google's own in-app purchase (they take 15%); the web stays on Lemon Squeezy.
+  Both stores also need "Delete my account" in the app, a privacy policy link, a privacy label / data
+  safety form, an age rating and screenshots.
+- [ ] **HMRC** (self-employment once over the £1,000 trading allowance) and the **ICO data protection
+  fee** (the app stores children's first names): check whether each applies.
+- [ ] **Privacy notice and terms**: update for payments, Lemon Squeezy, Apple and Google.
+- [ ] **GitHub repository private**, device test runs to by-hand or budgeted, **shrink the Feedback button**.
 
 1. **Parent view: live score only (built as followers, v0.24–v0.26).** Parents follow a game's score from their own phone, with
    notifications for goals, half time and full time. No children's names, line-ups, minutes,

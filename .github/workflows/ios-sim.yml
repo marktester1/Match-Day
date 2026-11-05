@@ -41,7 +41,10 @@ jobs:
       # Build Apple's test helper (WebDriverAgent) now: built inside the first test, it took over 10
       # minutes on GitHub's Mac and the connection gave up. Later builds reuse this one.
       - name: Build WebDriverAgent
-        run: APPIUM_HOME=./.appium npx appium driver run xcuitest build-wda
+        run: |
+          APPIUM_HOME=./.appium npx appium driver run xcuitest build-wda
+          APP=$(ls -d ~/Library/Developer/Xcode/DerivedData/WebDriverAgent-*/Build/Products/Debug-iphonesimulator/WebDriverAgentRunner-Runner.app | head -1)
+          test -d "$APP" && echo "PREBUILT_WDA=$APP" >> "$GITHUB_ENV" && echo "Built: $APP"
       - name: Choose three iPhone simulators
         run: |
           SIMS=$(xcrun simctl list devices available -j | node -e "
@@ -52,28 +55,35 @@ jobs:
             console.log(n.join(','));")
           echo "SIMS=$SIMS" >> "$GITHUB_ENV"
           echo "Simulators: $SIMS"
-      # Start the two the tests use (the coach and the follower) now, and wait until they're ready, so
-      # the tests don't spend their own time on it (a slow start here used to fail the run)
-      - name: Start the simulators
+      # Start the one the tests use (the coach's phone) now, and wait until it's ready, so the tests don't
+      # spend their own time on it (a slow start here used to fail the run)
+      - name: Start the simulator
         run: |
-          IFS=, read -r A B _ <<< "$SIMS"
-          for n in "$A" "$B"; do xcrun simctl boot "$n" || true; done
-          for n in "$A" "$B"; do xcrun simctl bootstatus "$n" -b; done   # the job's own time limit stops a stuck one
+          IFS=, read -r A _ <<< "$SIMS"
+          xcrun simctl boot "$A" || true
+          xcrun simctl bootstatus "$A" -b   # the job's own time limit stops a stuck one
       - name: Serve this commit on localhost:8000
         working-directory: .
         run: python3 -m http.server 8000 >/dev/null 2>&1 &
       - name: Start Appium
         run: |
-          npm run appium > appium.log 2>&1 &
+          # info-level log (printed below if the tests fail); the connection stays open up to 30 minutes
+          # while a session starts (Appium's default of 10 minutes cut it off on GitHub's slow Mac)
+          APPIUM_HOME=./.appium npx appium --port 4723 --log-level info --keep-alive-timeout 1800 > appium.log 2>&1 &
           for i in $(seq 60); do curl -s http://127.0.0.1:4723/status >/dev/null && exit 0; sleep 2; done
           cat appium.log; exit 1
-      # The set-up wizard and the coach's whole day (with a follower on a second iPhone). The tests with
-      # a second coach or three managers start more simulators than GitHub's small Mac can in time (each
-      # waits over 15 minutes and gives up); WebKit in tests.yml and real Chrome in android.yml cover them,
-      # and `npm test` on a Mac runs them all.
-      - run: node --test --test-concurrency=1 setup-wizard.test.mjs journey.test.mjs
+      # The one-phone tests: the set-up wizard. GitHub's free Mac can't reliably run two iPhone simulators
+      # (the second took over 15 minutes to start, or never did), so the tests with a supporter, a second
+      # coach or several managers run here in WebKit (tests.yml) and real Chrome (android.yml), and on a
+      # Mac with `npm test` or `node tools/release-check.cjs pre --ios-sim`. A bigger GitHub Mac would run
+      # them all: see BACKLOG.md (monetisation).
+      - run: node --test --test-concurrency=1 setup-wizard.test.mjs
         env:
           MATCHDAY_URL: http://127.0.0.1:8000
+      # What Appium was doing when it failed: session start-up, WebDriverAgent, Safari's debugger (no typed values)
+      - name: Appium's log
+        if: failure()
+        run: grep -vE "\[HTTP\]|execute/" appium.log | grep -iE "xcodebuild|webdriveragent|wda|remote ?debugger|webview|simulator|creating new|created|error|timed? ?out|took|install|launch" | grep -viE "setvalue|/value|password" | cut -c1-300 | tail -250
       # Screenshots only: the repository is public
       - name: Keep the screenshots of any failure
         if: failure()

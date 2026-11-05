@@ -1,6 +1,7 @@
 // Release checks for Match Day. Run before and after promoting beta to live:
 //   node tools/release-check.cjs pre    (before: beta is ready, live is safe to update)
 //   node tools/release-check.cjs post   (after: live runs the reviewed rules and the new version)
+//   "pre" also needs every GitHub test run (Tests, Android, iPhone Simulator) passed on this commit
 //   add --e2e to "pre" to also play a coach's whole match day on beta (tools/e2e, a few minutes)
 //   add --ios-sim to either: "pre" plays every journey in real iPhone Safari on beta (iOS Simulator,
 //   slow); "post" opens live in iPhone Safari and checks the version, without creating anything
@@ -117,6 +118,37 @@ async function main() {
     out('PASS', 'rules tests in the emulator (incl. team isolation)');
   } catch (e) { out('FAIL', 'rules tests in the emulator', (e.stdout || '').toString().split('\n').filter(l => /✖|not ok/.test(l)).slice(0, 3).join(' | ')); }
   try { fs.unlinkSync(path.join(ROOT, 'tests/firestore-debug.log')); } catch (_) {}
+
+  // 6a. Every test on GitHub passed on this code: the browser tests, rules and checks (Tests), real
+  //     Chrome on three Android phones (Android) and real iPhone Safari (iPhone Simulator). Required
+  //     for every release. A later commit that only changes notes (*.md) can use its parent's runs.
+  if (STAGE === 'pre') {
+    const git = c => execSync('git ' + c, {cwd: ROOT, stdio: 'pipe'}).toString().trim();
+    const WF = {'Tests': 'tests.yml', 'Android': 'android.yml', 'iPhone Simulator': 'ios-sim.yml'};
+    try {
+      const head = git('rev-parse HEAD'), branch = git('rev-parse --abbrev-ref HEAD');
+      const dirty = git("status --porcelain --untracked-files=no -- . ':!*.md'");
+      const pushed = (() => { try { return git(`branch -r --contains ${head}`).length > 0; } catch (_) { return false; } })();
+      if (dirty || !pushed) out('FAIL', 'every GitHub test passed on this code', dirty ? 'uncommitted changes: commit and push them, then run the tests' : `not on GitHub yet: git push origin ${branch}`);
+      else {
+        // the newest commit with the same code as HEAD (notes aside) that has test runs
+        const same = git('log --format=%H -30 HEAD').split('\n').filter(s => { try { git(`diff --quiet ${s} HEAD -- . ':!*.md'`); return true; } catch (_) { return false; } });
+        const runs = {};
+        for (const sha of same) {
+          for (const r of JSON.parse(execSync(`gh run list --commit ${sha} --limit 50 --json workflowName,conclusion,status,databaseId`, {cwd: ROOT, stdio: 'pipe'}).toString()))
+            if (WF[r.workflowName] && !runs[r.workflowName]) runs[r.workflowName] = {...r, sha}; // newest first
+        }
+        const bad = Object.keys(WF).map(w => {
+          const r = runs[w];
+          if (!r) return `${w}: not run (gh workflow run ${WF[w]} --ref ${branch})`;
+          if (r.status !== 'completed') return `${w}: still running (gh run watch ${r.databaseId})`;
+          if (r.conclusion !== 'success') return `${w}: ${r.conclusion} (gh run view ${r.databaseId} --log-failed; rerun: gh workflow run ${WF[w]} --ref ${branch})`;
+          return '';
+        }).filter(Boolean);
+        out(bad.length ? 'FAIL' : 'PASS', 'every GitHub test passed on this code', bad.join('; ') || Object.keys(WF).map(w => `${w} #${runs[w].databaseId}`).join(', '));
+      }
+    } catch (e) { out('FAIL', 'every GitHub test passed on this code', 'could not read GitHub runs (gh auth status?): ' + e.message.split('\n')[0]); }
+  }
 
   // 6b. Optional: a coach's whole match day on beta, in WebKit (iPhone) and Chromium
   if (STAGE === 'pre') {

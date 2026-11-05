@@ -10,7 +10,12 @@ if (process.env.ANDROID) {
   const {_android} = require('playwright');
   test = base.test.extend({
     android: [async ({}, use) => {
-      const [device] = await _android.devices();
+      let [device] = await _android.devices();
+      // On GitHub the emulator sometimes vanishes mid-run (android.yml): start it again, once per worker
+      if (!device && process.env.ANDROID_RESTART) {
+        require('node:child_process').execSync(process.env.ANDROID_RESTART, {stdio: 'inherit', timeout: 10 * 60 * 1000});
+        [device] = await _android.devices();
+      }
       if (!device) throw new Error('No Android device: start the emulator (or plug in a phone) and check `adb devices`.');
       await use(device);
       await device.close();
@@ -22,7 +27,7 @@ if (process.env.ANDROID) {
       for (let i = 1; ; i++) {
         try { ctx = await android.launchBrowser({baseURL, hasTouch: true, locale: 'en-GB', timezoneId: 'Europe/London'}); break; }
         catch (e) {
-          if (i >= 3) throw e;
+          if (i >= 3 || /Device is closed/.test(e.message)) throw e; // the device has gone: a new worker finds it again
           await android.shell('am force-stop com.android.chrome').catch(() => {});
           await new Promise(r => setTimeout(r, 5000));
         }

@@ -35,11 +35,12 @@ function simUdid(name) {
 // Start phone i (0, 1, 2) and clear anything an earlier run left in its Safari for this site.
 export async function phone(i = 0, {fresh = true} = {}) {
   const udid = simUdid(SIM_NAMES[i]);
-  // Safari's inspector connection sometimes isn't ready in time (a fixed 5 s in Appium): try again
+  // Safari's inspector connection sometimes isn't ready in time (a fixed 5 s in Appium), and on GitHub's
+  // Mac the test helper (WebDriverAgent) sometimes fails to start: try again
   let b;
   for (let tries = 1; ; tries++) {
     try { b = await startSession(udid, i); break; }
-    catch (e) { if (tries >= 3 || !/remote debugger|connected web applications|not connectable/i.test(e.message)) throw e; await new Promise(r => setTimeout(r, 5000)); }
+    catch (e) { if (tries >= 3 || !/remote debugger|connected web applications|not connectable|launch WebDriverAgent|preinstalled WebDriverAgent/i.test(e.message)) throw e; await new Promise(r => setTimeout(r, 5000)); }
   }
   await b.setTimeout({script: 30000});
   const p = makePhone(b, SIM_NAMES[i]);
@@ -64,7 +65,26 @@ const startSession = (udid, i) => remote({hostname: '127.0.0.1', port: 4723, log
       'appium:wdaLocalPort': 8100 + i, 'appium:wdaLaunchTimeout': 600000, 'appium:webviewConnectTimeout': 30000,
       'appium:simulatorStartupTimeout': 600000, // GitHub's Mac can take over the default 2 minutes to start one
       'appium:newCommandTimeout': 1800, // a phone may sit idle for minutes while another simulator starts
-      'appium:safariInitialUrl': 'about:blank', 'appium:safariIgnoreFraudWarning': true}});
+      'appium:safariInitialUrl': 'about:blank', 'appium:safariIgnoreFraudWarning': true,
+      // On GitHub, WebDriverAgent is built in its own step. Install that app on each simulator and start
+      // it directly: started through xcodebuild, the second phone waited on the first's build folder
+      // for over 15 minutes and the journey with a supporter timed out.
+      ...(process.env.PREBUILT_WDA ? {'appium:usePreinstalledWDA': true, 'appium:prebuiltWDAPath': process.env.PREBUILT_WDA,
+        'appium:wdaLaunchTimeout': 180000} // it starts in 10-20 s when it works: give up sooner and try again
+      : {})}});
+
+// Close Safari's own tip pop-ups (native, outside the page). True if one was closed.
+async function dismissSafariTips(b) {
+  let closed = false, ctx;
+  try {
+    ctx = await b.getContext();
+    await b.switchContext('NATIVE_APP');
+    for (const el of await b.$$('-ios predicate string:type == "XCUIElementTypeButton" AND (name IN {"Close", "close", "Dismiss"} OR label IN {"Close", "Dismiss"})'))
+      if (await el.isDisplayed().catch(() => false)) { await el.click(); closed = true; }
+  } catch (_) {}
+  finally { if (ctx) await b.switchContext(ctx).catch(() => {}); }
+  return closed;
+}
 
 function makePhone(b, name) {
   const css = s => b.$(s);
@@ -104,7 +124,14 @@ function makePhone(b, name) {
       if (team) await p.saved(); // (a phone not in a team yet has nothing to save)
       await b.execute(() => { document.documentElement.dataset.e2eOld = '1'; }); // gone once the new page is in
       await b.refresh();
-      await p.until(t => !document.documentElement.dataset.e2eOld && document.readyState === 'complete' && (!t || document.getElementById('hteam')?.textContent === t), 'the page after reload', 30000, team);
+      const loaded = t => !document.documentElement.dataset.e2eOld && document.readyState === 'complete' && (!t || document.getElementById('hteam')?.textContent === t);
+      try { await p.until(loaded, 'the page after reload', 30000, team); }
+      catch (e) {
+        // Safari's own first-use tips ("View Bookmarks, Share Menu, and Open Tabs") can pop up over the
+        // page and stop the test reading it: close any, then check the page again
+        if (!await dismissSafariTips(b)) throw e;
+        await p.until(loaded, 'the page after reload', 30000, team);
+      }
       await p.watchToasts();
     },
 
