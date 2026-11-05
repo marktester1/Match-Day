@@ -461,8 +461,9 @@ const tAt=(ms,g)=>{if(!itOn(g))return nPer()===1?fmt(ms):perShort(perOf(ms))+' '
   const k=perOf(ms,g),w=ms-perStart(g,k),o=w-perLen();
   return (nPer()>1?perShort(k)+' ':'')+(o>0?fmt(perLen())+'+'+fmt(o):fmt(w))};                               // "1H 10:00+1:05"
 const clockText=g=>{const e=el(g);if(!itOn(g))return nPer()===1?fmt(e):fmt(e-perOf(e)*perLen());
+  if(autoStopped(g))return fmt(e); // stopped itself: a forgotten clock, not added time
   return fmt(Math.min(perLen(),e-perStart(g,perOf(e,g))))};
-const clockSub=g=>{const e=el(g),o=itOn(g)&&!timeUp(g)?overOf(e,g):0;if(o>0)return '+'+fmt(o)+' added time';
+const clockSub=g=>{const e=el(g),o=itOn(g)&&!timeUp(g)&&!autoStopped(g)?overOf(e,g):0;if(o>0)return '+'+fmt(o)+' added time';
   if(nPer()===1)return 'of '+fmt((S.tour.len||10)*60000);const b=atBreak(g);
   return b?(nPer()===2?'Half time':'End of Q'+b):perName(perOf(e,g))+' · of '+fmt(perLen())};
 function fmt(ms){const s=Math.floor(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}

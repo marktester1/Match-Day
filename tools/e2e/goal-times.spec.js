@@ -58,7 +58,7 @@ test('goal times can be corrected in the game and in saved results', async ({pag
     const tc = c.view.locator('.tcard').first();
     await c.press(tc.locator('[data-act=topen]'));
     await expect(tc.locator('.tb')).toBeVisible();
-    await expect(tc.locator('.gls').filter({hasText: '⚽'})).toContainText("Ben 26'");
+    await expect(tc.locator('.gls').filter({hasText: '⚽'})).toContainText("Ben 20+6'"); // after the 20 minutes: added time
     await c.press(tc.getByRole('button', {name: 'Edit'}));
     const t = c.view.locator('[data-ed^="gat|"]').first();
     await expect(t).toHaveValue('25:30');
@@ -95,7 +95,7 @@ test('Half time can be tapped early, and Full time can end the game at its full 
     // The referee blows at 7 minutes: Half time puts the clock at 10:00, so the 2nd half starts there
     await page.clock.fastForward(7 * 60000);
     await press(btn('Half time'));
-    await toast('Half time in game 1. The clock is at 10:00.');
+    await toast('Half time in game 1.');
     await expect(c.pill()).toHaveText('Half time');
     await expect(btn('Half time')).toHaveCount(0);
     await press(btn('Start 2nd half'));
