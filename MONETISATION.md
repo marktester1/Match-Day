@@ -18,8 +18,11 @@ the teams they manage**. Coaches they invite **never pay**, so inviting assistan
 - **Free trial: six weeks** from the manager's first team (teams made before launch: from launch day).
 - A team is active while **its manager** (`createdBy`) is subscribed or in their trial. If the manager
   role is handed over, the team follows the new manager's subscription.
-- **To decide:** the price; a cap on teams per subscription (e.g. 3), so a whole club can't sit under
-  one person; a **club price** for clubs with many teams.
+- **Price (decided 5 Nov 2026): £5 a year.** One person pays, and the subscription covers **up to four
+  managers** (the payer and up to three others they make managers). Coaches who aren't managers are free.
+  A fifth manager needs a second subscription.
+- **Supporters:** free for now; not formally decided (the October £1 idea is superseded).
+- **Still to decide:** a cap on teams per subscription, and a club price for clubs with many teams.
 - **Code to rework:** sections below were built per team (`teams/{t}/billing/state`). Billing moves to
   the manager (e.g. `billing/{uid}`, written only by the payment webhook, vouchers or Admin), and the
   rules check the team's manager's billing record. Vouchers, the founding club, referrals and the
