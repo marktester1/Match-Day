@@ -5,10 +5,20 @@ Ideas and requests to pick up later. Each one goes to the beta link first (see C
 
 ## Now
 
-- **Live: v0.28.2** (3 Nov 2026): the first-time set-up wizard, "same as last time?" for the next
-  match day, the 💬 Feedback button, and long team names wrapping on 360-wide phones.
-  **Beta: v0.28.3** (branch `setup-wizard`): **Reset this game** at the bottom of a started game, with a
-  pop-up first and Undo afterwards. Next: the user tries it on beta, then release.
+- **Live: v0.28.10** (4 Nov 2026), on match-day-17b23.web.app and app.matchday-app.uk: supporters (not
+  followers), Home | Away switch, "Your match" step for one match, goal times past full time, "Match days".
+  **Beta: v0.28.11** (branch `setup-wizard`): Half time button, "End at 20:00" in the Full time pop-up,
+  "Change match time", typed passwords kept through redraws. Next: the user tries it, then release.
+- **Injury time (branch `injury-time`, for assessment):** preview with beta data at
+  https://match-day-beta-17b23--injury-time-t3p36wj6.web.app (expires 19 Nov 2026). "Play added time" at
+  half time, 10+2' times, minutes include added time. Needs the rules change (games may have `added`):
+  on beta since 5 Nov 2026, **not live**. Until it's merged, release-check shows "beta rules differ".
+- **Install Java on the Mac** (asked 5 Nov 2026): `brew install openjdk@21`, then
+  `sudo ln -sfn /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk-21.jdk`
+  (needs the Mac password). Lets the rules tests (`cd tests && npm test`) run locally, not only on GitHub.
+- **Notifications in set-up:** offer "Turn on notifications" (join requests) on the wizard's last screen.
+- **Coach name on a new address or phone:** the name is kept per address, so it's blank on
+  app.matchday-app.uk. If the phone has no name but is in a team, fill it from the team's member entry.
 - **Website (`site/`):** coaches' copy https://matchday-website-preview.web.app (opens the live app),
   testers' copy https://matchday-website-beta.web.app (opens beta; `sh tools/build_site_beta.sh`,
   publish with `--config site-beta/firebase.json`). Both on the beta project; publish the main one
