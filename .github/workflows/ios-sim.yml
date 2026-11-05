@@ -64,7 +64,9 @@ jobs:
         run: python3 -m http.server 8000 >/dev/null 2>&1 &
       - name: Start Appium
         run: |
-          npm run appium > appium.log 2>&1 &
+          # info-level log (printed below if the tests fail); the connection stays open up to 30 minutes
+          # while a session starts (Appium's default of 10 minutes cut it off on GitHub's slow Mac)
+          APPIUM_HOME=./.appium npx appium --port 4723 --log-level info --keep-alive-timeout 1800 > appium.log 2>&1 &
           for i in $(seq 60); do curl -s http://127.0.0.1:4723/status >/dev/null && exit 0; sleep 2; done
           cat appium.log; exit 1
       # The set-up wizard and the coach's whole day (with a follower on a second iPhone). The tests with
@@ -74,6 +76,11 @@ jobs:
       - run: node --test --test-concurrency=1 setup-wizard.test.mjs journey.test.mjs
         env:
           MATCHDAY_URL: http://127.0.0.1:8000
+          PREBUILT_WDA: 1
+      # What Appium was doing when it failed: session start-up, WebDriverAgent, Safari's debugger (no typed values)
+      - name: Appium's log
+        if: failure()
+        run: grep -iE "xcodebuild|webdriveragent|wda|remote debugger|webview|session|simulator|error|timed? ?out|took" appium.log | grep -viE "setvalue|/value|password" | cut -c1-300 | tail -300
       # Screenshots only: the repository is public
       - name: Keep the screenshots of any failure
         if: failure()
