@@ -65,8 +65,10 @@ const startSession = (udid, i) => remote({hostname: '127.0.0.1', port: 4723, log
       'appium:simulatorStartupTimeout': 600000, // GitHub's Mac can take over the default 2 minutes to start one
       'appium:newCommandTimeout': 1800, // a phone may sit idle for minutes while another simulator starts
       'appium:safariInitialUrl': 'about:blank', 'appium:safariIgnoreFraudWarning': true,
-      // on GitHub, WebDriverAgent is built in its own step: use that build instead of building it again
-      ...(process.env.PREBUILT_WDA ? {'appium:usePrebuiltWDA': true} : {})}});
+      // On GitHub, WebDriverAgent is built in its own step. Install that app on each simulator and start
+      // it directly: started through xcodebuild, the second phone waited on the first's build folder
+      // for over 15 minutes and the journey with a supporter timed out.
+      ...(process.env.PREBUILT_WDA ? {'appium:usePreinstalledWDA': true, 'appium:prebuiltWDAPath': process.env.PREBUILT_WDA} : {})}});
 
 function makePhone(b, name) {
   const css = s => b.$(s);

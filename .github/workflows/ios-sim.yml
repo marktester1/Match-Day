@@ -41,7 +41,10 @@ jobs:
       # Build Apple's test helper (WebDriverAgent) now: built inside the first test, it took over 10
       # minutes on GitHub's Mac and the connection gave up. Later builds reuse this one.
       - name: Build WebDriverAgent
-        run: APPIUM_HOME=./.appium npx appium driver run xcuitest build-wda
+        run: |
+          APPIUM_HOME=./.appium npx appium driver run xcuitest build-wda
+          APP=$(ls -d ~/Library/Developer/Xcode/DerivedData/WebDriverAgent-*/Build/Products/Debug-iphonesimulator/WebDriverAgentRunner-Runner.app | head -1)
+          test -d "$APP" && echo "PREBUILT_WDA=$APP" >> "$GITHUB_ENV" && echo "Built: $APP"
       - name: Choose three iPhone simulators
         run: |
           SIMS=$(xcrun simctl list devices available -j | node -e "
@@ -76,11 +79,10 @@ jobs:
       - run: node --test --test-concurrency=1 setup-wizard.test.mjs journey.test.mjs
         env:
           MATCHDAY_URL: http://127.0.0.1:8000
-          PREBUILT_WDA: 1
       # What Appium was doing when it failed: session start-up, WebDriverAgent, Safari's debugger (no typed values)
       - name: Appium's log
         if: failure()
-        run: grep -iE "xcodebuild|webdriveragent|wda|remote debugger|webview|session|simulator|error|timed? ?out|took" appium.log | grep -viE "setvalue|/value|password" | cut -c1-300 | tail -300
+        run: grep -vE "\[HTTP\]|execute/" appium.log | grep -iE "xcodebuild|webdriveragent|wda|remote ?debugger|webview|simulator|creating new|created|error|timed? ?out|took|install|launch" | grep -viE "setvalue|/value|password" | cut -c1-300 | tail -250
       # Screenshots only: the repository is public
       - name: Keep the screenshots of any failure
         if: failure()
