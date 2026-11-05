@@ -101,6 +101,17 @@ test('games: bad IDs, scores, clocks, sizes and extra fields are refused', async
   await assertFails(setDoc(d(f, 'games', 'g1'), {...blankGame(1), side: 'neutral'}));
   await assertFails(setDoc(d(f, 'games', 'g1'), {...blankGame(1), hacked: true}));
 });
+test('games: added (injury) time is a short list of times', async () => {
+  const f = alice();
+  await assertSucceeds(setDoc(d(f, 'games', 'g1'), {...blankGame(1), added: []}));
+  await assertSucceeds(setDoc(d(f, 'games', 'g1'), {...blankGame(1), added: [65000]}));
+  await assertSucceeds(setDoc(d(f, 'games', 'g1'), {...blankGame(1), added: [0, 30000, 0]}));
+  await assertFails(setDoc(d(f, 'games', 'g1'), {...blankGame(1), added: [1, 2, 3, 4, 5]}));       // more than 4 periods
+  await assertFails(setDoc(d(f, 'games', 'g1'), {...blankGame(1), added: [-1000]}));               // negative
+  await assertFails(setDoc(d(f, 'games', 'g1'), {...blankGame(1), added: [0, 36000001]}));         // over 10 hours
+  await assertFails(setDoc(d(f, 'games', 'g1'), {...blankGame(1), added: ['1:00']}));              // not a number
+  await assertFails(setDoc(d(f, 'games', 'g1'), {...blankGame(1), added: 60000}));                 // not a list
+});
 test('awards and season record: bad IDs and shapes are refused', async () => {
   const f = alice();
   await assertFails(setDoc(d(f, 'awards', 'bad id!'), award));

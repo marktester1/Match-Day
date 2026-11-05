@@ -105,8 +105,8 @@ test('Half time can be tapped early, and Full time can end the game at its full 
     // Full time after 3 more minutes: the pop-up offers 13:00 as it is, or the full 20:00
     await page.clock.fastForward(3 * 60000);
     await press(btn('Full time'));
-    await expect(modal).toContainText('The clock shows 13:00 of 20:00.');
-    await press(btn('End at 20:00', modal));
+    await expect(modal).toContainText('The clock shows 3:00 into the 2nd half (of 10:00).');
+    await press(btn('End at 10:00', modal));
     await expect(c.pill()).toHaveText('Full time');
     await expect(c.chip('Ben').locator('.m')).toHaveText('20:00'); // on all game: minutes up to 20:00
 

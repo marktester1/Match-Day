@@ -117,9 +117,15 @@ service cloud.firestore {
     function gks(l)    { return l is list && l.size() <= 100 && (l.size() == 0 || okGk(l[l.size() - 1])); }
     function cards(l)  { return l is list && l.size() <= 60 && (l.size() == 0 || (okCard(l[0]) && okCard(l[l.size() - 1]))); }
     function scores(l) { return l is list && l.size() <= 200 && (l.size() == 0 || okScore(l[l.size() - 1])); }
+    // Added (injury) time played at the end of each finished half or quarter, in ms (up to 4, each up to 10 hours).
+    function addedOk(l) {
+      return l is list && l.size() <= 4 && (l.size() < 1 || upTo(l[0], 36000000)) && (l.size() < 2 || upTo(l[1], 36000000))
+        && (l.size() < 3 || upTo(l[2], 36000000)) && (l.size() < 4 || upTo(l[3], 36000000));
+    }
     function validGame(d) {
       return d.keys().hasOnly(['n', 'opponent', 'team', 'time', 'pitch', 'gk', 'starters', 'bench', 'subs',
-          'gkChanges', 'goals', 'opp', 'clock', 'score', 'done', 'side', 'size', 'cards'])
+          'gkChanges', 'goals', 'opp', 'clock', 'score', 'done', 'side', 'size', 'cards', 'added'])
+        && addedOk(d.get('added', []))
         && intIn(d.get('n', 1), 1, 10) && strMax(d.get('opponent', ''), 40) && strMax(d.get('team', ''), 40)
         && strMax(d.get('time', ''), 10) && strMax(d.get('pitch', ''), 10) && pid(d.get('gk', null))
         && ids(d.get('starters', []), 15) && ids(d.get('bench', []), 80)

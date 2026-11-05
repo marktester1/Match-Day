@@ -383,7 +383,7 @@ body:has(input:focus,textarea:focus,select:focus) .fb{visibility:hidden;transiti
 <a id="feedback" class="fb" href="mailto:hello@matchday-app.uk?subject=Match%20Day%20feedback" aria-label="Send feedback by email">💬 Feedback</a>
 
 <script>
-const APP_VERSION='0.28.11';
+const APP_VERSION='0.29.0-injury';
 // Feedback by email, with the app version and phone type filled in (never the team's or players' details)
 {const fb=document.getElementById('feedback'),dev=(navigator.userAgent.match(/\(([^)]+)\)/)||[])[1]||'';
   fb.href='mailto:hello@matchday-app.uk?subject='+encodeURIComponent('Match Day feedback')+'&body='+
@@ -428,23 +428,43 @@ const autoStopped=g=>!g.clock.running&&!g.done&&g.clock.acc>=overrunAt();
 const started=g=>g.clock.running||g.clock.acc>0;
 const nPer=()=>[1,2,4].includes(+S.tour.periods)?+S.tour.periods:1;
 const perLen=()=>(S.tour.len||10)*60000/nPer();
-const perOf=ms=>Math.min(nPer()-1,Math.floor(ms/perLen()+1e-9));
+// Added (injury) time. A game kicked off on this version keeps g.added: the added time played at the
+// end of each half or quarter that has finished, in ms. Times stay real time from kick-off, so minutes
+// played include added time, but each period starts on screen at its usual time (the 2nd half at 10:00)
+// and an event in added time reads "10+1'". Games without g.added (older ones) keep fixed boundaries.
+const itOn=g=>!!g&&Array.isArray(g.added);
+const addOf=(g,k)=>itOn(g)?Math.max(0,+g.added[k]||0):0;
+const closedP=(g,k)=>itOn(g)&&typeof g.added[k]==='number';           // that period has finished
+const perStart=(g,k)=>{let s=k*perLen();for(let i=0;i<k;i++)s+=addOf(g,i);return s}; // clock time it starts
+const perNom=(g,k)=>perStart(g,k)+perLen();                            // its usual time is up (added time after)
+const perOf=(ms,g)=>{if(!itOn(g))return Math.min(nPer()-1,Math.floor(ms/perLen()+1e-9));
+  let k=0;while(k<nPer()-1&&closedP(g,k)&&ms>=perStart(g,k+1)-1e-6)k++;return k};
+const overOf=(ms,g)=>{const k=perOf(ms,g);return itOn(g)||k===nPer()-1?Math.max(0,ms-perNom(g,k)):0}; // into added time
 const perName=i=>nPer()===2?['1st half','2nd half'][i]:nPer()===4?'Q'+(i+1):'';
 const perShort=i=>nPer()===2?(i+1)+'H':nPer()===4?'Q'+(i+1):'';
-function atBreak(g){ // paused exactly at the end of a half/quarter that isn't the last
-  if(nPer()===1||g.clock.running||g.done)return 0;const e=el(g),k=Math.round(e/perLen());
-  return k>0&&k<nPer()&&Math.abs(e-k*perLen())<500?k:0;
+function atBreak(g){ // paused at the end of a half/quarter that isn't the last: how many have finished
+  if(nPer()===1||g.clock.running||g.done)return 0;const e=el(g);
+  if(!itOn(g)){const k=Math.round(e/perLen());return k>0&&k<nPer()&&Math.abs(e-k*perLen())<500?k:0}
+  const k=perOf(e,g);
+  if(k<nPer()-1&&!closedP(g,k)&&Math.abs(e-perNom(g,k))<500)return k+1; // time's up: half time, unless added time is played
+  if(k>0&&closedP(g,k-1)&&Math.abs(e-perStart(g,k))<500)return k;       // ended (with any added time), next not started
+  return 0;
 }
+const timeUp=g=>{const b=atBreak(g);return b&&itOn(g)&&!closedP(g,b-1)?b:0}; // paused itself at the usual time
 // The referee can blow for half time before the clock gets there: "Half time" (or "End of Q1") moves
 // the clock to the break, so the next half or quarter starts at the right time. Not in the last period.
 const perEnd=g=>(Math.floor(el(g)/perLen()+1e-9)+1)*perLen();
-const endPerBtn=g=>{if(nPer()===1||g.done||!started(g)||atBreak(g))return'';const p=Math.floor(el(g)/perLen()+1e-9);
-  return p<nPer()-1?`<button class="btn" data-act="endper">${nPer()===2?'Half time':'End of Q'+(p+1)}</button>`:''};
-const fullLen=()=>(S.tour.len||10)*60000;
-const tAt=ms=>nPer()===1?fmt(ms):perShort(perOf(ms))+' '+fmt(ms-perOf(ms)*perLen()); // e.g. "2H 3:24"
-const clockText=g=>{const e=el(g);return nPer()===1?fmt(e):fmt(e-perOf(e)*perLen())};
-const clockSub=g=>{if(nPer()===1)return 'of '+fmt((S.tour.len||10)*60000);const b=atBreak(g);
-  return b?(nPer()===2?'Half time':'End of Q'+b):perName(perOf(el(g)))+' · of '+fmt(perLen())};
+const endPerBtn=g=>{if(nPer()===1||g.done||!started(g)||atBreak(g))return'';const p=perOf(el(g),g);
+  return p<nPer()-1?`<button class="btn${itOn(g)&&overOf(el(g),g)>0?' warn':''}" data-act="endper">${nPer()===2?'Half time':'End of Q'+(p+1)}</button>`:''};
+const fullLen=g=>itOn(g)?perNom(g,nPer()-1):(S.tour.len||10)*60000; // the clock time the game's usual time is up
+const tAt=(ms,g)=>{if(!itOn(g))return nPer()===1?fmt(ms):perShort(perOf(ms))+' '+fmt(ms-perOf(ms)*perLen()); // e.g. "2H 3:24"
+  const k=perOf(ms,g),w=ms-perStart(g,k),o=w-perLen();
+  return (nPer()>1?perShort(k)+' ':'')+(o>0?fmt(perLen())+'+'+fmt(o):fmt(w))};                               // "1H 10:00+1:05"
+const clockText=g=>{const e=el(g);if(!itOn(g))return nPer()===1?fmt(e):fmt(e-perOf(e)*perLen());
+  return fmt(Math.min(perLen(),e-perStart(g,perOf(e,g))))};
+const clockSub=g=>{const e=el(g),o=itOn(g)&&!timeUp(g)?overOf(e,g):0;if(o>0)return '+'+fmt(o)+' added time';
+  if(nPer()===1)return 'of '+fmt((S.tour.len||10)*60000);const b=atBreak(g);
+  return b?(nPer()===2?'Half time':'End of Q'+b):perName(perOf(e,g))+' · of '+fmt(perLen())};
 function fmt(ms){const s=Math.floor(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}
 function fmtM(ms){const m=ms/60000;return m<1&&ms>0?fmt(ms):Math.round(m)+'m'}
 const bySubTime=g=>[...g.subs].sort((a,b)=>a.at-b.at);
@@ -476,7 +496,10 @@ const byName=ids=>[...ids].sort((a,b)=>nameOf(a).localeCompare(nameOf(b),'en',{s
 
 /* ---------- cards: yellow and red, with the time ---------- */
 const SINBIN=10*60000; // rugby yellow: 10 minutes in the sin bin; the time still counts as playing time
-const mn=at=>Math.floor((at||0)/60000)+1+"'";             // minute of the game, e.g. 7'
+const mn=(at,g)=>{at=at||0;if(!itOn(g))return Math.floor(at/60000)+1+"'"; // minute of the game, e.g. 7'
+  const per=g.len&&g.periods?g.len*60000/g.periods:perLen(),np=g.periods||nPer(); // saved games carry their own length
+  let k=0,st=0;while(k<np-1&&typeof g.added[k]==='number'&&at>=st+per+addOf(g,k)){st+=per+addOf(g,k);k++}
+  const w=at-st,o=w-per;return o>0?Math.round((k+1)*per/60000)+'+'+(Math.floor(o/60000)+1)+"'":Math.floor((k*per+w)/60000)+1+"'"}; // or 10+1'
 const sentOff=g=>new Set((g.cards||[]).filter(x=>x.c==='r').map(x=>x.p));
 function binLeft(g,p){ // rugby: time left in the sin bin for this player (0 if not binned)
   if(!isRugby())return 0;const y=(g.cards||[]).filter(x=>x.p===p&&x.c==='y').pop();
@@ -491,7 +514,7 @@ function cardBadge(id,g,p){
 function giveCard(id,p,c){
   const g=G(id),nm=nameOf(p);
   if(sentOff(g).has(p)){toast(`${nm} has already been sent off.`);return}
-  withUndo(id,`${c==='r'?'Red':'Yellow'} card for ${nm} at ${mn(el(g))}`);
+  withUndo(id,`${c==='r'?'Red':'Yellow'} card for ${nm} at ${mn(el(g),g)}`);
   mut(id,g=>{const at=el(g);g.cards=[...(g.cards||[]),{at,p,c}];
     if(c==='r'&&onPitch(g).has(p))g.subs.push({at,off:p,on:null})}); // sent off: leaves the pitch, nobody replaces them
   toast(c==='r'?`${nm} sent off. The team plays one short.`:isRugby()?`${nm}: yellow card, 10 minutes in the sin bin. It still counts as playing time.`:`${nm}: yellow card.`);
@@ -575,7 +598,8 @@ function feedBody(id){
     tname:String(S.tour.name||'').slice(0,60),tdate:String(S.tour.date||'').slice(0,10)};
   if(!g)return b;
   return{...b,home:homeName(g).slice(0,40),away:awayName(g).slice(0,40),us:isAway(g)?'away':'home',score:{us:g.score.us,them:g.score.them},
-    status:gStatus(g),clock:{running:!!g.clock.running,startedAt:g.clock.startedAt||0,acc:g.clock.acc||0},gameN:g.n,
+    // supporters' page knows nothing of added time: take finished periods' added time off, so each starts at its usual time
+    status:gStatus(g),clock:{running:!!g.clock.running,startedAt:g.clock.startedAt||0,acc:Math.max(0,(g.clock.acc||0)-(itOn(g)?g.added.reduce((a,x,i)=>a+(i<perOf(g.clock.acc||0,g)?addOf(g,i):0),0):0))},gameN:g.n,
     cards:Math.min(60,(g.cards||[]).length),...((g.cards||[]).length?{lastCard:(({c,at})=>({c,at:Math.min(36000000,at||0)}))(g.cards[g.cards.length-1])}:{})};
 }
 const feedFixture=id=>{const g=G(id);return{n:g.n,home:homeName(g).slice(0,40),away:awayName(g).slice(0,40),us:isAway(g)?'away':'home',
@@ -780,7 +804,7 @@ function swap(id,a,aSide,b,bSide){
   }
   if(g.done){toast('Reopen the game to change subs.');return}
   const wasK=keeper(g)===off;
-  withUndo(id,`${nameOf(on)} on, ${nameOf(off)} off at ${tAt(el(g))}${wasK?` · ${nameOf(on)} now in goal`:''}`);
+  withUndo(id,`${nameOf(on)} on, ${nameOf(off)} off at ${tAt(el(g),g)}${wasK?` · ${nameOf(on)} now in goal`:''}`);
   mut(id,g=>{g.subs.push({at:el(g),off,on,...(wasK?{gk:true}:{})})});
 }
 
@@ -850,8 +874,11 @@ function tryKick(id,o={}){
     if(!o.sizeOk&&n&&n!==gameSize(g)){S.askGk=null;S.askSize={g:id,n,why:n<gameSize(g)?'fewer':'kickmore'};render();return}
   }
   S.askGk=null;S.askSize=null;
-  withUndo(id,started(g)?(atBreak(g)?'Started '+perName(atBreak(g)):'Clock restarted'):'Kicked off');
-  mut(id,g=>{g.clock.running=true;g.clock.startedAt=Date.now();g.done=false});
+  const b=atBreak(g);
+  withUndo(id,started(g)?(b?'Started '+perName(b):'Clock restarted'):'Kicked off');
+  mut(id,g=>{if(!started(g)&&!g.done)g.added=[]; // a new game keeps track of added time
+    if(b&&itOn(g)&&!closedP(g,b-1)){const a=[...g.added];a[b-1]=0;g.added=a} // straight on: no added time
+    g.clock.running=true;g.clock.startedAt=Date.now();g.done=false});
   if(!started(g))toast('Kicked off.');
 }
 
@@ -892,16 +919,18 @@ function quickPick(g,q){
 
 /* ---------- full time: confirm, showing the final score ---------- */
 function ftAsk(g){
-  const e=el(g),short=fullLen()-e>=30000; // stopped half a minute or more before the end
+  const e=el(g),short=fullLen(g)-e>=30000; // stopped half a minute or more before the end
+  // as the coach sees the clock: the time in the last half (or quarter) for a game with added time
+  const now=itOn(g)?clockText(g):fmt(e),upTo=itOn(g)?fmt(perLen()):fmt(fullLen(g)),inP=itOn(g)&&nPer()>1;
   return `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="ftq"><div class="box">
     <h3 id="ftq">End game ${g.n}?</h3>
     <p class="ftscore"><span>${esc(homeName(g))}</span><b class="num">${scoreHA(g)}</b><span>${esc(awayName(g))}</span></p>
     ${g.opponent?'':`<p class="warnline">⚠️ No opposition entered for this game. Add who you played so the result makes sense in Results and for supporters.</p>
     <label>Opposition<input id="ftopp" maxlength="40" placeholder="e.g. Riverside" list="ftopps" autocomplete="off"></label><datalist id="ftopps">${opponents().map(o=>`<option value="${esc(o)}"></option>`).join('')}</datalist>`}
-    ${short?`<p class="note">The clock shows <b>${fmt(e)}</b> of ${fmt(fullLen())}. If the game ran the full time, end it at ${fmt(fullLen())}: players on the pitch get their minutes up to then.</p>`
-      :`<p class="note">The clock stops at ${tAt(e)} and the result counts in today's record.</p>`}
+    ${short?`<p class="note">The clock shows ${inP?`<b>${now}</b> into the ${perName(nPer()-1)} (of ${upTo})`:`<b>${now}</b> of ${upTo}`}. If the game ran the full time, end it at ${upTo}: players on the pitch get their minutes up to then.</p>`
+      :`<p class="note">The clock stops at ${tAt(e,g)} and the result counts in today's record.</p>`}
     <p class="note">You can reopen the game, or change the match time, afterwards.</p>
-    <div class="cbtns"><button class="btn" data-act="ftno">Keep playing</button>${short?`<button class="btn warn" data-act="ftyes">End at ${fmt(e)}</button><button class="btn warn" data-act="ftyes" data-full="1">End at ${fmt(fullLen())}</button>`:'<button class="btn warn" data-act="ftyes">End game</button>'}</div>
+    <div class="cbtns"><button class="btn" data-act="ftno">Keep playing</button>${short?`<button class="btn warn" data-act="ftyes">End at ${now}</button><button class="btn warn" data-act="ftyes" data-full="1">End at ${upTo}</button>`:'<button class="btn warn" data-act="ftyes">End game</button>'}</div>
   </div></div>`;
 }
 
@@ -1109,7 +1138,7 @@ function gamesList(){
       <span class="gn"><small>GAME</small>${g.n}</span>
       <span style="min-width:0"><span class="opp">${g.opponent?esc(homeName(g))+' v '+esc(awayName(g)):'Opponent not set'}</span>
       <span class="sub" style="display:block">${[g.time&&esc(g.time),g.pitch&&'Pitch '+esc(g.pitch),g.gk&&'GK '+esc(nameOf(g.gk)),!n&&'No players picked'].filter(Boolean).join(' · ')}</span></span>
-      <span class="res">${started(g)?`<span class="scr num">${scoreHA(g)}</span>`:''}${status(g)}${started(g)&&!g.done?`<span class="sub num" data-clock="${id}">${nPer()>1?perShort(perOf(el(g)))+' ':''}${clockText(g)}</span>`:''}</span>
+      <span class="res">${started(g)?`<span class="scr num">${scoreHA(g)}</span>`:''}${status(g)}${started(g)&&!g.done?`<span class="sub num" data-clock="${id}">${nPer()>1?perShort(perOf(el(g),g))+' ':''}${clockText(g)}</span>`:''}</span>
     </button>`}).join('')}</div>
   <button class="btn" data-act="fxopen">Enter opponents and kick-off times</button>
   ${(()=>{const no=ids.filter(id=>started(G(id))&&!G(id).opponent).map(id=>G(id).n);return no.length?`<p class="warnline">⚠️ No opposition entered for game${no.length>1?'s':''} ${no.join(', ')}. Tap <b>Enter opponents and kick-off times</b> to add ${no.length>1?'them':'it'} before you save.</p>`:''})()}
@@ -1131,7 +1160,7 @@ function gameView(id){
   const brk=endPerBtn(g);
   const cb=g.done?`<button class="btn" data-act="reopen">Reopen game</button><button class="btn" data-act="fixclock">Change match time</button>`
     :g.clock.running?`<button class="btn" data-act="pause">Pause</button>${brk}<button class="btn warn" data-act="ft">Full time</button>`
-    :st?`<button class="btn go" data-act="kick">${atBreak(g)?'Start '+perName(atBreak(g)):'Resume'}</button>${brk}<button class="btn warn" data-act="ft">Full time</button>`
+    :st?`<button class="btn go" data-act="kick">${atBreak(g)?'Start '+perName(atBreak(g)):'Resume'}</button>${timeUp(g)?'<button class="btn" data-act="addtime">Play added time</button>':''}${brk}<button class="btn warn" data-act="ft">Full time</button>`
     :`<button class="btn go" data-act="kick" ${g.starters.length?'':'disabled'}>Kick off</button>`;
   const selection=!st?`<section class="sec"><h3>Who's playing</h3>
     ${S.squad.length?`<div class="rows">${S.squad.map(p=>{const r=g.gk===p.id?'gk':g.starters.includes(p.id)?'start':g.bench.includes(p.id)?'bench':'out';
@@ -1182,11 +1211,11 @@ function gameView(id){
   <div class="benchbox"><div class="lbl" style="margin-bottom:8px">Bench</div>
     <div class="chips">${bench.length?bench.map(p=>chip(p,'bench')).join(''):'<span class="note">Nobody on the bench</span>'}</div></div>
   ${(g.cards||[]).length?`<section class="sec log"><h3>Cards</h3>
-    <div class="rows">${(g.cards||[]).map((x,i)=>({x,i})).sort((a,b)=>b.x.at-a.x.at).map(({x,i})=>`<div class="row"><span class="at num">${tAt(x.at)}</span>
+    <div class="rows">${(g.cards||[]).map((x,i)=>({x,i})).sort((a,b)=>b.x.at-a.x.at).map(({x,i})=>`<div class="row"><span class="at num">${tAt(x.at,g)}</span>
       <span class="who">${x.c==='r'?'🟥':'🟨'} ${esc(nameOf(x.p))}${x.c==='y'&&binLeft(g,x.p)?` <span class="note">sin bin</span>`:''}</span>
       ${g.done?'':`<button class="x" data-act="carddel" data-i="${i}">Remove</button>`}</div>`).join('')}</div></section>`:''}
   ${(g.goals||[]).length?`<section class="sec log"><h3>Our ${Words().goals.toLowerCase()}</h3>
-    <div class="rows">${(g.goals||[]).map((x,i)=>({x,i})).sort((a,b)=>b.x.at-a.x.at).map(({x,i})=>`<div class="row"><input class="num subt" data-goalat="${i}" value="${fmt(x.at)}" inputmode="decimal" aria-label="Time of this ${isRugby()?'score':'goal'}, from kick-off (minutes:seconds)">${isRugby()?`<span class="evl">${evLabel(x)}</span>`:''}
+    <div class="rows">${(g.goals||[]).map((x,i)=>({x,i})).sort((a,b)=>b.x.at-a.x.at).map(({x,i})=>`<div class="row"><input class="num subt" data-goalat="${i}" value="${fmt(x.at)}" inputmode="decimal" aria-label="Time of this ${isRugby()?'score':'goal'}, from kick-off (minutes:seconds)">${itOn(g)&&(g.added.some(a=>a>0)||overOf(x.at,g)>0)?`<span class="note num gmin">${mn(x.at,g)}</span>`:''}${isRugby()?`<span class="evl">${evLabel(x)}</span>`:''}
       <select class="scsel ${x.p?'':'unset'}" data-goalp="${i}" aria-label="Who scored this goal">
         <option value="" ${x.p?'':'selected'}>Scorer not set</option>
         ${byName(inGame(g).length?inGame(g):S.squad.map(p=>p.id)).map(p=>`<option value="${p}" ${x.p===p?'selected':''}>${esc(nameOf(p))}</option>`).join('')}
@@ -1195,10 +1224,10 @@ function gameView(id){
     <p class="note">Times are from kick-off. Type a new one (like 12:30) to correct it.</p>
     ${!isRugby()&&g.score.us>(g.goals||[]).length?`<p class="note">${g.score.us-(g.goals||[]).length} earlier goal${g.score.us-(g.goals||[]).length>1?'s':''} without a scorer.</p>`:''}</section>`:''}
   ${isRugby()&&(g.opp||[]).length?`<section class="sec log"><h3>${esc(g.opponent||'Their')} scores</h3>
-    <div class="rows">${(g.opp||[]).map(x=>`<div class="row"><span class="at num">${tAt(x.at)}</span><span class="evl">${evLabel(x)}</span></div>`).reverse().join('')}</div>
+    <div class="rows">${(g.opp||[]).map(x=>`<div class="row"><span class="at num">${tAt(x.at,g)}</span><span class="evl">${evLabel(x)}</span></div>`).reverse().join('')}</div>
     <p class="note"><b>${esc(g.opponent||'They')}:</b> ${breakdown(g.opp)}</p></section>`:''}
   ${g.subs.length?`<section class="sec log"><div class="ghead"><h3>Subs</h3><button class="x" data-act="undo">Undo last sub</button></div>
-    <div class="rows">${subs.map(e=>`<div class="row"><span class="at num">${tAt(e.at)}</span><span class="txt"><span class="onn">▲ ${esc(nameOf(e.on))}</span> &nbsp;<span class="off">▼ ${esc(nameOf(e.off))}</span>${e.gk?' <span class="note">(in goal)</span>':''}</span></div>`).join('')}</div></section>`:''}
+    <div class="rows">${subs.map(e=>`<div class="row"><span class="at num">${tAt(e.at,g)}</span><span class="txt"><span class="onn">▲ ${esc(nameOf(e.on))}</span> &nbsp;<span class="off">▼ ${esc(nameOf(e.off))}</span>${e.gk?' <span class="note">(in goal)</span>':''}</span></div>`).join('')}</div></section>`:''}
   ${selection}${late}
   ${S.fix===id?fixPanel(id,g,st):''}
   ${st||g.done?`<button class="btn quiet" data-act="gamereset">Reset this game…</button>`:''}
@@ -1467,6 +1496,7 @@ function validateBackup(d){
       opp:arr(g.opp,200,`${w} opponent scores are wrong.`).filter(x=>x&&RTYPES[x.type]).map(x=>({at:num(x.at,0,MAXT,`${w} a score time is wrong.`),type:x.type})),
       ...(g.cards!=null?{cards:arr(g.cards,60,`${w} cards are wrong.`).filter(x=>x&&(x.c==='y'||x.c==='r')).map(x=>({at:num(x.at,0,MAXT,`${w} a card time is wrong.`),p:pid(x.p,`${w} a card's player is wrong.`),c:x.c}))}:{}),
       clock:{running:false,startedAt:0,acc:num(g.clock&&g.clock.acc,0,MAXT,`${w} the clock is wrong.`)}, // never restore a running clock
+      ...(Array.isArray(g.added)?{added:arr(g.added,4,`${w} added time is wrong.`).map(x=>num(x,0,MAXT,`${w} added time is wrong.`))}:{}),
       score:{us:int(sc.us,0,999,`${w} our score is wrong.`,0),them:int(sc.them,0,999,`${w} their score is wrong.`,0)},
       done:g.done===true,side:g.side==='away'?'away':'home',...(g.size!=null?{size:int(g.size,3,11,`${w} players a side is wrong.`,5)}:{})};
   });
@@ -1485,6 +1515,7 @@ function validateBackup(d){
           score:{us:int(sc.us,0,999,`${w} a score is wrong.`,0),them:int(sc.them,0,999,`${w} a score is wrong.`,0)},done:g.done===true,played:g.played===true,gk:pid(g.gk,`${w} a keeper is wrong.`),mins,
           goals:arr(g.goals,200,`${w} goals are wrong.`).map(x=>({at:num(x&&x.at,0,MAXT,`${w} a goal time is wrong.`),p:x&&x.p==='og'?'og':pid(x&&x.p,`${w} a scorer is wrong.`),...(x&&RTYPES[x.type]?{type:x.type}:{})})),
           opp:arr(g.opp,200,`${w} opponent scores are wrong.`).filter(x=>x&&RTYPES[x.type]).map(x=>({at:num(x.at,0,MAXT,`${w} a score time is wrong.`),type:x.type})),
+          ...(Array.isArray(g.added)?{added:arr(g.added,4,`${w} added time is wrong.`).map(x=>num(x,0,MAXT,`${w} added time is wrong.`))}:{}),...(g.len!=null?{len:int(g.len,1,60,`${w} a game length is wrong.`,10)}:{}),...([1,2,4].includes(g.periods)?{periods:g.periods}:{}),
           ...(g.cards!=null?{cards:arr(g.cards,60,`${w} cards are wrong.`).filter(x=>x&&(x.c==='y'||x.c==='r')).map(x=>({at:num(x.at,0,MAXT,`${w} a card time is wrong.`),p:pid(x.p,`${w} a card's player is wrong.`),c:x.c}))}:{})}}).filter(Boolean)}}).filter(Boolean);
   const notes=arr(d.notes,300,'The notes are wrong.').map((n,i)=>{const id=docId(n,`Note ${i+1} has a bad ID.`);if(!id)return null;
     return{id,p:pid(n.p,`Note ${i+1}: player is wrong.`),text:str(n.text,300,`Note ${i+1} is too long.`),at:num(n.at,0,9e15,`Note ${i+1}: date is wrong.`,Date.now()),done:n.done===true,by:str(n.by,40,`Note ${i+1}: name is too long.`)}}).filter(n=>n&&n.p);
@@ -1642,7 +1673,7 @@ function awardsView(){
 function finishTournament(){
   const ids=gids();
   if(!ids.some(id=>started(G(id)))){toast('No games have been played yet, so there is nothing to save.');render();return}
-  const games=ids.map(id=>{const g=G(id);return{n:g.n,opponent:g.opponent,team:usName(),side:isAway(g)?'away':'home',size:gameSize(g),time:g.time,pitch:g.pitch,score:g.score,done:g.done,played:started(g),gk:keeper(g)||g.gk||null,mins:mins(g),goals:(g.goals||[]).map(x=>({at:x.at,p:x.p||null,...(x.type?{type:x.type}:{})})),opp:(g.opp||[]).map(x=>({at:x.at,type:x.type})),cards:(g.cards||[]).map(x=>({at:x.at,p:x.p,c:x.c}))}});
+  const games=ids.map(id=>{const g=G(id);return{...(itOn(g)?{added:[...g.added],len:+S.tour.len||10,periods:nPer()}:{}),n:g.n,opponent:g.opponent,team:usName(),side:isAway(g)?'away':'home',size:gameSize(g),time:g.time,pitch:g.pitch,score:g.score,done:g.done,played:started(g),gk:keeper(g)||g.gk||null,mins:mins(g),goals:(g.goals||[]).map(x=>({at:x.at,p:x.p||null,...(x.type?{type:x.type}:{})})),opp:(g.opp||[]).map(x=>({at:x.at,type:x.type})),cards:(g.cards||[]).map(x=>({at:x.at,p:x.p,c:x.c}))}});
   const doc={name:S.tour.name||'',date:S.tour.date||today(),savedAt:Date.now(),games,players:S.squad.map(p=>({id:p.id,name:p.name}))};
   const tid='t'+Date.now();
   put('archive/'+tid,doc);S.archive=[{id:tid,...doc},...S.archive.filter(t=>t.id!==tid)];
@@ -1731,7 +1762,7 @@ function summaryText(t,names){
     if(!names)return;
     const ev=[...(g.goals||[]).map(x=>({at:x.at,t:(isRugby()?'🏉 ':'⚽ ')+scorerName(x.p)+(isRugby()?' ('+evLabel(x).toLowerCase()+')':'')})),
       ...(g.cards||[]).map(x=>({at:x.at,t:(x.c==='r'?'🟥 ':'🟨 ')+nameOf(x.p)}))].sort((a,b)=>a.at-b.at);
-    if(ev.length)lines.push('    '+ev.map(e=>e.t+' '+mn(e.at)).join(', '))});
+    if(ev.length)lines.push('    '+ev.map(e=>e.t+' '+mn(e.at,g)).join(', '))});
   const sc=Object.entries(gl).filter(([,n])=>n>0).sort((a,b)=>b[1]-a[1]);
   if(names&&sc.length)lines.push('',`${Words().scorers}: ${sc.map(([p,n])=>nameOf(p)+(n>1?' '+n:'')).join(', ')}`);
   if(names&&t.report)lines.push('',t.report);
@@ -1765,7 +1796,7 @@ function seasonView(){
   ${ts.length?`<section class="sec"><h3>Tournaments</h3>${ts.map(t=>{const r=record(t.games||[]),open=S.openT===t.id;
     return `<div class="tcard"><button data-act="topen" data-id="${t.id}"><span><span class="tn">${esc(t.name||'Tournament')}</span><span class="ts" style="display:block">${esc(nice(t.date))}</span></span>
       <span class="num" style="text-align:right"><b>W${r.W} D${r.D} L${r.L}</b><span class="ts" style="display:block">${Words().goals} ${r.F}–${r.A}</span></span></button>
-      ${open?`<div class="tb">${tSummary(t)}<span class="lbl">Games</span>${(t.games||[]).map(g=>`<div class="gl"><span>${esc(g.time||'G'+g.n)} ${esc(isAway(g)?(g.opponent||'?'):(g.team||t.short||S.cfg.short||'Us'))} v ${esc(isAway(g)?(g.team||t.short||S.cfg.short||'Us'):(g.opponent||'?'))}</span><b class="num">${g.played||g.done?scoreHA(g):'not played'}</b></div>${(g.goals||[]).length?`<div class="gls">${isRugby()?'🏉':'⚽'} ${(g.goals||[]).map(x=>esc(scorerName(x.p))+' '+mn(x.at)+(isRugby()?' ('+evLabel(x).toLowerCase()+')':'')).join(', ')}</div>`:''}${isRugby()&&(g.played||g.done)&&((g.goals||[]).length||(g.opp||[]).length)?`<div class="gls">${esc(g.team||t.short||S.cfg.short||'Us')}: ${breakdown(g.goals)||'no score'} · ${esc(g.opponent||'Them')}: ${breakdown(g.opp)||'no score'}${(g.opp||[]).length?` (${(g.opp||[]).map(x=>evLabel(x).toLowerCase()+' '+mn(x.at)).join(', ')})`:''}</div>`:''}${(g.cards||[]).length?`<div class="gls">${(g.cards||[]).map(x=>(x.c==='r'?'🟥 ':'🟨 ')+esc(nameOf(x.p))+' '+mn(x.at)).join(', ')}</div>`:''}`).join('')}
+      ${open?`<div class="tb">${tSummary(t)}<span class="lbl">Games</span>${(t.games||[]).map(g=>`<div class="gl"><span>${esc(g.time||'G'+g.n)} ${esc(isAway(g)?(g.opponent||'?'):(g.team||t.short||S.cfg.short||'Us'))} v ${esc(isAway(g)?(g.team||t.short||S.cfg.short||'Us'):(g.opponent||'?'))}</span><b class="num">${g.played||g.done?scoreHA(g):'not played'}</b></div>${(g.goals||[]).length?`<div class="gls">${isRugby()?'🏉':'⚽'} ${(g.goals||[]).map(x=>esc(scorerName(x.p))+' '+mn(x.at,g)+(isRugby()?' ('+evLabel(x).toLowerCase()+')':'')).join(', ')}</div>`:''}${isRugby()&&(g.played||g.done)&&((g.goals||[]).length||(g.opp||[]).length)?`<div class="gls">${esc(g.team||t.short||S.cfg.short||'Us')}: ${breakdown(g.goals)||'no score'} · ${esc(g.opponent||'Them')}: ${breakdown(g.opp)||'no score'}${(g.opp||[]).length?` (${(g.opp||[]).map(x=>evLabel(x).toLowerCase()+' '+mn(x.at,g)).join(', ')})`:''}</div>`:''}${(g.cards||[]).length?`<div class="gls">${(g.cards||[]).map(x=>(x.c==='r'?'🟥 ':'🟨 ')+esc(nameOf(x.p))+' '+mn(x.at,g)).join(', ')}</div>`:''}`).join('')}
         ${S.editT===t.id?tEdit(t):`<div class="cbtns"><button class="btn small" data-act="tedit" data-id="${t.id}">Edit</button>
         <button class="x ${S.confirm==='t-'+t.id?'sure':''}" data-act="tdel" data-id="${t.id}">${S.confirm==='t-'+t.id?'Tap to delete this tournament':'Delete this tournament'}</button></div>`}</div>`:''}</div>`}).join('')}</section>`:''}
   ${ts.length||S.awards.length?`<div class="danger"><button class="btn warn" data-act="wipe">${S.confirm==='wipe'?'Tap again to delete all season data':'Delete all season data'}</button>
@@ -1818,12 +1849,19 @@ document.addEventListener('click',e=>{
     case'gkcancel':S.askGk=null;render();break;
     case'pause':withUndo(id,'Clock paused');mut(id,g=>{g.clock.acc=el(g);g.clock.running=false});break;
     case'ft':S.pick=null;S.askFt=id;render();break;
-    case'endper':{const g=G(id);if(!endPerBtn(g))break;const p=Math.floor(el(g)/perLen()+1e-9),end=perEnd(g),lbl=nPer()===2?'Half time':`End of Q${p+1}`;
+    case'endper':{const g=G(id);if(!endPerBtn(g))break;const e=el(g);
+      if(itOn(g)){const k=perOf(e,g),nom=perNom(g,k),over=Math.max(0,e-nom),lbl=nPer()===2?'Half time':`End of Q${k+1}`;
+        withUndo(id,lbl);mut(id,g=>{const a=[...g.added];a[k]=over;g.added=a;g.clock.acc=Math.max(e,nom);g.clock.running=false});
+        toast(over?`${lbl} in game ${g.n}, after ${fmt(over)} added time.`:`${lbl} in game ${g.n}.`);break}
+      const p=Math.floor(e/perLen()+1e-9),end=perEnd(g),lbl=nPer()===2?'Half time':`End of Q${p+1}`;
       withUndo(id,lbl);mut(id,g=>{g.clock.acc=end;g.clock.running=false});toast(`${lbl} in game ${g.n}. The clock is at ${fmt(end)}.`);break}
+    case'addtime':{const g=G(id),b=timeUp(g);if(!b)break;
+      withUndo(id,'Added time');mut(id,g=>{g.clock.running=true;g.clock.startedAt=Date.now()});
+      toast(`Added time. Tap ${nPer()===2?'Half time':'End of Q'+b} when the referee blows.`);break}
     case'fixclock':{const o=fixOpen();o.clock=true;o.min=false;lsSet('matchday-fixopen',JSON.stringify(o));S.fix=id;render();
       setTimeout(()=>{document.querySelector('.fix')?.scrollIntoView({behavior:'smooth',block:'start'});document.getElementById('clkset')?.focus()},0);break}
     case'ftyes':{const fid=S.askFt;S.askFt=null;if(!fid)break;const g=G(fid),opp=(document.getElementById('ftopp')?.value||'').trim().slice(0,40);
-      withUndo(fid,`Full time · ${opp&&!g.opponent?homeName({...g,opponent:opp}):homeName(g)} ${scoreHA(g)} ${opp&&!g.opponent?awayName({...g,opponent:opp}):awayName(g)}`);const full=b.dataset.full==='1'&&el(g)<fullLen();mut(fid,g=>{g.clock.acc=full?fullLen():el(g);g.clock.running=false;g.done=true;if(opp&&!g.opponent)g.opponent=opp});break}
+      withUndo(fid,`Full time · ${opp&&!g.opponent?homeName({...g,opponent:opp}):homeName(g)} ${scoreHA(g)} ${opp&&!g.opponent?awayName({...g,opponent:opp}):awayName(g)}`);const full=b.dataset.full==='1'&&el(g)<fullLen(g);mut(fid,g=>{g.clock.acc=full?fullLen(g):el(g);g.clock.running=false;g.done=true;if(opp&&!g.opponent)g.opponent=opp});break}
     case'ftno':S.askFt=null;render();break;
     case'gamereset':S.pick=null;S.askReset=id;render();break;
     case'gameresetno':S.askReset=null;render();break;
@@ -1913,7 +1951,7 @@ document.addEventListener('click',e=>{
       tryFix(id,g=>{g.subs.push({at,off,on});if(!inGame(g).includes(on))g.bench.push(on)},`${nameOf(on)} on, ${nameOf(off)} off at ${fmt(at)}.`);break}
     case'subdel':{const i=+b.dataset.i,k='sd'+i;if(S.confirm===k){S.confirm=null;tryFix(id,g=>{g.subs.splice(i,1)},'Sub deleted.')}else{S.confirm=k;render()}break}
     case'undo':{const g=G(id),last=[...g.subs].sort((a,b)=>b.at-a.at)[0];if(!last)break;
-      const what=`${nameOf(last.on)} on, ${nameOf(last.off)} off at ${tAt(last.at)}`;
+      const what=`${nameOf(last.on)} on, ${nameOf(last.off)} off at ${tAt(last.at,g)}`;
       if(S.confirm!=='undosub'){S.confirm='undosub';b.textContent=`Tap again to remove: ${what}`;break}
       S.confirm=null;mut(id,g=>{g.subs=g.subs.filter(x=>!(x.at===last.at&&x.off===last.off&&x.on===last.on))});toast(`Sub removed: ${what}.`);break}
     case'late':S.addLate=!S.addLate;render();break;
@@ -2098,11 +2136,16 @@ setInterval(()=>{
   gids().forEach(id=>{const g=G(id);if(!g.clock.running)return;any=true;
     const stopAt=g.clock.acc<overrunAt()?overrunAt():CLOCK_MAX; // restarted after stopping itself: only the 10-hour backstop
     if(el(g)>=stopAt){mut(id,g=>{g.clock.acc=stopAt;g.clock.running=false});toast(`Game ${g.n}'s clock stopped by itself. Did you forget Full time?`);return}
-    if(nPer()>1){const startP=Math.floor(g.clock.acc/perLen()+1e-9),end=(startP+1)*perLen();
+    if(nPer()>1&&itOn(g)){const k=perOf(g.clock.acc,g),end=perNom(g,k);
+      // time's up for this half: pause on it (Half time, or Play added time). Not again once added time is under way.
+      if(k<nPer()-1&&!closedP(g,k)&&g.clock.acc<end-1e-6&&el(g)>=end){
+        mut(id,g=>{g.clock.acc=end;g.clock.running=false});
+        toast(nPer()===2?`Half time in game ${g.n}. Added time? Tap Play added time.`:`End of Q${k+1} in game ${g.n}.`);return}}
+    else if(nPer()>1){const startP=Math.floor(g.clock.acc/perLen()+1e-9),end=(startP+1)*perLen();
       if(startP<nPer()-1&&el(g)>=end){ // time for the break: stop the clock exactly on the boundary
         mut(id,g=>{g.clock.acc=end;g.clock.running=false});
         toast(nPer()===2?`Half time in game ${g.n}.`:`End of Q${startP+1} in game ${g.n}.`);return}}
-    document.querySelectorAll(`[data-clock="${id}"]`).forEach(n=>n.textContent=(n.classList.contains('sub')&&nPer()>1?perShort(perOf(el(g)))+' ':'')+clockText(g));
+    document.querySelectorAll(`[data-clock="${id}"]`).forEach(n=>n.textContent=(n.classList.contains('sub')&&nPer()>1?perShort(perOf(el(g),g))+' ':'')+clockText(g));
     document.querySelectorAll(`[data-clocksub="${id}"]`).forEach(n=>n.textContent=clockSub(g));
     document.querySelectorAll(`[data-bin^="${id}|"]`).forEach(n=>{const left=binLeft(g,n.dataset.bin.split('|')[1]);const bp=n.dataset.bin.split('|')[1];n.textContent=left?'🟨 '+fmt(left):'🟨';if(!left){n.removeAttribute('data-bin');toast(`${nameOf(bp)}'s 10 minutes in the sin bin are up.`)}});
     const m=mins(g);document.querySelectorAll(`[data-m^="${id}|"]`).forEach(n=>{n.textContent=fmt(m[n.dataset.m.split('|')[1]]||0)})});
