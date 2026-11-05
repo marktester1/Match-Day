@@ -124,6 +124,11 @@ count ten times), so switch the iPhone Simulator and Android runs to by-hand onl
 
 **Monetisation admin (the user is setting these up, week of 5 Nov 2026):**
 - [ ] **Price** for the yearly team subscription (still to decide).
+- **Free trial: six weeks** (decided 5 Nov 2026, was 30 days), so it covers two tournaments.
+  Changed on the `monetisation` branch (`TRIAL_DAYS=42`).
+- **Referral scheme** (idea, likely the cheapest way to reach coaches): a coach's share link gives the
+  new team a longer trial; the referrer earns free time when that team pays (not on sign-up). Builds on
+  vouchers and the payment webhook. Details in MONETISATION.md on the `monetisation` branch.
 - [ ] **Lemon Squeezy** account and store, Test mode on (web payments; merchant of record, handles VAT).
 - [ ] **Webhook signing secret**: the user sets it with `firebase functions:secrets:set` (never in chat).
 - [ ] **Budget alerts** on both Firebase projects (both are on Blaze).
