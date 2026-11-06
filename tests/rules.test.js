@@ -119,6 +119,7 @@ test('awards and season record: bad IDs and shapes are refused', async () => {
   await assertFails(setDoc(d(f, 'awards', 'a1'), {...award, winners: Array.from({length: 31}, () => ({}))}));
   await assertFails(setDoc(d(f, 'archive', 't1'), {...archive, games: Array.from({length: 11}, () => ({}))}));
   await assertFails(setDoc(d(f, 'archive', 't1'), {...archive, extra: 1}));
+  await assertFails(setDoc(d(f, 'archive', 't1'), {...archive, games: [{n: 1, goals: Array.from({length: 201}, () => ({at: 0}))}]})); // sizes inside saved games
 });
 
 // ---- people outside the team ----
@@ -156,6 +157,7 @@ test("a coach can't add someone who hasn't asked, and nobody can give themselves
   await assertFails(setDoc(doc(f, 'teams', T, 'members', 'mallory'), {code: CODE, joined: serverTimestamp()}));
   await assertFails(setDoc(doc(f, 'teams', T, 'members', 'alice'), {code: CODE, joined: serverTimestamp(), role: 'admin'}));
   await assertFails(setDoc(doc(f, 'teams', T, 'members', 'alice'), {code: CODE, name: 'x'.repeat(41)}));
+  await assertFails(setDoc(doc(f, 'teams', T, 'members', 'alice'), {code: CODE, name: 'Alice', seen: 'x'.repeat(5000)}, {merge: true})); // times only
   await assertSucceeds(setDoc(doc(f, 'teams', T, 'members', 'alice'), {code: CODE, name: 'Alice', via: 'phone', seen: serverTimestamp()}, {merge: true}));
 });
 test('declining and removing: coaches decline requests; only the manager removes a coach', async () => {
@@ -261,6 +263,9 @@ test('a team list is private to its sign-in', async () => {
   await assertSucceeds(setDoc(doc(alice(), 'users', 'alice'), {teams: {[T]: true}}));
   await assertFails(getDoc(doc(mallory(), 'users', 'alice')));
   await assertFails(setDoc(doc(alice(), 'users', 'alice'), {teams: {}, admin: true}));
+  await assertFails(setDoc(doc(alice(), 'users', 'alice'), {teams: {[T]: 'x'.repeat(5000)}}));            // team list holds true only
+  await assertFails(setDoc(doc(alice(), 'users', 'alice'), {teams: Object.fromEntries(Array.from({length: 101}, (_, i) => ['t' + i, true]))}));
+  await assertFails(setDoc(doc(alice(), 'users', 'alice'), {teams: {['bad id!']: true}}));
 });
 
 // ---- inside lists: records and player IDs are checked, old shapes still save ----

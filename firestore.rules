@@ -19,7 +19,8 @@ service cloud.firestore {
     function validId(id) { return id.matches('^[A-Za-z0-9_-]{1,40}$'); }
     function validMemberShape(d) {
       return d.keys().hasOnly(['code', 'joined', 'name', 'via', 'seen', 'by'])
-        && d.code is string && fStr(d, 'name', 40) && fStr(d, 'by', 40)
+        && d.code is string && d.code.size() <= 8 && fStr(d, 'name', 40) && fStr(d, 'by', 40)
+        && (!('joined' in d) || d.joined is timestamp) && (!('seen' in d) || d.seen is timestamp)
         && fOneOf(d, 'via', ['google', 'email', 'phone']);
     }
     // New members quote the team's current invite code.
@@ -54,7 +55,7 @@ service cloud.firestore {
     function okWinner(e) { return e.size() <= 4 && pid(e.get('p', null)) && e.get('reason', '') is string && e.get('reason', '').size() <= 80; }
     function okArchGame(e) {
       return e.size() <= 20 && strMax(e.get('opponent', ''), 40) && scoreMap(e.get('score', {})) && pid(e.get('gk', null))
-        && e.get('mins', {}) is map && e.get('goals', []) is list;
+        && e.get('mins', {}) is map && e.get('mins', {}).size() <= 80 && e.get('goals', []) is list && e.get('goals', []).size() <= 200;
     }
     function at(l, f) { return l[int(l.size() * f)]; } // the entry a fraction f of the way along
     function playersOk(l) {
@@ -201,6 +202,7 @@ service cloud.firestore {
       match /club/settings { allow get: if isOwner(); }
       allow create: if signedIn()
         && request.resource.data.keys().hasOnly(['code', 'createdBy', 'created'])
+        && (!('created' in request.resource.data) || request.resource.data.created is timestamp)
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.code is string
         && (request.resource.data.code.size() == 8 || request.resource.data.code.size() == 6);
@@ -302,7 +304,9 @@ service cloud.firestore {
       allow read, delete: if signedIn() && uid == request.auth.uid;
       allow create, update: if signedIn() && uid == request.auth.uid
         && request.resource.data.keys().hasOnly(['teams'])
-        && request.resource.data.teams is map;
+        && request.resource.data.teams is map && request.resource.data.teams.size() <= 100
+        && request.resource.data.teams.values().hasOnly([true])
+        && request.resource.data.teams.keys().join(',').matches('^([A-Za-z0-9_-]{1,40}(,[A-Za-z0-9_-]{1,40})*)?$');
     }
 
     // Parents follow a team's live score through a long, secret link: feeds/{id}. Anyone signed in

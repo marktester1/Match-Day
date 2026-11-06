@@ -31,6 +31,14 @@ jobs:
             const s = [...h.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
             s.forEach(x => new Function(x));
             console.log('ok:', s.length, 'inline script');"
+      - name: Every text box has a length limit (the database rules refuse anything longer)
+        run: |
+          node -e "
+            const h = require('fs').readFileSync('index.html', 'utf8');
+            const tags = (h.match(/<(input|textarea)\\b[^>]*>/g) || []).filter(t => !/type=\"(checkbox|radio|file|date|range|hidden|number)\"/.test(t));
+            const bad = tags.filter(t => !/maxlength=/.test(t));
+            if (bad.length) { console.error('No maxlength:\\n' + bad.join('\\n')); process.exit(1); }
+            console.log('ok:', tags.length, 'text boxes, all limited');"
       - name: Nothing from exports/ (children's names) is committed
         run: test -z "$(git ls-files exports)"
 

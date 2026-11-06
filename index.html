@@ -383,7 +383,7 @@ body:has(input:focus,textarea:focus,select:focus) .fb{visibility:hidden;transiti
 <a id="feedback" class="fb" href="mailto:hello@matchday-app.uk?subject=Match%20Day%20feedback" aria-label="Send feedback by email">💬 Feedback</a>
 
 <script>
-const APP_VERSION='0.29.1';
+const APP_VERSION='0.29.2';
 // Feedback by email, with the app version and phone type filled in (never the team's or players' details)
 {const fb=document.getElementById('feedback'),dev=(navigator.userAgent.match(/\(([^)]+)\)/)||[])[1]||'';
   fb.href='mailto:hello@matchday-app.uk?subject='+encodeURIComponent('Match Day feedback')+'&body='+
@@ -1023,18 +1023,18 @@ function fixPanel(id,g,st){
     <label class="lenrow"><span>Players a side, this game</span><input class="num" type="number" min="3" max="11" data-gsize="1" value="${gameSize(g)}"></label>
     ${gameSize(g)!==tourSize()?`<p class="note">The tournament is ${tourSize()}-a-side. <button class="x" data-act="gsizereset">Use ${tourSize()}</button></p>`:''}`)}
   ${st?`${sec('clock','Clock',now,`
-    <div class="addf"><input id="clkset" class="num" inputmode="decimal" placeholder="e.g. 4:30" value="${now}" aria-label="Set the clock to"><button class="btn" data-act="clockset">Set clock</button></div>
+    <div class="addf"><input maxlength="8" id="clkset" class="num" inputmode="decimal" placeholder="e.g. 4:30" value="${now}" aria-label="Set the clock to"><button class="btn" data-act="clockset">Set clock</button></div>
     <button class="btn warn" data-act="clock0">${S.confirm==='clk0'?'Tap again to reset the clock to 0:00':'Reset clock to 0:00'}</button>
     <p class="note">Subs recorded after the new time move back to it, so playing time stays right.</p>`)}
   ${sec('add','Add a sub that already happened','',`
     <div class="subadd">
-      <label><span class="lbl">Time</span><input id="psat" class="num" inputmode="decimal" value="${now}" placeholder="4:30"></label>
+      <label><span class="lbl">Time</span><input maxlength="8" id="psat" class="num" inputmode="decimal" value="${now}" placeholder="4:30"></label>
       <label><span class="lbl">Off</span><select id="psoff">${opt(byName(inG),'Choose')}</select></label>
       <label><span class="lbl">On</span><select id="pson">${opt(S.squad.map(p=>p.id),'Choose')}</select></label>
     </div>
     <button class="btn go" data-act="pastsub">Add sub</button>`)}
   ${subs.length?sec('times',"Change a sub's time",`${subs.length} sub${subs.length>1?'s':''}`,`
-    <div class="rows">${subs.map(({e,i})=>`<div class="row"><input class="num subt" data-subat="${i}" value="${fmt(e.at)}" inputmode="decimal" aria-label="Time of this sub"><span class="txt"><span class="onn">▲ ${esc(nameOf(e.on))}</span> <span class="off">▼ ${esc(nameOf(e.off))}</span></span>
+    <div class="rows">${subs.map(({e,i})=>`<div class="row"><input maxlength="8" class="num subt" data-subat="${i}" value="${fmt(e.at)}" inputmode="decimal" aria-label="Time of this sub"><span class="txt"><span class="onn">▲ ${esc(nameOf(e.on))}</span> <span class="off">▼ ${esc(nameOf(e.off))}</span></span>
       <button class="x ${S.confirm==='sd'+i?'sure':''}" data-act="subdel" data-i="${i}">${S.confirm==='sd'+i?'Tap to delete':'Delete'}</button></div>`).join('')}</div>
     <p class="note">Type a new time and tap away to save it.</p>`):''}`:''}`}
   </section>`;
@@ -1096,7 +1096,7 @@ function tourReady(){ // set up already? (older tournaments count as set up once
 }
 function setupFields(){
   return `<div class="trow">
-    <input id="tname" data-tour="name" placeholder="Tournament name (optional)" aria-label="Tournament name" value="${esc(S.tour.name||'')}">
+    <input maxlength="60" id="tname" data-tour="name" placeholder="Tournament name (optional)" aria-label="Tournament name" value="${esc(S.tour.name||'')}">
     <input id="tdate" data-tour="date" type="date" aria-label="Tournament date" value="${esc(S.tour.date||'')}"></div>
   <div class="meta three">
     <label><span class="lbl">Minutes a game</span><input id="len" class="num" type="number" min="1" max="60" data-tour="len" value="${S.tour.len||10}"></label>
@@ -1179,7 +1179,7 @@ function gameView(id){
   const others=S.squad.filter(p=>!inGame(g).includes(p.id));
   const late=!g.done?`<section class="sec"><button class="btn small" data-act="late" style="align-self:flex-start">${S.addLate?'Hide':'Add a player to the bench'}</button>
     ${S.addLate?`${st&&others.length?`<div class="rows">${others.map(p=>`<div class="row"><span class="who">${esc(p.name)}</span><button class="x" data-act="addbench" data-p="${p.id}">+ Bench</button></div>`).join('')}</div>`:''}
-      <form class="addf" id="latef"><input id="latename" placeholder="New player's first name" autocomplete="off" aria-label="New player's first name"><button class="btn go" type="submit">Add to bench</button></form>
+      <form class="addf" id="latef"><input maxlength="40" id="latename" placeholder="New player's first name" autocomplete="off" aria-label="New player's first name"><button class="btn go" type="submit">Add to bench</button></form>
       <p class="note">New players join the squad too.</p>`:''}</section>`:'';
   const subs=[...g.subs].sort((a,b)=>b.at-a.at);
   return `<div class="sec" style="gap:14px">
@@ -1188,11 +1188,11 @@ function gameView(id){
   <div class="hav">
     ${['home','away'].map(sd=>{const ours=(sd==='away')===isAway(g),lbl=`<span class="lbl">${sd==='home'?'Home':'Away'}${ours?' <span class="us">us</span>':''}</span>`;
       return (ours?`<div class="fixed">${lbl}<span class="usname" title="Your team's name is set in Team settings"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3M6 11h12v9H6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>${esc(usName())}</span></span></div>`
-        :`<label>${lbl}<input id="opponent-${id}" data-field="opponent" value="${esc(g.opponent)}" placeholder="e.g. Riverside"></label>`)
+        :`<label>${lbl}<input maxlength="40" id="opponent-${id}" data-field="opponent" value="${esc(g.opponent)}" placeholder="e.g. Riverside"></label>`)
         +(sd==='home'?`<button class="swapbtn" data-act="side" data-v="${isAway(g)?'home':'away'}" aria-label="Swap home and away (we are ${isAway(g)?'away':'home'})" title="Swap home and away"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M7 7h12l-3-3M17 17H5l3 3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`:'')}).join('')}
   </div>
   <div class="meta">
-    <label><span class="lbl">Kick-off</span><input id="time-${id}" data-field="time" value="${esc(g.time)}" placeholder="9:30"></label>
+    <label><span class="lbl">Kick-off</span><input maxlength="10" id="time-${id}" data-field="time" value="${esc(g.time)}" placeholder="9:30"></label>
     <label><span class="lbl">Pitch</span><input id="pitch-${id}" data-field="pitch" maxlength="10" value="${esc(g.pitch)}" placeholder="2"></label>
   </div>
   <section class="board" aria-label="Score">
@@ -1220,7 +1220,7 @@ function gameView(id){
       <span class="who">${x.c==='r'?'🟥':'🟨'} ${esc(nameOf(x.p))}${x.c==='y'&&binLeft(g,x.p)?` <span class="note">sin bin</span>`:''}</span>
       ${g.done?'':`<button class="x" data-act="carddel" data-i="${i}">Remove</button>`}</div>`).join('')}</div></section>`:''}
   ${(g.goals||[]).length?`<section class="sec log"><h3>Our ${Words().goals.toLowerCase()}</h3>
-    <div class="rows">${(g.goals||[]).map((x,i)=>({x,i})).sort((a,b)=>b.x.at-a.x.at).map(({x,i})=>`<div class="row"><input class="num subt" data-goalat="${i}" value="${fmt(x.at)}" inputmode="decimal" aria-label="Time of this ${isRugby()?'score':'goal'}, from kick-off (minutes:seconds)">${itOn(g)&&(g.added.some(a=>a>0)||overOf(x.at,g)>0)?`<span class="note num gmin">${mn(x.at,g)}</span>`:''}${isRugby()?`<span class="evl">${evLabel(x)}</span>`:''}
+    <div class="rows">${(g.goals||[]).map((x,i)=>({x,i})).sort((a,b)=>b.x.at-a.x.at).map(({x,i})=>`<div class="row"><input maxlength="8" class="num subt" data-goalat="${i}" value="${fmt(x.at)}" inputmode="decimal" aria-label="Time of this ${isRugby()?'score':'goal'}, from kick-off (minutes:seconds)">${itOn(g)&&(g.added.some(a=>a>0)||overOf(x.at,g)>0)?`<span class="note num gmin">${mn(x.at,g)}</span>`:''}${isRugby()?`<span class="evl">${evLabel(x)}</span>`:''}
       <select class="scsel ${x.p?'':'unset'}" data-goalp="${i}" aria-label="Who scored this goal">
         <option value="" ${x.p?'':'selected'}>Scorer not set</option>
         ${byName(inGame(g).length?inGame(g):S.squad.map(p=>p.id)).map(p=>`<option value="${p}" ${x.p===p?'selected':''}>${esc(nameOf(p))}</option>`).join('')}
@@ -1265,12 +1265,12 @@ function minutesView(){
 function squadView(){
   return `<div class="sec">
   ${benchCard()}
-  <form class="addf" id="addf"><input id="newname" placeholder="Player's first name" autocomplete="off" aria-label="New player's first name"><button class="btn go" data-act="add" type="submit">Add</button></form>
+  <form class="addf" id="addf"><input maxlength="40" id="newname" placeholder="Player's first name" autocomplete="off" aria-label="New player's first name"><button class="btn go" data-act="add" type="submit">Add</button></form>
   ${S.squad.length?`<div class="rows">${S.squad.map(p=>`<div class="row"><span class="who">${esc(p.name)}</span><button class="x ${S.confirm===p.id?'sure':''}" data-act="del" data-p="${p.id}">${S.confirm===p.id?'Tap to remove':'Remove'}</button></div>`).join('')}</div>`
   :`<div class="empty"><b>Add your squad</b>Type each player's first name above, or paste a list below. Every coach on the team sees the same squad.</div>`}
   <p class="note num">${S.squad.length} in the squad. First names only, please.</p>
   <div class="card"><h3>Add several at once</h3>
-    <textarea id="bulknames" placeholder="Paste names, one per line or separated by commas"></textarea>
+    <textarea maxlength="5000" id="bulknames" placeholder="Paste names, one per line or separated by commas"></textarea>
     <button class="btn" data-act="bulkadd">Add to squad</button>
     <p class="note">Surnames are dropped automatically. If two players share a first name, the app adds their surname initial.</p></div>
   ${settingsCard(false)}
@@ -1285,12 +1285,12 @@ function settingsCard(first){
     <div class="weare"><span class="lbl">Sport</span><span class="seg fill">${[['football','Football'],['rugby','Rugby']].map(([v,l])=>`<button type="button" class="${(c.sport||'football')===v?'on':''}" data-act="sport" data-v="${v}">${l}</button>`).join('')}</span></div>
     ${c.sport==='rugby'?`<div class="weare"><span class="lbl">Rugby scoring</span><span class="seg fill">${[['points','Points'],['tries','Tries only']].map(([v,l])=>`<button type="button" class="${(c.rscore||'points')===v?'on':''}" data-act="rscore" data-v="${v}">${l}</button>`).join('')}</span>
       <p class="note">${c.rscore==='tries'?'Each try counts 1.':'Try 5, conversion 2, penalty 3, drop goal 3.'}</p></div>`:''}
-    <label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">Team name</span><input id="cfg-team" data-cfg="team" value="${esc(c.team)}" placeholder="e.g. Example Team U10s"></label>
+    <label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">Team name</span><input maxlength="40" id="cfg-team" data-cfg="team" value="${esc(c.team)}" placeholder="e.g. Example Team U10s"></label>
     ${first?`<p class="note">Include the age group if you like, e.g. U10s. On the scoreboard the team is shown without it; you can change that in Team settings.</p>
       <label style="display:flex;flex-direction:column;gap:4px;max-width:200px"><span class="lbl">Usual players a side</span><input id="cfg-size" class="num" type="number" min="3" max="11" data-cfg="size" value="${c.size||5}" inputmode="numeric"></label>
       <p class="note">e.g. 5 for 5-a-side. You can change it for each tournament or game.</p>`
     :`<div class="meta">
-      <label><span class="lbl">Name on the scoreboard</span><input id="cfg-short" data-cfg="short" value="${esc(c.short)}" placeholder="${esc(shortName(c.team)||'e.g. Example Team')}"></label>
+      <label><span class="lbl">Name on the scoreboard</span><input maxlength="40" id="cfg-short" data-cfg="short" value="${esc(c.short)}" placeholder="${esc(shortName(c.team)||'e.g. Example Team')}"></label>
       <label><span class="lbl">Usual players a side</span><input id="cfg-size" class="num" type="number" min="3" max="11" data-cfg="size" value="${c.size||5}"></label>
     </div>
     <p class="note">The scoreboard name is shown on each game and in results, and it's what the app looks for when you paste a tournament's fixture list, so use the name the organisers use (usually without the age group).</p>`}
@@ -1348,7 +1348,7 @@ function setupView(){
   if(w.step===2){const n=S.squad.length,need=Math.max(0,(+c.size||5)-n);
     return `<div class="sec wiz" style="gap:14px">${wizHead(w,'Your players')}
     <div class="card"><label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">Paste or type names, one per line</span>
-      <textarea id="bulknames" placeholder="Ava&#10;Ben&#10;Cal"></textarea></label>
+      <textarea maxlength="5000" id="bulknames" placeholder="Ava&#10;Ben&#10;Cal"></textarea></label>
       <button class="btn" data-act="bulkadd">Add these names</button>
       <p class="note">First names only, please. Spaces, blank lines and surnames are tidied up for you, and a name that's already in the squad isn't added twice.</p></div>
     <div class="card"><div class="ghead"><h3>Squad</h3><b class="num wizcount">${n} player${n===1?'':'s'}</b></div>
@@ -1361,7 +1361,7 @@ function setupView(){
     return `<div class="sec wiz" style="gap:14px">${wizHead(w,'Your match day')}
     <div class="card">
     <span class="seg fill" role="group" aria-label="One match or a tournament">${[[1,'One match'],[0,'Tournament']].map(([v,l])=>`<button class="${one===!!v?'on':''}" data-act="wizkind" data-v="${v}">${l}</button>`).join('')}</span>
-    ${one?'':`<input id="tname" data-tour="name" placeholder="Tournament name (optional)" aria-label="Tournament name" value="${esc(S.tour.name||'')}">`}
+    ${one?'':`<input maxlength="60" id="tname" data-tour="name" placeholder="Tournament name (optional)" aria-label="Tournament name" value="${esc(S.tour.name||'')}">`}
     <label style="display:flex;flex-direction:column;gap:4px;max-width:220px"><span class="lbl">Date</span><input id="tdate" data-tour="date" type="date" value="${esc(S.tour.date||today())}"></label>
     <div class="meta">
       ${one?'':`<label><span class="lbl">Games</span><input id="cnt" class="num" type="number" min="1" max="10" data-tour="count" value="${S.tour.count||6}"></label>`}
@@ -1402,8 +1402,8 @@ function fixtureRows(){
   return `<datalist id="opps">${opponents().map(o=>`<option value="${esc(o)}"></option>`).join('')}</datalist>
   <div class="rows">${gids().map(id=>{const g=G(id);return `<div class="row" style="flex-wrap:wrap">
     <b class="num" style="font-family:var(--display);font-size:20px;width:28px">${g.n}</b>
-    <input id="fx-t-${id}" data-fx="${id}|time" value="${esc(g.time)}" placeholder="9:30" style="width:76px" aria-label="Game ${g.n} kick-off">
-    <input id="fx-o-${id}" data-fx="${id}|opponent" value="${esc(g.opponent)}" placeholder="Opponent" list="opps" style="flex:1;min-width:120px" aria-label="Game ${g.n} opponent">
+    <input maxlength="10" id="fx-t-${id}" data-fx="${id}|time" value="${esc(g.time)}" placeholder="9:30" style="width:76px" aria-label="Game ${g.n} kick-off">
+    <input maxlength="40" id="fx-o-${id}" data-fx="${id}|opponent" value="${esc(g.opponent)}" placeholder="Opponent" list="opps" style="flex:1;min-width:120px" aria-label="Game ${g.n} opponent">
     <input id="fx-p-${id}" data-fx="${id}|pitch" maxlength="10" value="${esc(g.pitch)}" placeholder="Pitch" style="width:64px" aria-label="Game ${g.n} pitch">
     <span class="seg hs" role="group" aria-label="Game ${g.n}: home or away">${[['home','Home'],['away','Away']].map(([v,l])=>`<button class="${(isAway(g)?'away':'home')===v?'on':''}" data-act="fxside" data-g="${id}" data-v="${v}" aria-pressed="${(isAway(g)?'away':'home')===v}">${l}</button>`).join('')}</span>
   </div>`}).join('')}</div>`;
@@ -1411,7 +1411,7 @@ function fixtureRows(){
 function fixturePaste(){
   return `<div class="card"><h3>Paste fixtures</h3>
     <p class="note">Copy the fixture list from an email or WhatsApp and paste it here, one game per line. If it lists other teams' games too, only lines mentioning ${esc(S.cfg.short||'your team')} are used.</p>
-    <textarea id="fxpaste" placeholder="9.30am ${esc(S.cfg.short||'Us')} v Riverside (Pitch 2)&#10;9.45am Hillside v ${esc(S.cfg.short||'Us')} (Pitch 2)"></textarea>
+    <textarea maxlength="20000" id="fxpaste" placeholder="9.30am ${esc(S.cfg.short||'Us')} v Riverside (Pitch 2)&#10;9.45am Hillside v ${esc(S.cfg.short||'Us')} (Pitch 2)"></textarea>
     <button class="btn" data-act="fxparse">Fill in fixtures</button>
     <p class="note">This replaces the times, opponents and pitches above. Line-ups and scores are kept.</p></div>`;
 }
@@ -1658,10 +1658,10 @@ function awardsView(){
         <button class="${A.type==='Training'?'on':''}" data-act="awtype" data-v="Training">Training</button>
         <button class="${A.type==='Tournament'?'on':''}" data-act="awtype" data-v="Tournament">Tournament</button></span></div>
     </div>
-    <label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">Name (optional)</span><input id="aw-label" data-aw="label" value="${esc(A.label)}" placeholder="${A.type==='Tournament'?'e.g. County tournament':'e.g. Wednesday training'}"></label>
+    <label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">Name (optional)</span><input maxlength="60" id="aw-label" data-aw="label" value="${esc(A.label)}" placeholder="${A.type==='Tournament'?'e.g. County tournament':'e.g. Wednesday training'}"></label>
     <span class="lbl">Who gets one?</span>
     ${S.squad.length?`<div class="pickchips">${S.squad.map(p=>`<button class="pc ${p.id in A.picks?'on':''}" data-act="awpick" data-p="${p.id}">${p.id in A.picks?'★ ':''}${esc(p.name)}</button>`).join('')}</div>`:'<p class="note">Add the squad first.</p>'}
-    ${picked.map(id=>`<label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">${esc(nameOf(id))} – what for?</span><input id="aw-r-${id}" data-awr="${id}" value="${esc(A.picks[id])}" placeholder="e.g. Great effort all day"></label>`).join('')}
+    ${picked.map(id=>`<label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">${esc(nameOf(id))} – what for?</span><input maxlength="80" id="aw-r-${id}" data-awr="${id}" value="${esc(A.picks[id])}" placeholder="e.g. Great effort all day"></label>`).join('')}
     <button class="btn go" data-act="awsave" ${picked.length?'':'disabled'}>${picked.length?`Save ${picked.length} award${picked.length>1?'s':''}`:'Pick 2 or 3 players'}</button>
   </div>
   ${S.squad.length?`<section class="sec"><h3>Awards so far</h3><p class="note">Fewest first, so nobody gets missed.</p>
@@ -1693,15 +1693,15 @@ function tEdit(t){
   const d=S.draft,ppl=alpha([...(d.players||[]),...S.squad.filter(p=>!(d.players||[]).some(q=>q.id===p.id))]);
   const opt=(sel)=>`<option value="" ${sel?'':'selected'}>Scorer not set</option>${ppl.map(p=>`<option value="${p.id}" ${sel===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}<option value="og" ${sel==='og'?'selected':''}>Own goal</option>`;
   return `<div class="tedit">
-    <div class="meta"><label><span class="lbl">Name</span><input data-ed="name" value="${esc(d.name)}" placeholder="Tournament"></label>
+    <div class="meta"><label><span class="lbl">Name</span><input maxlength="40" data-ed="name" value="${esc(d.name)}" placeholder="Tournament"></label>
       <label><span class="lbl">Date</span><input type="date" data-ed="date" value="${esc(d.date)}"></label></div>
     ${d.games.map((g,i)=>`<div class="tg"><div class="ghead"><b>Game ${g.n}</b>
         <label class="chk"><input type="checkbox" data-ed="played|${i}" ${g.played||g.done?'checked':''}> Played</label></div>
-      <div class="meta"><label><span class="lbl">Opponent</span><input data-ed="opponent|${i}" value="${esc(g.opponent)}" placeholder="e.g. Riverside"></label>
+      <div class="meta"><label><span class="lbl">Opponent</span><input maxlength="40" data-ed="opponent|${i}" value="${esc(g.opponent)}" placeholder="e.g. Riverside"></label>
         <label><span class="lbl">We were</span><select data-ed="side|${i}"><option value="home" ${isAway(g)?'':'selected'}>Home</option><option value="away" ${isAway(g)?'selected':''}>Away</option></select></label></div>
       <div class="meta"><label><span class="lbl">Our ${Words().goals.toLowerCase()}</span><input type="number" min="0" max="199" data-ed="us|${i}" value="${g.score.us}"></label>
         <label><span class="lbl">Their ${Words().goals.toLowerCase()}</span><input type="number" min="0" max="199" data-ed="them|${i}" value="${g.score.them}"></label></div>
-      ${(g.goals||[]).map((x,k)=>`<div class="scl"><span class="lbl">${isRugby()?evLabel(x):'Goal '+(k+1)}</span><div class="cbtns"><input class="num subt" data-ed="gat|${i}|${k}" value="${fmt(x.at||0)}" inputmode="decimal" aria-label="Time from kick-off (minutes:seconds)"><select data-ed="goal|${i}|${k}" aria-label="Who scored">${opt(x.p)}</select></div></div>`).join('')}
+      ${(g.goals||[]).map((x,k)=>`<div class="scl"><span class="lbl">${isRugby()?evLabel(x):'Goal '+(k+1)}</span><div class="cbtns"><input maxlength="8" class="num subt" data-ed="gat|${i}|${k}" value="${fmt(x.at||0)}" inputmode="decimal" aria-label="Time from kick-off (minutes:seconds)"><select data-ed="goal|${i}|${k}" aria-label="Who scored">${opt(x.p)}</select></div></div>`).join('')}
     </div>`).join('')}
     <div class="cbtns"><button class="btn go" data-act="tsave">Save changes</button><button class="btn" data-act="tcancel">Cancel</button></div>
   </div>`;
@@ -2126,14 +2126,17 @@ function onChange(e){
   if(t.dataset.cfg&&S.cfgLoaded&&S.cfg.team){const k=t.dataset.cfg;let v=t.value.trim().slice(0,40);if(k==='size')v=Math.min(11,Math.max(3,parseInt(v)||5));if(k==='team'&&!v)return;
     if(k==='team'&&(!S.cfg.short||S.cfg.short===shortName(S.cfg.team)))S.cfg={...S.cfg,short:shortName(v)};
     S.cfg={...S.cfg,[k]:v};put('club/settings',S.cfg);render();return}
-  if(t.dataset.fx){const [id,f]=t.dataset.fx.split('|');const v=t.value.trim().slice(0,40);if(G(id)[f]!==v)mut(id,g=>{g[f]=v});return}
+  if(t.dataset.fx){const [id,f]=t.dataset.fx.split('|');const v=t.value.trim().slice(0,f==='opponent'?40:10);if(G(id)[f]!==v)mut(id,g=>{g[f]=v});return}
   if(t.dataset.aw){S.aw[t.dataset.aw]=t.value;return}
   if(t.dataset.awr){if(t.dataset.awr in S.aw.picks)S.aw.picks[t.dataset.awr]=t.value;return}
-  if(t.dataset.field&&S.game){const f=t.dataset.field,v=t.value.trim().slice(0,40);if(G(S.game)[f]!==v)mut(S.game,g=>{g[f]=v})}
-  if(t.dataset.tour){const k=t.dataset.tour;let v=t.value;if(k==='len')v=Math.min(60,Math.max(1,parseInt(v)||10));if(k==='count')v=Math.min(10,Math.max(1,parseInt(v)||6));if(k==='size')v=Math.min(11,Math.max(3,parseInt(v)||5));
+  if(t.dataset.field&&S.game){const f=t.dataset.field,v=t.value.trim().slice(0,f==='time'||f==='pitch'?10:40);if(G(S.game)[f]!==v)mut(S.game,g=>{g[f]=v})}
+  if(t.dataset.tour){const k=t.dataset.tour;let v=t.value;if(k==='len')v=Math.min(60,Math.max(1,parseInt(v)||10));if(k==='count')v=Math.min(10,Math.max(1,parseInt(v)||6));if(k==='size')v=Math.min(11,Math.max(3,parseInt(v)||5));if(k==='name')v=String(v).trim().slice(0,60);
     S.tour={...S.tour,[k]:v};saveTour();if(k==='len'||k==='count')render()}
 }
 document.addEventListener('focusout',()=>setTimeout(()=>{if(pending)render()},0));
+// A box that's reached its length limit says so once, instead of silently ignoring more typing
+document.addEventListener('input',e=>{const t=e.target;if(!(t instanceof HTMLInputElement||t instanceof HTMLTextAreaElement)||!(t.maxLength>0))return;
+  if(t.value.length>=t.maxLength&&!t.dataset.limitSaid){t.dataset.limitSaid='1';toast(`That's the most this box takes (${t.maxLength} characters).`)}});
 
 /* live clock */
 const timeUpSaid=new Set(); // halves/quarters whose usual time is up, already told to the coach
@@ -2712,8 +2715,8 @@ async function signOutAccount(force=false){
 const googleBtn=()=>inApp?'<p class="note">Google sign-in isn\'t in the iPhone app yet. Use email here, or sign in with Google on the website.</p>':`<button class="btn gbtn" data-act="google"><svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 6.9-10.3 6.9-17.7z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.1 1.4-4.9 2.3-8.2 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>Continue with Google</button>`;
 function acctForm(mode){
   return `<form class="acctf" id="acctf" data-mode="${mode}">
-    <input id="acctemail" type="email" autocomplete="username" placeholder="Email address" aria-label="Email address">
-    <input id="acctpw" type="password" autocomplete="${mode==='create'?'new-password':'current-password'}" placeholder="${mode==='create'?'Choose a password (6+ characters)':'Password'}" aria-label="Password">
+    <input maxlength="254" id="acctemail" type="email" autocomplete="username" placeholder="Email address" aria-label="Email address">
+    <input maxlength="128" id="acctpw" type="password" autocomplete="${mode==='create'?'new-password':'current-password'}" placeholder="${mode==='create'?'Choose a password (6+ characters)':'Password'}" aria-label="Password">
     <div class="cbtns"><button class="btn go" type="submit">${mode==='create'?'Create account':'Sign in'}</button>
     ${mode==='signin'?'<button class="btn" type="button" data-act="acctforgot">Forgot password</button>':''}
     <button class="btn" type="button" data-act="acctcancel">Cancel</button></div></form>`;
@@ -2772,7 +2775,7 @@ function gateView(){
     <p class="note">Ask a coach for the team's invite code (in their ☰ menu).</p>
     <p class="note">Tap Ask to join, then a coach in the team accepts you.${FB?.auth?.currentUser?.email?' They also see the email you signed in with, so they know it\'s you.':''}</p>
     <label style="display:flex;flex-direction:column;gap:4px"><span class="lbl">Your name (the coaches see this)</span><input id="joinname" value="${esc(myName())}" placeholder="e.g. Sam (coach)" maxlength="40" autocomplete="name"></label>
-    <form class="addf" id="joinf"><input id="joincode" value="${esc(S.joinCode||'')}" placeholder="e.g. ABCD-2345" autocomplete="off" autocapitalize="characters" aria-label="Invite code"><button class="btn go" type="submit" ${joining?'disabled':''}>${joining?'Sending…':'Ask to join'}</button></form></div>
+    <form class="addf" id="joinf"><input maxlength="12" id="joincode" value="${esc(S.joinCode||'')}" placeholder="e.g. ABCD-2345" autocomplete="off" autocapitalize="characters" aria-label="Invite code"><button class="btn go" type="submit" ${joining?'disabled':''}>${joining?'Sending…':'Ask to join'}</button></form></div>
   ${FB&&!isAccount()?`<div class="card"><h3>Your account</h3>
     <p class="note">Optional. Sign in with Google or a free email account and your teams are saved to you, so you can get them all back on a new phone.</p>
     ${S.acct?acctForm(S.acct):`${googleBtn()}<div class="cbtns"><button class="btn" data-act="acctsignin">Sign in with email</button><button class="btn" data-act="acctcreate">Create an account</button></div>`}</div>`:''}
