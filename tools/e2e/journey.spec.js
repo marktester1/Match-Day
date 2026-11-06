@@ -135,7 +135,10 @@ test('a coach runs a whole match day', async ({page, browser}, info) => {
       await enter(`#fx-o-g${i + 1}`, o);
       await enter(`#fx-p-g${i + 1}`, p);
     }
-    await press(btn('← All games'));
+    // Save straight from the last box (still being typed in): it must be kept, and we're back at all games
+    await press(btn('Save fixtures'));
+    await toast('Fixtures saved.');
+    await expect(view.locator('.gcard')).toHaveCount(3);
     // Followers get the fixtures a moment after the last change (check before reloading, which would cancel it)
     await expect(fp.locator('#view')).toContainText('Still to play');
     await expect(fp.locator('#view')).toContainText('Riverside');
@@ -156,6 +159,9 @@ test('a coach runs a whole match day', async ({page, browser}, info) => {
 
     // 5. Game 1: pick the team, play it, follower watching
     await openGame(1);
+    for (const n of ALL_NAMES.filter(n => !['Jude', 'Kit'].includes(n))) // everyone starts on the bench
+      await expect(view.locator('.row').filter({has: page.locator('.who').getByText(n, {exact: true})}).locator('[data-r=bench]')).toHaveClass(/\bon\b/);
+    for (const n of ['Alfie J', 'Gus', 'Hana', 'Ivo']) await role(n, 'out'); // not here for game 1
     await role('Alfie S', 'gk');
     for (const n of ['Bea', 'Cormac', 'Dara', 'Esme']) await role(n, 'start');
     for (const n of ['Finn', 'Player 7']) await role(n, 'bench');
