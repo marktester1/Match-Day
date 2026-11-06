@@ -42,6 +42,9 @@ test('a follower watches the day from the link', async ({page, browser}, info) =
     await coach.createTeam(TEAM, SQUAD);
     joined = true;
     await coach.press(page.locator('#menubtn'));
+    // the menu links to the guides on the website
+    await expect(coach.view.getByRole('link', {name: 'Quick start'})).toHaveAttribute('href', 'https://matchday-app.uk/quick-start');
+    await expect(coach.view.getByRole('link', {name: 'Full guide'})).toHaveAttribute('href', 'https://matchday-app.uk/guide');
     await coach.press(coach.view.getByRole('button', {name: /Create a supporters' link/}));
     await coach.toast("Supporters' link ready.");
     const link = (await coach.view.locator('.plink').textContent()).trim();
