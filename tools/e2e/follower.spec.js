@@ -73,6 +73,10 @@ test('a follower watches the day from the link', async ({page, browser}, info) =
     await expect(rows.nth(0)).toContainText(`${SHORT} v Riverside`);
     await expect(rows.nth(0)).toContainText('9:30');
     await expect(rows.nth(1)).toContainText(`Hillside v ${SHORT}`); // away: they're the home side
+    // Game 2 was edited last, but before kick-off the board shows the next game to play: game 1
+    await expect(board).toContainText('Game 1');
+    await expect(board).toContainText('Riverside');
+    await expect(board).not.toContainText('Hillside');
     await expect(rows.nth(1)).toContainText('10:15');
     await expect(fview.locator('.lbl', {hasText: 'Still to play'})).toBeVisible();
     await expect(board).toContainText('Kick-off soon');

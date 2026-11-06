@@ -621,7 +621,11 @@ const feedFixture=id=>{const g=G(id);return{n:g.n,home:homeName(g).slice(0,40),a
 function publishFeed(){ // sends parents the changes made on this phone (only what changed)
   if(!feedOn()||!tourReady())return; // between tournaments: the last results stay up for parents
   const {F,fs}=FB,id=S.feed.id,ids=gids(),run=ids.find(x=>G(x).clock.running);
-  const b=feedBody(run||(ids.includes(feedGame)?feedGame:null)),k=JSON.stringify(b);
+  // Before kick-off supporters see the next game to play, not the last one a coach edited; a game under way or just
+  // finished stays up (so its full time reaches them) until the next one kicks off.
+  const last=ids.includes(feedGame)&&(started(G(feedGame))||G(feedGame).done)?feedGame:null;
+  const next=ids.find(x=>started(G(x))&&!G(x).done)||ids.find(x=>!G(x).done)||null;
+  const b=feedBody(run||last||next),k=JSON.stringify(b);
   if(k!==feedLast){feedLast=k;track(F.setDoc(F.doc(fs,'feeds',id),{...b,updatedAt:Date.now()}),()=>{feedLast=''})}
   ids.forEach(g=>{const x=feedFixture(g),k=JSON.stringify(x);if(feedGamesLast[g]===k)return;feedGamesLast[g]=k;
     track(F.setDoc(F.doc(fs,'feeds',id,'games',g),x),()=>{delete feedGamesLast[g]})});
