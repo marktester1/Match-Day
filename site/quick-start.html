@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en-GB">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quick start · Match Day</title>
+<meta name="description" content="Match Day in five minutes: set up your team, pick the line-up, kick off, make subs, record goals and share the live score with supporters.">
+<meta name="theme-color" content="#1e6a3a">
+<link rel="icon" href="https://match-day-17b23.web.app/icons/icon-192.png">
+<link rel="apple-touch-icon" href="https://match-day-17b23.web.app/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+:root{
+  --bg:#f2f5f0; --surface:#ffffff; --ink:#16211a; --muted:#5b6a60; --line:#d7dfd6;
+  --grass:#1e6a3a; --grass-deep:#175a30; --chalk:#ffffff; --gold:#c8961a; --tint:#e3eee4;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0e1511; --surface:#16201a; --ink:#e4ece6; --muted:#97a99d; --line:#2a372f;
+  --grass:#2f8a50; --grass-deep:#1f6a3b; --gold:#e6b84a; --tint:#17261c; color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.55 var(--body)}
+a{color:var(--grass)}
+h1,h2,h3{font-family:var(--display);font-weight:700;line-height:1.05;margin:0;text-wrap:balance}
+p{margin:0}
+.w{max-width:820px;margin:0 auto;padding:0 20px}
+.hero{background:repeating-linear-gradient(90deg,var(--grass) 0 80px,var(--grass-deep) 80px 160px);color:var(--chalk)}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:16px}
+.logo{display:flex;align-items:center;gap:10px;color:inherit;text-decoration:none;font:700 28px/1 var(--display)}
+.logo img{width:40px;height:40px;border-radius:10px;box-shadow:0 1px 3px #0004}
+.bar .open{color:var(--chalk);font-weight:700;text-decoration:none;border:2px solid #ffffff80;border-radius:10px;padding:8px 14px;font-size:15px}
+.hero h1{font-size:clamp(40px,7vw,64px);text-transform:uppercase;padding-top:18px}
+.hero p{font-size:19px;color:#f1f7f2;margin-top:12px;max-width:52ch;padding-bottom:34px}
+.hero p a{color:#ffe08a}
+main{padding-block:36px 56px}
+ol.steps{list-style:none;padding:0;margin:0;display:grid;gap:16px;counter-reset:s}
+ol.steps>li{counter-increment:s;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px 20px 20px 74px;position:relative}
+ol.steps>li::before{content:counter(s);position:absolute;left:20px;top:16px;font:700 44px/1 var(--display);color:var(--grass)}
+ol.steps h2{font-size:28px}
+ol.steps p,ol.steps ul{margin-top:8px}
+ol.steps ul{padding-left:20px;color:var(--ink)}
+ol.steps li li{margin-top:4px}
+.tip{background:var(--tint);border-radius:12px;padding:12px 14px;margin-top:12px;font-size:16px}
+b.ui{font-weight:700}
+.next{margin-top:28px;display:flex;flex-wrap:wrap;gap:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:50px;padding:0 22px;border-radius:12px;font-weight:700;text-decoration:none;font-size:17px}
+.btn.dark{background:var(--grass);color:#fff}
+.btn.line{border:2px solid var(--grass);color:var(--grass)}
+.btn:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+footer{border-top:1px solid var(--line);padding-block:28px 44px;color:var(--muted);font-size:14px}
+footer .links{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:12px;font-size:15px}
+@media (max-width:560px){.w{padding:0 16px}.bar .open{display:none}ol.steps>li{padding:18px 16px 18px 60px}ol.steps>li::before{left:16px;font-size:38px}.next .btn{flex:1 1 100%}}
+</style>
+
+<header class="hero">
+  <div class="w">
+    <nav class="bar" aria-label="Main">
+      <a class="logo" href="./"><img src="https://match-day-17b23.web.app/icons/icon-192.png" alt="">Match Day</a>
+      <a class="open" href="https://app.matchday-app.uk">Open the app</a>
+    </nav>
+    <h1>Quick start</h1>
+    <p>Everything you need for your first match day, in eight steps. For the detail, see the <a href="guide">full guide</a>.</p>
+  </div>
+</header>
+
+<main class="w">
+  <ol class="steps">
+    <li>
+      <h2>Open Match Day on your phone</h2>
+      <p>Go to <a href="https://app.matchday-app.uk">app.matchday-app.uk</a>. There's nothing to download.</p>
+      <p class="tip">Put it on your Home Screen so it opens like any other app. iPhone: in Safari tap Share, then <b class="ui">Add to Home Screen</b>. Android: in Chrome tap ⋮, then <b class="ui">Add to Home screen</b>.</p>
+    </li>
+    <li>
+      <h2>Create your team</h2>
+      <p>Tap <b class="ui">Create a team</b>, type your name (other coaches see it) and follow the set-up:</p>
+      <ul>
+        <li>your team's name, e.g. Riverside U10s</li>
+        <li>how many a side</li>
+        <li>your players' <b>first names only</b>: type them or paste a list</li>
+      </ul>
+      <p>Choose <b class="ui">Quick start</b> to be ready in under a minute, or <b class="ui">Full set-up</b> to add your games, opponents and kick-off times now.</p>
+    </li>
+    <li>
+      <h2>Invite your other coaches</h2>
+      <p>Open the <b class="ui">☰</b> menu and tap <b class="ui">Invite on WhatsApp</b> (or copy the invite). They open the link, tap <b class="ui">Ask to join</b>, and you accept them in the ☰ menu. Everyone then sees the same line-up, subs and score, live.</p>
+    </li>
+    <li>
+      <h2>Share the score with supporters</h2>
+      <p>In the ☰ menu, tap <b class="ui">Create a supporters' link</b> and send it to the team's group chat. Family can follow the live score and fixtures. They never see players' names.</p>
+    </li>
+    <li>
+      <h2>Pick the team and kick off</h2>
+      <p>On the day, tap your game. Next to each player, tap <b class="ui">GK</b> for your keeper, then <b class="ui">Start</b>, <b class="ui">Bench</b> or <b class="ui">Out</b> for everyone else, and tap <b class="ui">Kick off</b>. The clock starts and everyone's minutes are counted.</p>
+    </li>
+    <li>
+      <h2>Subs, goals and cards</h2>
+      <ul>
+        <li><b>Sub:</b> tap a player on the pitch, then the player coming on. Or drag one onto the other.</li>
+        <li><b>Goal:</b> tap <b class="ui">+</b> on your score, then who scored. Tap <b class="ui">+</b> on theirs for the opposition.</li>
+        <li><b>Card:</b> tap the player, then the card.</li>
+        <li>Tapped the wrong thing? Tap <b class="ui">Undo</b>.</li>
+      </ul>
+      <p class="tip">The bench is listed least time first, so you can see at a glance who needs a run out.</p>
+    </li>
+    <li>
+      <h2>Half time and full time</h2>
+      <p>When the half's time is up, the clock carries on into added time by itself. Tap <b class="ui">Half time</b> when the referee blows, and <b class="ui">Start 2nd half</b> to carry on. At the end, tap <b class="ui">Full time</b>.</p>
+    </li>
+    <li>
+      <h2>Save the day's results</h2>
+      <p>After your last game, go to <b class="ui">Games</b> and tap <b class="ui">Finish tournament and save to Results</b>. Scores, scorers and everyone's minutes go into your season record. You can add a short match report and share the results with parents.</p>
+    </li>
+  </ol>
+
+  <div class="next">
+    <a class="btn dark" href="https://app.matchday-app.uk">Open Match Day</a>
+    <a class="btn line" href="guide">Read the full guide</a>
+  </div>
+</main>
+
+<footer>
+  <div class="w">
+    <div class="links"><a href="./">Match Day</a><a href="guide">Full guide</a><a href="https://app.matchday-app.uk/privacy.html">Privacy</a><a href="https://app.matchday-app.uk/terms.html">Terms</a><a href="mailto:hello@matchday-app.uk">Contact</a></div>
+    <p>Match Day is a trading name of Mark Miles Consultancy Limited, registered in England and Wales, company number 08286044.</p>
+  </div>
+</footer>

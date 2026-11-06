@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en-GB">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Guide · Match Day</title>
+<meta name="description" content="The full Match Day guide: setting up your team and games, running a match day, subs, goals, cards, half time and added time, fair playing time, results, supporters, coaches and backups.">
+<meta name="theme-color" content="#1e6a3a">
+<link rel="icon" href="https://match-day-17b23.web.app/icons/icon-192.png">
+<link rel="apple-touch-icon" href="https://match-day-17b23.web.app/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+:root{
+  --bg:#f2f5f0; --surface:#ffffff; --ink:#16211a; --muted:#5b6a60; --line:#d7dfd6;
+  --grass:#1e6a3a; --grass-deep:#175a30; --chalk:#ffffff; --gold:#c8961a; --tint:#e3eee4;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0e1511; --surface:#16201a; --ink:#e4ece6; --muted:#97a99d; --line:#2a372f;
+  --grass:#2f8a50; --grass-deep:#1f6a3b; --gold:#e6b84a; --tint:#17261c; color-scheme:dark}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 var(--body)}
+a{color:var(--grass)}
+h1,h2,h3{font-family:var(--display);font-weight:700;line-height:1.05;margin:0;text-wrap:balance}
+p{margin:0}
+.w{max-width:820px;margin:0 auto;padding:0 20px}
+.hero{background:repeating-linear-gradient(90deg,var(--grass) 0 80px,var(--grass-deep) 80px 160px);color:var(--chalk)}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:16px}
+.logo{display:flex;align-items:center;gap:10px;color:inherit;text-decoration:none;font:700 28px/1 var(--display)}
+.logo img{width:40px;height:40px;border-radius:10px;box-shadow:0 1px 3px #0004}
+.bar .open{color:var(--chalk);font-weight:700;text-decoration:none;border:2px solid #ffffff80;border-radius:10px;padding:8px 14px;font-size:15px}
+.hero h1{font-size:clamp(40px,7vw,64px);text-transform:uppercase;padding-top:18px}
+.hero p{font-size:19px;color:#f1f7f2;margin-top:12px;max-width:54ch;padding-bottom:34px}
+.hero p a{color:#ffe08a}
+main{padding-block:32px 56px}
+nav.toc{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px}
+nav.toc h2{font-size:24px}
+nav.toc ol{margin:10px 0 0;padding-left:22px;columns:2;column-gap:28px}
+nav.toc li{margin:3px 0;break-inside:avoid}
+section{margin-top:40px;scroll-margin-top:16px}
+section>h2{font-size:clamp(30px,4.5vw,40px);border-bottom:3px solid var(--grass);padding-bottom:6px}
+section h3{font-size:24px;margin-top:22px}
+section p,section ul,section ol{margin-top:10px}
+section ul,section ol{padding-left:22px}
+section li{margin-top:5px}
+.tip{background:var(--tint);border-radius:12px;padding:12px 14px;margin-top:14px;font-size:16px}
+.tip b:first-child{color:var(--grass)}
+b.ui{font-weight:700}
+.top{display:inline-block;margin-top:14px;font-size:15px}
+footer{border-top:1px solid var(--line);padding-block:28px 44px;color:var(--muted);font-size:14px}
+footer .links{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:12px;font-size:15px}
+@media (max-width:560px){.w{padding:0 16px}.bar .open{display:none}nav.toc ol{columns:1}}
+</style>
+
+<header class="hero" id="top">
+  <div class="w">
+    <nav class="bar" aria-label="Main">
+      <a class="logo" href="./"><img src="https://match-day-17b23.web.app/icons/icon-192.png" alt="">Match Day</a>
+      <a class="open" href="https://app.matchday-app.uk">Open the app</a>
+    </nav>
+    <h1>The Match Day guide</h1>
+    <p>Everything Match Day does, and how. New to it? Start with the <a href="quick-start">quick start</a>.</p>
+  </div>
+</header>
+
+<main class="w">
+  <nav class="toc" aria-label="Contents">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#start">Getting started</a></li>
+      <li><a href="#squad">Your squad</a></li>
+      <li><a href="#setup">Setting up a match day</a></li>
+      <li><a href="#lineup">Picking the team</a></li>
+      <li><a href="#during">During a game</a></li>
+      <li><a href="#clock">The clock, half time and added time</a></li>
+      <li><a href="#fix">Fixing mistakes</a></li>
+      <li><a href="#minutes">Fair playing time</a></li>
+      <li><a href="#notes">Notes</a></li>
+      <li><a href="#after">After the day: results and reports</a></li>
+      <li><a href="#awards">Awards and the season</a></li>
+      <li><a href="#supporters">Supporters</a></li>
+      <li><a href="#coaches">Coaches and managers</a></li>
+      <li><a href="#account">Your account and phones</a></li>
+      <li><a href="#signal">No signal</a></li>
+      <li><a href="#backup">Backups</a></li>
+      <li><a href="#rugby">Rugby</a></li>
+      <li><a href="#privacy">Keeping children's details safe</a></li>
+      <li><a href="#help">Help and feedback</a></li>
+    </ol>
+  </nav>
+
+  <section id="start">
+    <h2>Getting started</h2>
+    <h3>Open the app</h3>
+    <p>Match Day runs in your phone's browser: go to <a href="https://app.matchday-app.uk">app.matchday-app.uk</a>. It works on iPhone, iPad, Android phones and tablets, and computers. There's nothing to download or pay.</p>
+    <p class="tip"><b>Tip:</b> add it to your Home Screen so it opens full screen with one tap. iPhone and iPad: in Safari tap Share, then <b class="ui">Add to Home Screen</b>. Android: in Chrome tap ⋮, then <b class="ui">Add to Home screen</b> or <b class="ui">Install app</b>.</p>
+    <h3>Start a new team</h3>
+    <p>Type your name (the other coaches see it, so they know who you are) and tap <b class="ui">Create a team</b>. You become the team's manager. The set-up then asks how much you want to do now:</p>
+    <ul>
+      <li><b class="ui">Quick start</b>: your team's name, how many a side, and your players. Ready in under a minute.</li>
+      <li><b class="ui">Full set-up</b>: also how many games you're playing, how long each lasts, halves or quarters, and your opponents, kick-off times and pitches.</li>
+    </ul>
+    <p>Everything is saved as you go, so if you're interrupted you carry on where you left off. You can change all of it later. <b class="ui">Do this later</b> skips the set-up altogether.</p>
+    <h3>Join a team someone else made</h3>
+    <p>Ask a coach for the team's invite code or link. Open the app, type your name and the code, and tap <b class="ui">Ask to join</b>. A coach in the team accepts you, and the team opens on your phone.</p>
+    <h3>Coaching more than one team</h3>
+    <p>Open the <b class="ui">☰</b> menu and tap <b class="ui">+ Add a team</b>. Each team has its own squad, games, season and invite code. Switch between them from the team name at the top or from <b class="ui">My teams</b> in the menu.</p>
+  </section>
+
+  <section id="squad">
+    <h2>Your squad</h2>
+    <p>Your players live in <b class="ui">Season → Squad</b>. Every coach on the team sees the same squad.</p>
+    <ul>
+      <li>Type a player's first name and add them, or use <b class="ui">Add several at once</b> to paste a list, one per line or separated by commas.</li>
+      <li>Surnames are dropped for you. If two players share a first name, the app adds their surname's first letter.</li>
+      <li>To remove a player, tap <b class="ui">Remove</b> next to them, then tap again to confirm. Their minutes and goals already saved in results stay.</li>
+    </ul>
+    <h3>Team settings</h3>
+    <p>Also in Squad, under <b class="ui">Team settings</b>: your team's full name, the shorter <b>scoreboard name</b> (what's shown on each game and in results, and what the app looks for when you paste fixtures), how many a side you usually play, and football or rugby.</p>
+  </section>
+
+  <section id="setup">
+    <h2>Setting up a match day</h2>
+    <p>Go to <b class="ui">Tournament → Games</b>. If you've played before, the app asks <b class="ui">Next match day: same as last time?</b>: tap <b class="ui">Yes, same settings</b> and you're done.</p>
+    <p>Otherwise, under <b class="ui">Set up your games</b>, choose:</p>
+    <ul>
+      <li><b>Games</b>: 1 for a single match, or how many you'll play at a tournament (up to 10).</li>
+      <li><b>Minutes a game</b> and <b>two halves</b> or <b>four quarters</b> (or one period).</li>
+      <li><b>A side</b>: how many players each team has on the pitch. You can change it for a single game too.</li>
+      <li>A tournament name and date, if you like.</li>
+    </ul>
+    <h3>Opponents, kick-off times and pitches</h3>
+    <p>Tap <b class="ui">Enter opponents and kick-off times</b> and fill in each game, or tap <b class="ui">Paste fixtures</b> and paste the fixture list from an email or WhatsApp. The app picks out your games (it looks for your scoreboard name), with their times, opponents and pitches. Line-ups and scores are kept if you paste again.</p>
+    <p>For a single match there's a <b class="ui">Home | Away</b> switch. Away games show the other team first on the scoreboard and for supporters.</p>
+  </section>
+
+  <section id="lineup">
+    <h2>Picking the team</h2>
+    <p>Tap a game to open it. Under <b class="ui">Who's playing</b>, each player has four buttons:</p>
+    <ul>
+      <li><b class="ui">GK</b>: your goalkeeper</li>
+      <li><b class="ui">Start</b>: starting on the pitch</li>
+      <li><b class="ui">Bench</b>: a sub</li>
+      <li><b class="ui">Out</b>: not playing this game</li>
+    </ul>
+    <p>The app tells you how many more you need for the game's size. If you start with a different number, it asks before kick-off, so a short-handed or bigger game is a choice, not a mistake.</p>
+    <p class="tip"><b>Late arrival?</b> Use <b class="ui">Add to bench</b> on the game: type their first name and they join the bench (and the squad).</p>
+    <p>When you're ready, tap <b class="ui">Kick off</b>. Line-ups are picked separately for each game, so you can share minutes around across a tournament.</p>
+  </section>
+
+  <section id="during">
+    <h2>During a game</h2>
+    <h3>Subs</h3>
+    <p>Tap a player on the pitch, then the bench player coming on. Or tap a bench player first and then who's coming off, or drag one onto the other. The bench is listed least time first, so you can see who needs a run out. <b class="ui">Undo last sub</b> takes back the last one.</p>
+    <h3>Changing the keeper</h3>
+    <p>Drag the keeper onto another player to swap the gloves, or give the gloves to someone from the pop-up when you tap the keeper.</p>
+    <h3>Goals</h3>
+    <p>Tap <b class="ui">+</b> on your team's score, then tap who scored (or <b class="ui">Own goal</b>). Tap <b class="ui">+</b> on the other team's score for theirs. <b class="ui">−</b> takes a goal off if you tapped by mistake.</p>
+    <h3>Cards</h3>
+    <p>Tap the player, then <b class="ui">🟨 Yellow card</b> or <b class="ui">🟥 Red card</b>. A player sent off can't come back on, and the team plays one short. To take a card back, remove it from the list under the pitch.</p>
+    <h3>Undo</h3>
+    <p>Most actions show an <b class="ui">Undo</b> button for a few seconds afterwards. Use it straight away if you tapped the wrong thing.</p>
+    <p class="tip"><b>Two coaches, one game:</b> every coach on the team sees the same game live, so one can make subs while another records goals. Changes appear on everyone's phone within a second or two.</p>
+  </section>
+
+  <section id="clock">
+    <h2>The clock, half time and added time</h2>
+    <p>The clock starts at kick-off and keeps going even if you lock your phone or switch apps.</p>
+    <ul>
+      <li><b>When a half's time is up</b>, the clock carries on into added time by itself. It shows the full time for the half with the added time underneath, e.g. 10:00 and <i>+1:30 added time</i>. You don't need to do anything.</li>
+      <li><b>When the referee blows</b>, tap <b class="ui">Half time</b> (or <b class="ui">End of Q1</b> and so on with quarters). The next half starts from its usual time, whatever added time was played.</li>
+      <li><b>If the referee blows early</b>, tap <b class="ui">Half time</b> then too: the clock moves to the end of the half.</li>
+      <li>Tap <b class="ui">Start 2nd half</b> when play restarts.</li>
+      <li>At the end, tap <b class="ui">Full time</b>. If the clock is short of the full length, you can end at the time shown or at the full length.</li>
+    </ul>
+    <p>Goals in added time are shown like the referee writes them: <b>10+2'</b>. Players' minutes include added time.</p>
+    <p class="tip"><b>Forgot to tap Full time?</b> A clock left running stops by itself an hour after the game should have ended, so nothing is lost.</p>
+    <p><b class="ui">Pause</b> stops the clock for a stoppage, and <b class="ui">Resume</b> starts it again.</p>
+  </section>
+
+  <section id="fix">
+    <h2>Fixing mistakes</h2>
+    <ul>
+      <li><b>Wrong time on a goal or sub:</b> each one in the game's lists has its time from kick-off. Type a new one (like 12:30) to correct it.</li>
+      <li><b>Clock wrong:</b> tap <b class="ui">Edit</b> on the game, then <b class="ui">Change game length or fix the clock</b>. Subs recorded after the new time move back to it, so playing time stays right.</li>
+      <li><b>Forgot to record a sub:</b> in <b class="ui">Edit</b>, use <b class="ui">Add a sub that already happened</b>.</li>
+      <li><b>Ended the game too soon:</b> tap <b class="ui">Reopen game</b>, or <b class="ui">Change match time</b> on a finished game.</li>
+      <li><b>Start a game again:</b> <b class="ui">Reset this game…</b> clears its score, subs, cards and clock (you can undo it straight afterwards).</li>
+    </ul>
+  </section>
+
+  <section id="minutes">
+    <h2>Fair playing time</h2>
+    <p><b class="ui">Tournament → Minutes played</b> lists every player's minutes across the whole day, least first, with the average so far. Players who need more time are marked, so you can bring them on next.</p>
+    <p>Minutes count time on the pitch, including added time and time in the sin bin. They're for the coaches only: supporters never see them.</p>
+    <p><b class="ui">Season → Results</b> also shows <b>season minutes</b> across every saved match day.</p>
+  </section>
+
+  <section id="notes">
+    <h2>Notes</h2>
+    <p><b class="ui">Tournament → Notes</b> is for things to pick up with players, like "work on staying wide". Add a note against a player, and tick it when it's done. Every coach on the team sees the notes, and they stay when a tournament is saved.</p>
+    <p>Keep notes about the sport and kind: parents can ask to see what's held about their child.</p>
+  </section>
+
+  <section id="after">
+    <h2>After the day: results and reports</h2>
+    <p>When your last game is over, go to <b class="ui">Games</b> and tap <b class="ui">Finish tournament and save to Results</b> (tap again to confirm). This saves the scores, scorers, cards and every player's minutes to <b class="ui">Season → Results</b>, then clears the games ready for next time.</p>
+    <h3>Match report</h3>
+    <p>You're offered a match report straight away: highlights, what went well, what to work on. Or tap <b class="ui">Write it later</b> and add it from Results whenever you like.</p>
+    <h3>Sharing results</h3>
+    <p>Open the match day in Results:</p>
+    <ul>
+      <li><b class="ui">Share results</b> sends scores only, ready for a group chat.</li>
+      <li><b class="ui">Share with names</b> adds scorers, cards and the match report, using first names. Only use it where your club is happy for children to be named.</li>
+    </ul>
+    <h3>Correcting a saved match day</h3>
+    <p>Tap <b class="ui">Edit</b> on a saved match day to fix an opponent, score, scorer or goal time.</p>
+  </section>
+
+  <section id="awards">
+    <h2>Awards and the season</h2>
+    <p><b class="ui">Season → Awards</b>: after training or a match, give awards like player of the match. Pick 2 or 3 players and say what for. The list shows fewest awards first, so nobody gets missed.</p>
+    <p><b class="ui">Season → Results</b> shows every saved match day, every scorer this season and everyone's season minutes.</p>
+    <p>At the end of the season, save a <a href="#backup">backup</a>, then use <b class="ui">Delete all season data</b> in Results to start the new season fresh. The squad stays until you remove players.</p>
+  </section>
+
+  <section id="supporters">
+    <h2>Supporters</h2>
+    <p>Family, carers and friends can follow the live score from anywhere, with no app or sign-up.</p>
+    <ol>
+      <li>Open the <b class="ui">☰</b> menu and tap <b class="ui">Create a supporters' link</b>.</li>
+      <li>Tap <b class="ui">Share on WhatsApp</b> (or copy the link) and send it to the team's group chat.</li>
+    </ol>
+    <p>Supporters see team names, the live score and match clock (including added time), half time and full time, and the day's fixtures and results. They <b>never</b> see players' names, line-ups or minutes, and they can't change anything.</p>
+    <h3>Alerts on their phone</h3>
+    <p>Supporters can tap <b class="ui">Get notifications</b> and choose kick-off, goals, cards, half time and full time. On iPhone they first add the page to their Home Screen and open it from there.</p>
+    <h3>A new season or a link that's spread too far</h3>
+    <p>Each link works for one season. Make a new one in the menu whenever you like: the old link stops updating.</p>
+  </section>
+
+  <section id="coaches">
+    <h2>Coaches and managers</h2>
+    <h3>Inviting coaches</h3>
+    <p>In the <b class="ui">☰</b> menu, under <b class="ui">Invite other coaches</b>, tap <b class="ui">Invite on WhatsApp</b> or <b class="ui">Copy invite</b>. The code only sends a request: someone in the team has to accept each person, from the menu or the alert on their phone. Only accept people you know, as they'll see and change the squad and games.</p>
+    <h3>Managers</h3>
+    <p>The coach who made the team is its manager, and can make up to four more coaches managers. Managers can remove coaches and make a new invite code (the old one stops working at once: useful if it's been shared too widely).</p>
+    <p>If you're the manager and want to leave, the app asks who takes over first. If a team ever has no manager, any coach can tap <b class="ui">Become the manager</b>.</p>
+    <h3>Alerts for coaches</h3>
+    <p>Turn on notifications in the menu to hear when someone asks to join, or when you've been accepted into a team. On iPhone, open Match Day from your Home Screen first.</p>
+  </section>
+
+  <section id="account">
+    <h2>Your account and phones</h2>
+    <p>You can use Match Day without an account: your teams are then tied to that phone. If the phone is lost or its browser data is cleared, you'd lose them, so we recommend signing in:</p>
+    <ul>
+      <li><b class="ui">Continue with Google</b>, or</li>
+      <li><b class="ui">Create an account with email</b> (any email address and a password).</li>
+    </ul>
+    <p>Your teams are then saved to your account. On a new phone, open the app and tap <b class="ui">Sign in</b> to get them all back. Other coaches can see you're really you; your email is never shown to them.</p>
+    <p><b class="ui">Sign out on this phone</b> and <b class="ui">Leave this team on this phone</b> are in the menu. Anything not yet uploaded is checked first, so you don't lose changes.</p>
+  </section>
+
+  <section id="signal">
+    <h2>No signal</h2>
+    <p>Pitches often have poor signal, so Match Day keeps working without it. Everything saves on your phone first and uploads when there's signal again. The status at the top shows where things stand: <b>Shared · live</b> means everything's uploaded. If something didn't save, tap the red status to try again.</p>
+    <p>Other coaches and supporters catch up as soon as your phone is back in signal.</p>
+  </section>
+
+  <section id="backup">
+    <h2>Backups</h2>
+    <p>In the <b class="ui">☰</b> menu, <b class="ui">Save a backup</b> saves a copy of everything (squad, games, season record and awards) to your phone as a file. Do it at the end of each season, or before deleting anything.</p>
+    <p>The file holds your players' first names, so keep it somewhere private and don't share it in group chats.</p>
+    <p><b class="ui">Restore from a backup</b> shows a preview of what will change before anything happens, and you can undo a restore afterwards.</p>
+  </section>
+
+  <section id="rugby">
+    <h2>Rugby</h2>
+    <p>Choose rugby in Squad's team settings (or in the set-up). Then:</p>
+    <ul>
+      <li>scores are tries, conversions, penalties and drop goals (or tries only, if your age group counts that way);</li>
+      <li>a yellow card puts a player in the sin bin with a 10-minute countdown, which still counts towards their time on the pitch;</li>
+      <li>there's no goalkeeper to pick.</li>
+    </ul>
+  </section>
+
+  <section id="privacy">
+    <h2>Keeping children's details safe</h2>
+    <ul>
+      <li>Use <b>first names only</b>: no surnames, dates of birth, photos or contact details.</li>
+      <li>Only the coaches accepted into your team can see its players.</li>
+      <li>Supporters never see players' names, and playing time is never shared.</li>
+      <li>Only invite coaches you trust, and remove coaches who leave the club.</li>
+    </ul>
+    <p>Read the <a href="https://app.matchday-app.uk/privacy.html">privacy notice</a> for the details.</p>
+  </section>
+
+  <section id="help">
+    <h2>Help and feedback</h2>
+    <p>Tap <b class="ui">Feedback</b> in the app, or email <a href="mailto:hello@matchday-app.uk">hello@matchday-app.uk</a>, with questions, problems or ideas. A screenshot helps. Every message is read.</p>
+    <a class="top" href="#top">Back to the top ↑</a>
+  </section>
+</main>
+
+<footer>
+  <div class="w">
+    <div class="links"><a href="./">Match Day</a><a href="quick-start">Quick start</a><a href="https://app.matchday-app.uk/privacy.html">Privacy</a><a href="https://app.matchday-app.uk/terms.html">Terms</a><a href="mailto:hello@matchday-app.uk">Contact</a></div>
+    <p>Match Day is a trading name of Mark Miles Consultancy Limited, registered in England and Wales, company number 08286044.</p>
+  </div>
+</footer>
