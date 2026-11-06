@@ -82,6 +82,8 @@ h2{font-size:clamp(34px,4.5vw,48px);margin-top:6px}
 .ticks li{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px 14px 50px;position:relative}
 .ticks li::before{content:"✓";position:absolute;left:16px;top:13px;width:24px;height:24px;border-radius:99px;background:var(--grass);color:#fff;font-weight:700;font-size:14px;display:grid;place-items:center}
 .ticks b{display:block}
+.ticks.why{margin-top:28px;grid-template-columns:1fr 1fr}
+.ticks.why li:first-child{grid-column:1/-1;border:2px solid var(--grass)}
 
 .steps{list-style:none;padding:0;margin:32px 0 0;display:grid;grid-template-columns:repeat(3,1fr);gap:16px;counter-reset:s}
 .steps li{counter-increment:s;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px}
@@ -107,6 +109,7 @@ footer .links{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:12px;font-s
   .feats{grid-template-columns:1fr 1fr}
   .shots{grid-template-columns:1fr 1fr}
   .steps{grid-template-columns:1fr}
+  .ticks.why{grid-template-columns:1fr}
 }
 @media (max-width:560px){
   .w{padding:0 16px}
@@ -143,7 +146,21 @@ footer .links{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:12px;font-s
 </header>
 
 <main>
-  <section id="days">
+  <section id="why">
+    <div class="w">
+      <p class="kicker">Why coaches use it</p>
+      <h2>No more shuffling paper and clipboards on the sidelines</h2>
+      <ul class="ticks why">
+        <li><b>Fair playing time, without the maths</b>Match Day counts every player's minutes as you play, across every game of the day, and lists the bench least time first. You can see at a glance who needs a run out next: no stopwatch, no notebook.</li>
+        <li><b>Built for the touchline</b>Big buttons and one hand. Pick the team, make a sub, record a goal, and that's it. The clock looks after itself, added time included, so you can concentrate on coaching.</li>
+        <li><b>Every coach on the same page</b>Your assistant sees the same line-up, subs and score live on their own phone. One can make the subs while the other records the goals.</li>
+        <li><b>Parents follow from anywhere</b>One link for the group chat gives family the live score, kick-off times and results. They never see a child's name.</li>
+        <li><b>A season record that keeps itself</b>Results, scorers, minutes, awards and match reports build up automatically. It's free, needs no download, and works with no signal at the pitch.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="days" style="padding-top:0">
     <div class="w">
       <p class="kicker">When you use it</p>
       <h2>On the day itself, from kick-off to the final whistle</h2>

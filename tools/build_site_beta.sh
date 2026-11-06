@@ -17,6 +17,11 @@ sed -e 's#https://match-day-17b23.web.app#https://match-day-beta-17b23.web.app#g
     -e 's#^\.hero{#.betabar{background:\#b06a10;color:\#fff;text-align:center;padding:10px 16px;font-size:15px}.betabar a{color:\#fff;font-weight:700}\
 .hero{#' \
     site/index.html > site-beta/index.html
+for f in quick-start.html guide.html; do   # the guides, opening the beta app
+  sed -e 's#https://app.matchday-app.uk#https://match-day-beta-17b23.web.app#g' \
+      -e 's#<meta name="viewport"#<meta name="robots" content="noindex,nofollow">\
+<meta name="viewport"#' site/$f > site-beta/$f
+done
 sed -e 's#"site": "matchday-website-preview"#"site": "matchday-website-beta"#' \
     -e 's#https://match-day-17b23.web.app#https://match-day-beta-17b23.web.app#g' \
     site/firebase.json > site-beta/firebase.json
