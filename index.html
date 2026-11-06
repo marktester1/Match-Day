@@ -383,7 +383,7 @@ body:has(input:focus,textarea:focus,select:focus) .fb{visibility:hidden;transiti
 <a id="feedback" class="fb" href="mailto:hello@matchday-app.uk?subject=Match%20Day%20feedback" aria-label="Send feedback by email">💬 Feedback</a>
 
 <script>
-const APP_VERSION='0.29.4';
+const APP_VERSION='0.29.5';
 // Feedback by email, with the app version and phone type filled in (never the team's or players' details)
 {const fb=document.getElementById('feedback'),dev=(navigator.userAgent.match(/\(([^)]+)\)/)||[])[1]||'';
   fb.href='mailto:hello@matchday-app.uk?subject='+encodeURIComponent('Match Day feedback')+'&body='+
@@ -1806,13 +1806,19 @@ function seasonView(){
   const allG={...gl};Object.entries(now).forEach(([p,n])=>{allG[p]=(allG[p]||0)+n});
   const scorers=Object.entries(allG).filter(([,n])=>n>0).sort((a,b)=>b[1]-a[1]||nameOf(a[0]).localeCompare(nameOf(b[0])));
   const ppl=new Map();S.squad.forEach(p=>ppl.set(p.id,p.name));Object.keys(tot).forEach(p=>{if(!ppl.has(p))ppl.set(p,nameOf(p))});
-  const rows=[...ppl].map(([id,name])=>({id,name,t:tot[id]||0,n:gp[id]||0,a:ac[id]||0})).sort((a,b)=>a.t-b.t);
-  const max=Math.max(1,...rows.map(r=>r.t)),avg=rows.length?rows.reduce((s,r)=>s+r.t,0)/rows.length:0;
+  // Fair share: a player's minutes as a % of the playing time in the match days they came to (in any game's squad
+  // that day), so days they missed don't count against them. A game's length is its player-minutes over its size.
+  const avail={},days={};ts.forEach(t=>{const gs=t.games||[],came=new Set(gs.flatMap(g=>Object.keys(g.mins||{})));
+    const len=gs.filter(g=>g.played||g.done).reduce((s,g)=>{const v=Object.values(g.mins||{});return s+Math.max(0,...v,v.reduce((a,b)=>a+b,0)/Math.max(1,g.size||5))},0);
+    came.forEach(p=>{avail[p]=(avail[p]||0)+len;days[p]=(days[p]||0)+1})});
+  const rows=[...ppl].map(([id,name])=>({id,name,t:tot[id]||0,n:gp[id]||0,a:ac[id]||0,d:days[id]||0,pc:avail[id]?Math.min(100,Math.round((tot[id]||0)/avail[id]*100)):null}))
+    .sort((a,b)=>(a.pc==null)-(b.pc==null)||(a.pc??0)-(b.pc??0)||a.t-b.t);
+  const seen=rows.filter(r=>r.pc!=null),max=Math.max(1,...seen.map(r=>r.pc)),avg=seen.length?seen.reduce((s,r)=>s+r.pc,0)/seen.length:0;
   return `<div class="sec" style="gap:14px">
   ${ts.length?`<div class="summary num"><span>Match days <b>${ts.length}</b></span><span>W <b>${all.W}</b> · D <b>${all.D}</b> · L <b>${all.L}</b></span><span>${Words().goals} <b>${all.F}–${all.A}</b></span><span>Awards <b>${S.awards.length}</b> sessions</span></div>`:''}
   <section class="sec"><h3>Season minutes</h3>
-  ${ts.length&&rows.length?`<p class="note">Saved tournaments only, least time first.</p><div class="rows">${rows.map(r=>{const low=avg>0&&r.t<avg*0.8;return `<div class="mrow ${low?'low':''}"><span class="who">${esc(r.name)}${low?'<span class="flag">Needs time</span>':''}</span><span class="tot num">${fmtM(r.t)}</span>
-    <span class="bar"><i style="width:${(r.t/max*100).toFixed(1)}%"></i></span><span class="brk num">${r.n} game${r.n===1?'':'s'}${gl[r.id]?` · ${gl[r.id]} goal${gl[r.id]>1?'s':''}`:''}${r.a?` · <span class="star">★${r.a}</span> award${r.a>1?'s':''}`:''}</span></div>`}).join('')}</div>`
+  ${ts.length&&rows.length?`<p class="note">Saved tournaments only. The % is each player's share of the playing time on the match days they came to, so days they missed don't count against them. Lowest first.</p><div class="rows">${rows.map(r=>{const low=r.pc!=null&&avg>0&&r.pc<avg*0.8;return `<div class="mrow ${low?'low':''}"><span class="who">${esc(r.name)}${low?'<span class="flag">Needs time</span>':''}</span><span class="tot num">${r.pc==null?'–':r.pc+'%'}</span>
+    <span class="bar"><i style="width:${r.pc==null?0:(r.pc/max*100).toFixed(1)}%"></i></span><span class="brk num">${fmtM(r.t)} · ${r.d} of ${ts.length} match day${ts.length===1?'':'s'} · ${r.n} game${r.n===1?'':'s'}${gl[r.id]?` · ${gl[r.id]} goal${gl[r.id]>1?'s':''}`:''}${r.a?` · <span class="star">★${r.a}</span> award${r.a>1?'s':''}`:''}</span></div>`}).join('')}</div>`
   :`<div class="empty"><b>Nothing saved yet</b>When a tournament ends, tap "Finish tournament and save to Results" on the Games tab.</div>`}</section>
   ${scorers.length?`<section class="sec"><h3>${Words().scorers}</h3><p class="note">Every scorer this season, most ${Words().goals.toLowerCase()} first${Object.keys(now).length?', including the tournament in progress':''}.</p>
     <div class="rows">${scorers.map(([p,n])=>`<div class="row"><span class="who">${esc(nameOf(p))}${now[p]?` <span class="note">(${now[p]} today)</span>`:''}</span><b class="num">${n}</b></div>`).join('')}</div></section>`:''}
