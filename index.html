@@ -710,7 +710,7 @@ async function pushToken(){ // asks permission (straight after a tap) and return
 }
 const pushWhy=e=>({'ios-home':'On iPhone, first add this page to your Home Screen (Share → Add to Home Screen), then open it from there and try again.',
   denied:"Notifications are blocked for this site. Allow them in your phone's settings for this browser, then try again.",
-  unsupported:"This browser can't get notifications. Try Chrome on Android, or the Home Screen app on iPhone."})[e&&e.message]||`Couldn't turn on notifications (${errCode(e)}).`;
+  unsupported:"This browser can't get notifications. Try Chrome on Android, or the Home Screen app on iPhone."})[e&&e.message]||`Couldn't turn on notifications. ${whyPlain(e)}`;
 const KINDS=[['kick','Kick-off'],['goal','Goals'],['card','Cards'],['ht','Half time'],['ft','Full time']];
 function followPushCard(f){
   if(S.fpush===undefined||inApp)return''; // web push doesn't work inside the iPhone app yet
@@ -732,7 +732,7 @@ async function followPushOn(){
   render();
 }
 async function followPushOff(){
-  try{await FB.F.deleteDoc(FB.F.doc(FB.fs,'feeds',FOLLOW,'push',FB.auth.currentUser.uid));S.fpush=null;toast('Notifications off.')}catch(e){toast(`Couldn't turn them off (${errCode(e)}).`)}
+  try{await FB.F.deleteDoc(FB.F.doc(FB.fs,'feeds',FOLLOW,'push',FB.auth.currentUser.uid));S.fpush=null;toast('Notifications off.')}catch(e){toast(`Couldn't turn them off. ${whyPlain(e)}`)}
   render();
 }
 // Coaches (and people waiting to be accepted): this phone's push address for join alerts
@@ -740,7 +740,7 @@ async function loadDevice(){try{const d=await FB.F.getDoc(FB.F.doc(FB.fs,'device
 async function devicePush(on){
   const ref=FB.F.doc(FB.fs,'devices',FB.auth.currentUser.uid);
   try{if(on){await FB.F.setDoc(ref,{token:await pushToken(),at:Date.now()});S.dpush=true;toast('Notifications on for this phone.')}
-    else{await FB.F.deleteDoc(ref);S.dpush=false;toast('Notifications off for this phone.')}}catch(e){toast(on?pushWhy(e):`Couldn't turn them off (${errCode(e)}).`)}
+    else{await FB.F.deleteDoc(ref);S.dpush=false;toast('Notifications off for this phone.')}}catch(e){toast(on?pushWhy(e):`Couldn't turn them off. ${whyPlain(e)}`)}
   render();
 }
 function devicePushCard(){
@@ -2206,12 +2206,24 @@ function track(p,fail,path,retry){
   return p;
 }
 const failedPaths=()=>Object.keys(sync.failed);
+// Why something failed, in plain words for a coach (never a raw error code, unless it's one we don't know)
+function whyPlain(e){
+  const c=String(e&&e.code||e&&e.message||'').replace(/^(firestore|auth|messaging)\//,'');
+  return ['unavailable','network-request-failed','deadline-exceeded'].includes(c)||!navigator.onLine?"There's no signal. Try again when you have one."
+    :c==='too-many-requests'?'Too many tries from this phone just now. Wait a few minutes and try again.'
+    :c==='resource-exhausted'?"The app's free daily limit was reached. It works again tomorrow."
+    :c==='permission-denied'?"This phone isn't allowed to do that. It may have been removed from the team: check with another coach."
+    :c==='unauthenticated'?'This phone is signed out. Reload the app and try again.'
+    :c==='not-found'?"It's not there any more: it may have been removed on another phone."
+    :['aborted','failed-precondition'].includes(c)?'Someone changed it on another phone at the same moment. Try again.'
+    :`Try again in a moment. If it keeps happening, tap Feedback and mention "${errCode(e)}".`;
+}
 function whyText(e){
   const c=String(e&&e.code||'').replace('firestore/','');
   return c==='permission-denied'?"The server refused it. This phone may have been removed from the team, or the change didn't pass the safety checks."
     :c==='unauthenticated'?'This phone is signed out. Reload the app.'
     :c==='resource-exhausted'?'The free daily limit for the app was reached. It works again tomorrow.'
-    :`It didn't go through (${errCode(e)}).`;
+    :`It didn't go through. ${whyPlain(e)}`;
 }
 function retryFailed(path){const f=sync.failed[path];if(!f)return;delete sync.failed[path];if(f.retry)f.retry();liveLabel();render()}
 function dismissFailed(path){delete sync.failed[path];liveLabel();render()}
@@ -2327,7 +2339,7 @@ async function signedIn(){if(!FB.auth.currentUser)await FB.A.signInAnonymously(F
 async function createTeam(){
   const {F,fs}=FB;
   if(!navigator.onLine){toast('You need a signal to create a team.');return}
-  let uid;try{uid=await signedIn()}catch(e){toast(`Couldn't sign in (${errCode(e)}). Check your signal and try again.`);return}
+  let uid;try{uid=await signedIn()}catch(e){toast(`Couldn't sign in. ${whyPlain(e)}`);return}
   let last=null;
   for(let i=0;i<3;i++){ // retry if the random code is already taken
     const tref=F.doc(F.collection(fs,'teams')),code=newCode(),b=F.writeBatch(fs);
@@ -2337,7 +2349,7 @@ async function createTeam(){
     b.set(F.doc(fs,'teams',tref.id,'club','settings'),{...DEFAULT_CFG,team:'',short:''});
     try{await b.commit();openTeam(tref.id);return}catch(e){last=e;if(e.code!=='permission-denied')break}
   }
-  toast(`Couldn't create the team (${errCode(last)}). Check your signal and try again.`);
+  toast(`Couldn't create the team. ${whyPlain(last)}`);
 }
 // Asking to join: the request and this sign-in's short list of teams it's waiting on (at most 3,
 // enforced by the rules) are written together. A team drops off that list once its request has
@@ -2369,7 +2381,7 @@ async function joinTeam(raw){
     const r=await within(sendJoin(F,fs,auth,code),20000);
     if(r===null)toast("No signal: the request didn't send. Try again when you have signal.");
   }catch(e){toast(e.code==='too-many'?"You're already waiting to join 3 teams. Cancel one of those requests first."
-    :`Couldn't send the request (${errCode(e)}). Check your signal and try again.`)}
+    :`Couldn't send the request. ${whyPlain(e)}`)}
   finally{joining=false;render()}
 }
 async function sendJoin(F,fs,auth,code){
@@ -2419,7 +2431,7 @@ async function askAgain(t){ // after a decline, a lost request or being removed:
   if(!myName()){toast('Add your name first (☰ menu or the Join form).');return}
   try{await signedIn();await askToJoin(FB.F,FB.fs,FB.auth.currentUser,t,p.code);addPending(t,p.code);toast('Request sent again. A coach needs to accept you.')}
   catch(e){toast(e.code==='too-many'?"You're already waiting to join 3 teams. Cancel one of those requests first."
-    :e.code==='permission-denied'?"That code doesn't work any more: the team has a new one. Ask a coach for it.":`Couldn't send it (${errCode(e)}).`)}
+    :e.code==='permission-denied'?"That code doesn't work any more: the team has a new one. Ask a coach for it.":`Couldn't send it. ${whyPlain(e)}`)}
   render();
 }
 
@@ -2439,14 +2451,14 @@ async function acceptRequest(id){
     b.delete(F.doc(fs,'teams',S.teamId,'requests',id));
     await track(within(b.commit(),10000).then(x=>{if(x===null)throw Object.assign(new Error('timeout'),{code:'no signal'})}));
     toast(`${r.name||'The new coach'} is in the team.`)}
-  catch(e){toast(`Couldn't accept ${r.name||'them'} (${errCode(e)}). Try again.`)}
+  catch(e){toast(`Couldn't accept ${r.name||'them'}. ${whyPlain(e)}`)}
   finally{delete reqBusy[id];render()}
 }
 async function declineRequest(id){
   const {F,fs}=FB,r=S.requests.find(x=>x.id===id);if(!r||reqBusy[id])return;
   reqBusy[id]='decline';render();
   try{await track(F.deleteDoc(F.doc(fs,'teams',S.teamId,'requests',id)));toast(`Declined ${r.name||'the request'}. They're told it wasn't accepted.`)}
-  catch(e){toast(`Couldn't decline (${errCode(e)}).`)}
+  catch(e){toast(`Couldn't decline. ${whyPlain(e)}`)}
   finally{delete reqBusy[id];render()}
 }
 async function newInviteCode(){ // manager: the old code stops working at once; coaches already in stay in
@@ -2459,7 +2471,7 @@ async function newInviteCode(){ // manager: the old code stops working at once; 
     if(old)b.delete(F.doc(fs,'codes',old));
     try{await track(within(b.commit(),10000).then(x=>{if(x===null)throw Object.assign(new Error('timeout'),{code:'no signal'})}),null,'team');
       toast(`New invite code ${showCode(code)}. The old code ${showCode(old)} no longer works.`);return}
-    catch(e){if(e.code!=='permission-denied'||i===2){toast(`Couldn't make a new code (${errCode(e)}).`);return}}
+    catch(e){if(e.code!=='permission-denied'||i===2){toast(`Couldn't make a new code. ${whyPlain(e)}`);return}}
   }
 }
 // A team's managers: whoever made it (or was handed that role) plus anyone added to its managers list.
@@ -2469,26 +2481,26 @@ const noManager=()=>S.createdBy&&S.members.length&&!S.members.some(m=>isMgrId(m.
 async function claimManager(){ // the manager's sign-in has left the team: take the role so someone can manage coaches and codes
   const {F,fs,auth}=FB;
   try{await track(F.updateDoc(F.doc(fs,'teams',S.teamId),{createdBy:auth.currentUser.uid}),null,'team');toast("You're now the manager.")}
-  catch(e){toast(`Couldn't make you the manager (${errCode(e)}).`)}
+  catch(e){toast(`Couldn't make you the manager. ${whyPlain(e)}`)}
 }
 async function addManager(id){ // a manager makes another coach a manager too
   const {F,fs}=FB,m=S.members.find(x=>x.id===id),list=[...new Set([...(S.managers||[]),id])];
   if(list.filter(x=>x!==S.createdBy).length>4){toast('A team can have up to 5 managers. Remove one first.');return}
   try{await track(F.updateDoc(F.doc(fs,'teams',S.teamId),{managers:list}),null,'team');toast(`${m?.name||'That coach'} is now a manager.`)}
-  catch(e){toast(`Couldn't make them a manager (${errCode(e)}).`)}
+  catch(e){toast(`Couldn't make them a manager. ${whyPlain(e)}`)}
 }
 async function removeManager(id){ // stop another coach being a manager (you stay one)
   const {F,fs,auth}=FB,me=auth.currentUser.uid,m=S.members.find(x=>x.id===id);
   const patch={managers:(S.managers||[]).filter(x=>x!==id&&(id!==S.createdBy||x!==me))};
   if(id===S.createdBy)patch.createdBy=me;
   try{await track(F.updateDoc(F.doc(fs,'teams',S.teamId),patch),null,'team');toast(`${m?.name||'That coach'} isn't a manager any more.`)}
-  catch(e){toast(`Couldn't change the managers (${errCode(e)}).`)}
+  catch(e){toast(`Couldn't change the managers. ${whyPlain(e)}`)}
 }
 async function removeCoach(id){
   const {F,fs}=FB,m=S.members.find(x=>x.id===id);
   const me=FB.auth.currentUser.uid,b=F.writeBatch(fs);b.delete(F.doc(fs,'teams',S.teamId,'members',id));
   if(isMgrId(id))b.update(F.doc(fs,'teams',S.teamId),{managers:(S.managers||[]).filter(x=>x!==id),...(id===S.createdBy?{createdBy:me}:{})});
-  await track(b.commit()).then(()=>toast(`${m?.name||'That coach'} has been removed from the team.`)).catch(e=>toast(`Couldn't remove (${errCode(e)}).`));
+  await track(b.commit()).then(()=>toast(`${m?.name||'That coach'} has been removed from the team.`)).catch(e=>toast(`Couldn't remove. ${whyPlain(e)}`));
 }
 function requestsBanner(){
   if(!S.requests.length)return'';
@@ -2544,7 +2556,7 @@ function reportCard(){
   const ok=(good,text)=>`<li class="${good?'ok':'no'}">${good?'✓':'✗'} ${text}</li>`;
   return `<div class="card report" role="status"><h3>${r.kind==='signout'?`Signed out${r.email?' of '+esc(r.email):''}`:`You left ${esc(r.team||'the team')}`}</h3><ul class="checks">
     ${r.kind==='leave'?ok(r.member==='ok',r.member==='ok'?`Removed from the team's coach list${r.later?' (finished once there was signal)':''}.`
-      :`Not yet removed from the team's coach list (${esc(r.member)}). The app tries again whenever it opens with a signal; or ask the manager to remove you.`):''}
+      :`Not yet removed from the team's coach list${r.member==='no signal'?' (no signal)':''}. The app tries again whenever it opens with a signal; or ask the manager to remove you.`):''}
     ${r.kind==='signout'?ok(true,'Signed out on this phone. Your teams stay saved to your account.'):''}
     ${ok(r.cache==='cleared',r.cache==='cleared'?"This phone's copy of the team data was deleted.":"This phone's copy couldn't be deleted yet because another Match Day window was open. Close every Match Day window: it's deleted when the app next opens.")}
     ${r.pending?ok(false,`${r.pending} change${r.pending>1?'s':''} that hadn't uploaded were left behind.`):''}
@@ -2605,7 +2617,7 @@ function authMsg(e){
     'operation-not-allowed':"That sign-in method isn't switched on for this app yet.",
     'unauthorized-domain':"Google sign-in isn't set up for this web address yet.",
     'redirect-cancelled-by-user':'Google sign-in was cancelled.','user-cancelled':'Google sign-in was cancelled.',
-    'web-storage-unsupported':"This browser is blocking sign-in. Open the app in Safari or Chrome itself."})[c]||`That didn't work (${c||errCode(e)}).`;
+    'web-storage-unsupported':"This browser is blocking sign-in. Open the app in Safari or Chrome itself."})[c]||`That didn't work. ${whyPlain(e)}`;
 }
 const acctVals=()=>({email:(document.getElementById('acctemail')?.value||'').trim(),pw:document.getElementById('acctpw')?.value||''});
 async function createAccount(){
@@ -2660,7 +2672,7 @@ async function moveTeamsTo(signIn){
       if(!ok)throw Object.assign(new Error('timeout'),{code:'no signal'});
     }catch(e){
       await done();liveLabel();
-      toast(`Couldn't move ${teamInfo[t]?.name||'one of your teams'} to the account (${errCode(e)}). You're still signed in as before${mine[0].t!==t?'; teams already moved are in both':''}. Try again.`);
+      toast(`Couldn't move ${teamInfo[t]?.name||'one of your teams'} to the account. ${whyPlain(e)} You're still signed in as before${mine[0].t!==t?'; teams already moved are in both':''}.`);
       return;
     }
   }
@@ -2671,7 +2683,7 @@ async function moveTeamsTo(signIn){
   }
   // 5. Every team has moved: the phone switches to the account.
   try{await A.updateCurrentUser(auth,u2)}
-  catch(e){await done();toast(`Your teams are on the account, but this phone didn't finish signing in (${errCode(e)}). Sign in again.`);liveLabel();return}
+  catch(e){await done();toast(`Your teams are on the account, but this phone didn't finish signing in. ${whyPlain(e)} Sign in again.`);liveLabel();return}
   await done();
   await loadAccountTeams();syncTeamList();myTeams().forEach(t=>touchMember(t,true));
   if(!lsGet(TEAM_KEY))lsSet(TEAM_KEY,myTeams()[0]||null);
@@ -2709,7 +2721,7 @@ async function signOutAccount(force=false){
   if(!(await uploadedFirst(force))){S.confirm='signout-force';render();return}
   const rep={kind:'signout',email:FB.auth.currentUser?.email||'',at:Date.now(),pending:force?sync.pending:0};
   leaving=true;
-  try{await FB.A.signOut(FB.auth)}catch(e){leaving=false;toast(`Couldn't sign out (${errCode(e)}). Nothing was changed.`);return}
+  try{await FB.A.signOut(FB.auth)}catch(e){leaving=false;toast(`Couldn't sign out. Nothing was changed. ${whyPlain(e)}`);return}
   saveTeams([]);lsSet(TEAM_KEY,null);rep.cache=await wipeLocalData();lsSet('matchday-report',JSON.stringify(rep));location.reload();
 }
 const googleBtn=()=>inApp?'<p class="note">Google sign-in isn\'t in the iPhone app yet. Use email here, or sign in with Google on the website.</p>':`<button class="btn gbtn" data-act="google"><svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 6.9-10.3 6.9-17.7z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.1 1.4-4.9 2.3-8.2 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>Continue with Google</button>`;
@@ -2836,7 +2848,7 @@ async function adminMakeManager(t,id){ // owner: make a coach in any team a mana
     if(row.createdBy===id){const next=row.list.find(m=>m.mgr&&m.id!==id);if(!next){toast("They're the only manager. Make someone else a manager first.");return}
       patch.createdBy=next.id;patch.managers=patch.managers.filter(x=>x!==next.id)}}
   try{await F.updateDoc(F.doc(fs,'teams',t),patch);toast(c?.mgr?'No longer a manager.':'Now a manager.');loadAdmin()}
-  catch(e){toast(`Couldn't change the managers (${errCode(e)}).`)}
+  catch(e){toast(`Couldn't change the managers. ${whyPlain(e)}`)}
 }
 function adminView(){
   const A=S.admin||{teams:[]},T=A.teams,day=864e5,now=Date.now();
