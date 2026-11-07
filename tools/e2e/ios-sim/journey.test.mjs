@@ -172,7 +172,7 @@ test('a coach runs a whole match day in iPhone Safari', {timeout: 30 * 60000}, (
   // 7. Finish the tournament, write the report, check the results
   await c.goTab('games');
   await c.tapText('Finish tournament and save to Results');
-  await c.tapTextLike('Tap again to save');
+  await c.tapTextLike(/Tap again to save/);
   await c.until(() => document.querySelector('.modal h3')?.textContent === 'Tournament saved ✓', 'Tournament saved');
   assert.match(await c.text('.modal'), /W0 D1 L0/);
   await c.type('#rptnew', REPORT);

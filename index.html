@@ -398,7 +398,8 @@ const S={cfg:{...DEFAULT_CFG},cfgLoaded:false,fx:false,squad:[],tour:{name:'',da
   gate:false,teamId:null,invite:'',restore:null,fix:null,scorer:null,askGk:null,menu:false,members:[],createdBy:null,managers:[],askSize:null,undo:null,askFt:null,requests:[],pending:[],qp:null,notes:[],noteFor:'',showDone:false,saved:null,editT:null,draft:null,rpick:null,setupOpen:false,owner:false,admin:null,adminOpen:false,teams:false,adding:false,acct:null,
   feed:null,pfeed:undefined,pgames:[],pbanner:null,awards:[],archive:[],aw:{date:'',type:'Training',label:'',picks:{}},openT:null};
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
-const nice=d=>{if(!d)return'';const t=new Date(d+'T12:00');return isNaN(t)?d:t.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})};
+// "Sat 7 Nov", built here: browsers differ ("Sat, 7 Nov" in some)
+const nice=d=>{if(!d)return'';const t=new Date(d+'T12:00');return isNaN(t)?d:'Sun Mon Tue Wed Thu Fri Sat'.split(' ')[t.getDay()]+' '+t.getDate()+' '+'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ')[t.getMonth()]};
 let db=null,pending=false,moving=false,suppressClick=false;
 const queues={};
 // A game being saved keeps this phone's copy until the server has it: the local database takes a
@@ -1564,7 +1565,7 @@ function restoreDiff(r){ // what the restore will add, change or remove
     ...(r.hasNotes?[`Notes: ${r.notes.length}`]:[]),...(r.cfg&&r.cfg.team?[`Team settings from the backup (${r.cfg.team})`]:[])];
 }
 function backupWhen(iso){const t=new Date(iso);if(!iso||isNaN(t))return'';
-  return t.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})+(t.getFullYear()!==new Date().getFullYear()?' '+t.getFullYear():'')+' at '+t.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
+  return nice(t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0'))+(t.getFullYear()!==new Date().getFullYear()?' '+t.getFullYear():'')+' at '+t.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
 function restoreCounts(r){ // side by side: the team now, and the backup
   const played=gs=>Object.values(gs).filter(g=>g&&(g.done||(g.clock&&(g.clock.running||g.clock.acc>0)))).length;
   return[['Players',S.squad.length,r.squad.length],['Games',`${Object.keys(S.games).length} (${played(S.games)} played)`,`${Object.keys(r.games).length} (${played(r.games)} played)`],
@@ -2487,7 +2488,9 @@ async function askAgain(t){ // after a decline, a lost request or being removed:
 /* ---------- the team side: requests to accept, new coaches, removing a coach ---------- */
 function watchRequests(t){
   const {F,fs}=FB;
-  F.onSnapshot(F.collection(fs,'teams',t,'requests'),s=>{S.requests=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.at||0)-(b.at||0));render()},()=>{});
+  // If watching fails (a blip just after joining, say), try again rather than never showing requests
+  F.onSnapshot(F.collection(fs,'teams',t,'requests'),s=>{S.requests=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.at||0)-(b.at||0));render()},
+    e=>{(window.reqWatchErrors=window.reqWatchErrors||[]).push(e&&e.code||String(e));if(S.teamId===t)setTimeout(()=>{if(S.teamId===t)watchRequests(t)},3000)});
 }
 const reqBusy={}; // request id -> 'accept' | 'decline' while it's being sent (no double taps)
 async function acceptRequest(id){

@@ -129,7 +129,7 @@ test('a follower watches the day from the link, in iPhone Safari', {timeout: 30 
   // The coach saves the tournament: followers keep the day's results
   await coach.goTab('games');
   await coach.tapText('Finish tournament and save to Results');
-  await coach.tapTextLike('Tap again to save');
+  await coach.tapTextLike(/Tap again to save/);
   await coach.tapText('Write it later', '.modal');
   await fp.reload();
   await status('Full time');

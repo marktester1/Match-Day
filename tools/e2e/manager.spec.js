@@ -15,11 +15,17 @@ async function join(asker, name, code, accepter) {
   await asker.press(asker.btn('Ask to join'));
   await asker.toast('Request sent.');
   const req = accepter.view.locator('.req').filter({hasText: `${name} wants to join the team`});
+  await expect(req, 'the request reaches the accepting coach').toBeVisible({timeout: 30000})
+    .catch(async e => { console.log('Requests watch errors', JSON.stringify(await accepter.page.evaluate(() => window.reqWatchErrors || []))); throw e; });
   await accepter.press(accepter.btn('Accept', req));
   await accepter.toast(`${name} is in the team.`);
   await expect(asker.page.locator('#hteam')).toHaveText(TEAM, {timeout: 30000});
 }
-const managerIs = (a, name) => expect(a.view.locator('.member').filter({has: a.page.locator('.tag.mgr')})).toContainText(name);
+const managerIs = async (a, name) => { // the one manager left (once this phone has caught up)
+  const m = a.view.locator('.member').filter({has: a.page.locator('.tag.mgr')});
+  await expect(m).toHaveCount(1, {timeout: 30000});
+  await expect(m).toContainText(name);
+};
 
 test('the manager role is handed over on leaving, and can be taken over if the manager has gone', async ({page, browser}, info) => {
   const mgr = app(page, info);

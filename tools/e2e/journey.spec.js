@@ -142,7 +142,7 @@ test('a coach runs a whole match day', async ({page, browser}, info) => {
     // Followers get the fixtures a moment after the last change (check before reloading, which would cancel it)
     await expect(fp.locator('#view')).toContainText('Still to play');
     await expect(fp.locator('#view')).toContainText('Riverside');
-    await expect(board.locator('.pst')).toHaveText(`${new Date(DAY + 'T12:00').toLocaleDateString('en-GB', {weekday: 'short', day: 'numeric', month: 'short'})} · 9:30`); // before kick-off: the date (not today) and time
+    await expect(board.locator('.pst')).toHaveText(`${(d => 'Sun Mon Tue Wed Thu Fri Sat'.split(' ')[d.getDay()] + ' ' + d.getDate() + ' ' + 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ')[d.getMonth()])(new Date(DAY + 'T12:00'))} · 9:30`); // before kick-off: the date (not today) and time
     const cards = view.locator('.gcard');
     const checkFixtures = async () => {
       await expect(cards).toHaveCount(3);
