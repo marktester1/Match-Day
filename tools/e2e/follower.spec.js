@@ -77,6 +77,13 @@ test('a follower watches the day from the link', async ({page, browser}, info) =
     await expect(board).toContainText('Game 1');
     await expect(board).toContainText('Riverside');
     await expect(board).not.toContainText('Hillside');
+    // After an app update the supporters' page could keep an old version's view until a coach changed
+    // something: here it's left showing game 2. A coach just opening the app puts it right.
+    await page.evaluate(() => FB.F.setDoc(FB.F.doc(FB.fs, 'feeds', S.feed.id), {...feedBody('g2'), updatedAt: Date.now()}));
+    await expect(board).toContainText('Hillside');
+    await coach.reload(TEAM);
+    await expect(board).toContainText('Game 1', {timeout: 30000});
+    await expect(board).not.toContainText('Hillside');
     await expect(rows.nth(1)).toContainText('10:15');
     await expect(fview.locator('.lbl', {hasText: 'Still to play'})).toBeVisible();
     await expect(status).toHaveText(`${(d => 'Sun Mon Tue Wed Thu Fri Sat'.split(' ')[d.getDay()] + ' ' + d.getDate() + ' ' + 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ')[d.getMonth()])(new Date(DAY + 'T12:00'))} · 9:30`); // before kick-off: the date (not today) and time
@@ -151,6 +158,23 @@ test('a follower watches the day from the link', async ({page, browser}, info) =
     await fp.reload();
     await expect(status).toHaveText('Full time', {timeout: 30000});
     await expect(rows).toHaveCount(2);
+
+    // The next match day is set up but nothing's entered yet: supporters still see Saturday's results
+    await coach.goTab('games');
+    await coach.press(coach.btn('Yes, same settings'));
+    await coach.saved();
+    await coach.press(coach.btn('← All games'));
+    await coach.saved();
+    await fp.waitForTimeout(3000);
+    await fp.reload();
+    await expect(status).toHaveText('Full time', {timeout: 30000});
+    await expect(rows).toHaveCount(2);
+    await expect(rows.nth(0)).toContainText('Riverside');
+    // A fixture goes in: now supporters see the new day
+    await coach.press(coach.btn('Enter opponents and kick-off times'));
+    await coach.enter('#fx-o-g1', 'Oakfield');
+    await expect(rows.nth(0)).toContainText('Oakfield', {timeout: 30000});
+    await expect(fview).not.toContainText('Riverside');
 
     finished = true;
   } finally {

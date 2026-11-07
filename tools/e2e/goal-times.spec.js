@@ -55,6 +55,8 @@ test('goal times can be corrected in the game and in saved results', async ({pag
     await c.reload(TEAM);
     await c.goTab('season');
     await expect(c.view.locator('.summary')).toContainText('Match days 1');
+    await expect(c.view.locator('.summary')).toContainText(/Goals \d+–\d+/); // once read "Goalss"
+    await expect(c.view.locator('.summary')).not.toContainText('Goalss');
     const tc = c.view.locator('.tcard').first();
     await c.press(tc.locator('[data-act=topen]'));
     await expect(tc.locator('.tb')).toBeVisible();

@@ -38,6 +38,14 @@ test('everyone starts on the bench, and Out lasts the whole day', async ({page, 
     await toast('Isabelle is out for the day.');
     await c.pickTeam('Ava', ['Ben', 'Cal', 'Dev', 'Eli']);
     expect(await roles()).toMatchObject({Fay: 'bench', Isabelle: 'out'});
+    // The 5/5 counter on the pitch was hard to read in light mode: its text must stand out from its background
+    const contrast = await view.locator('.pitch .cnt').evaluate(el => {
+      const rgb = c => { const x = document.createElement('canvas').getContext('2d'); x.fillStyle = c; x.fillRect(0, 0, 1, 1); return [...x.getImageData(0, 0, 1, 1).data].slice(0, 3); }, lum = c => { const [r, g, b] = rgb(c).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+      let bg = 'rgba(0, 0, 0, 0)', n = el; while (n && /rgba\(0, 0, 0, 0\)|transparent/.test(bg)) { bg = getComputedStyle(n).backgroundColor; if (/rgba\(0, 0, 0, 0\)|transparent/.test(bg) && getComputedStyle(n).backgroundImage !== 'none') bg = 'rgb(30, 106, 58)'; n = n.parentElement; } // the striped pitch: its green
+      const [a, b] = [lum(getComputedStyle(el).color), lum(bg)].sort((x, y) => y - x);
+      return (a + 0.05) / (b + 0.05);
+    });
+    expect(contrast, 'the 5/5 counter is readable').toBeGreaterThanOrEqual(4.5);
 
     // Minutes: Isabelle is out, so she isn't listed (or counted), and the minutes count up live
     await c.goTab('minutes');

@@ -385,7 +385,7 @@ body:has(input:focus,textarea:focus,select:focus) .fb{visibility:hidden;transiti
 <a id="feedback" class="fb" href="mailto:hello@matchday-app.uk?subject=Match%20Day%20feedback" aria-label="Send feedback by email">💬 Feedback</a>
 
 <script>
-const APP_VERSION='0.29.7';
+const APP_VERSION='0.29.8';
 // Feedback by email, with the app version and phone type filled in (never the team's or players' details)
 {const fb=document.getElementById('feedback'),dev=(navigator.userAgent.match(/\(([^)]+)\)/)||[])[1]||'';
   fb.href='mailto:hello@matchday-app.uk?subject='+encodeURIComponent('Match Day feedback')+'&body='+
@@ -627,6 +627,9 @@ const feedFixture=id=>{const g=G(id);return{n:g.n,home:homeName(g).slice(0,40),a
 function publishFeed(){ // sends parents the changes made on this phone (only what changed)
   if(!feedOn()||!tourReady())return; // between tournaments: the last results stay up for parents
   const {F,fs}=FB,id=S.feed.id,ids=gids(),run=ids.find(x=>G(x).clock.running);
+  // a new match day set up but with nothing in it yet (no opponent, kick-off time or game played): keep the
+  // last day's results up for supporters until there's a fixture to show
+  if(!ids.some(x=>{const g=G(x);return g.opponent||g.time||started(g)||g.done}))return;
   // Before kick-off supporters see the next game to play, not the last one a coach edited; a game under way or just
   // finished stays up (so its full time reaches them) until the next one kicks off.
   const last=ids.includes(feedGame)&&(started(G(feedGame))||G(feedGame).done)?feedGame:null;
@@ -2227,18 +2230,25 @@ setInterval(()=>{
 
 /* connect */
 function setSync(on,txt){const s=document.getElementById('sync');s.textContent=txt;s.dataset.act='syncopen';s.setAttribute('role','button');s.tabIndex=0;s.classList.toggle('on',on===true);s.classList.toggle('wait',on==='wait');s.classList.toggle('bad',on==='bad')}
+// When a coach opens the app, supporters' page catches up once (after an app update it could show an old
+// version's view until a coach changed something), but only from fresh server data, never this phone's
+// saved copy, which may be older than what another coach has sent.
+let fresh={},freshDone=false;
+function freshFrom(k,s){if(freshDone||!s||s.fromCache)return;fresh[k]=true;
+  if(fresh.settings&&fresh.tournament&&fresh.games&&fresh.feed){freshDone=true;schedulePublish()}}
 function subscribe(err){
-  db.doc('club/settings').onSnapshot(s=>{S.cfg=s.exists?{...DEFAULT_CFG,...s.data()}:{...DEFAULT_CFG};S.cfgLoaded=true;render()},err);
+  fresh={};freshDone=false;
+  db.doc('club/settings').onSnapshot(s=>{S.cfg=s.exists?{...DEFAULT_CFG,...s.data()}:{...DEFAULT_CFG};S.cfgLoaded=true;freshFrom('settings',s);render()},err,true);
   db.doc('club/squad').onSnapshot(s=>{S.squad=s.exists?alpha(s.data().players||[]):[];render()},err);
-  db.doc('club/feed').onSnapshot(s=>{S.feed=s.exists?s.data():null;render()},err);
+  db.doc('club/feed').onSnapshot(s=>{S.feed=s.exists?s.data():null;freshFrom('feed',s);render()},err,true);
   db.doc('club/notes').onSnapshot(s=>{S.notes=s.exists?[...(s.data().items||[])]:[];render()},err);
-  db.doc('club/tournament').onSnapshot(s=>{if(s.exists)S.tour={...S.tour,...s.data()};render()},err);
+  db.doc('club/tournament').onSnapshot(s=>{if(s.exists)S.tour={...S.tour,...s.data()};freshFrom('tournament',s);render()},err,true);
   db.collection('awards').onSnapshot(s=>{S.awards=s.docs.map(d=>({id:d.id,...d.data()}));render()},err);
   db.collection('archive').onSnapshot(s=>{S.archive=s.docs.map(d=>({id:d.id,...d.data()}));render()},err);
   gHold={};gServer=null;
   db.collection('games').onSnapshot(s=>{const o={};s.docs.forEach(d=>{o[d.id]=d.data()});gServer=o;
     const g={...o};for(const id in gHold){if(S.games[id])g[id]=S.games[id];else delete g[id]} // still saving: keep this phone's copy
-    S.games=g;autoOpen();render()},err);
+    S.games=g;autoOpen();freshFrom('games',s);render()},err,true);
 }
 
 /* firebase: where every team's data lives */
@@ -2330,8 +2340,9 @@ function fsAdapter(base){ // the small storage interface put()/remove()/subscrib
   return{
     doc:p=>({set:(b,done)=>{const w=track(F.setDoc(ref(p),b),fail,p,()=>db.doc(p).set(b));if(done)w.then(done,done);return Promise.resolve()},
       delete:()=>{track(F.deleteDoc(ref(p)),fail,p,()=>db.doc(p).delete());return Promise.resolve()},
-      onSnapshot:(cb,err)=>F.onSnapshot(ref(p),s=>cb({exists:s.exists(),data:()=>s.data()}),err)}),
-    collection:c=>({onSnapshot:(cb,err)=>F.onSnapshot(F.collection(fs,base+'/'+c),s=>cb({docs:s.docs.map(d=>({id:d.id,data:()=>d.data()}))}),err)})
+      // meta: also hear when the same data is confirmed by the server (fromCache turns false)
+      onSnapshot:(cb,err,meta)=>F.onSnapshot(ref(p),{includeMetadataChanges:!!meta},s=>cb({exists:s.exists(),data:()=>s.data(),fromCache:s.metadata.fromCache}),err)}),
+    collection:c=>({onSnapshot:(cb,err,meta)=>F.onSnapshot(F.collection(fs,base+'/'+c),{includeMetadataChanges:!!meta},s=>cb({docs:s.docs.map(d=>({id:d.id,data:()=>d.data()})),fromCache:s.metadata.fromCache}),err)})
   };
 }
 function myTeams(){
