@@ -219,6 +219,28 @@ count ten times), so switch the iPhone Simulator and Android runs to by-hand onl
      rating), full Xcode on the Mac. Risk: Apple may reject thin web wrappers; offline use, live
      sync and push notifications help.
 
+5. **One payment unlocks the team everywhere (requested 7 Nov 2026).** A coach who pays in the
+   iPhone app, the Android app or on the website unlocks the **team**, for every coach in it, on
+   every platform.
+   - Unit of payment is the team, not the phone or the store account. The server records it on the
+     team (e.g. `paidUntil` on `teams/{id}`); security rules let only the server write it, so no
+     phone can unlock itself. Every phone reads it and unlocks.
+   - Apple, Google and the website's payment service report purchases, renewals, cancellations and
+     refunds to a Cloud Function, which checks them and updates the team. Suggested: **RevenueCat**
+     (one entitlement across App Store, Google Play and Stripe/web; free up to ~$2.5k a month of
+     revenue), rather than writing three receipt checks.
+   - Store rules: buying inside the iPhone/Android app must use Apple's/Google's in-app purchase,
+     and the apps can't point to a cheaper web price; using something bought on one platform on
+     another is allowed (Apple 3.1.3(b), multiplatform services). The web can use Stripe/Paddle.
+   - The coach who pays must be signed in (Google, email, or Sign in with Apple on iPhone) so the
+     purchase is attached to them and their team; "No account" coaches are asked to sign in only
+     at the moment they pay.
+   - Fits with the founding-club flag and voucher codes above: all three set the same team mark.
+   - Started 7 Nov 2026: Mark is registering Apple and Google developer accounts (organisation
+     accounts for Mark Miles Consultancy Ltd, D-U-N-S first). For Android, consider a Trusted Web
+     Activity instead of a Capacitor wrap: real Chrome, so web push, Google sign-in and offline work
+     unchanged.
+
 ## Accessibility (from review)
 - Larger text: sizes in rem so phone text-size settings apply; check every screen at 200%
   text size (nothing cut off, no sideways scrolling).
