@@ -75,7 +75,7 @@ price, and what's free versus paid.
 - **One payment unlocks the team everywhere (requested 7 Nov 2026).** Paying in the iPhone app, the
   Android app or on the website unlocks the team for every coach on every platform.
   - The server records it on the team (e.g. `paidUntil` on `teams/{id}`); rules let only the server
-    write it. Apple, Google and the web payment service report purchases, renewals, cancellations and
+    write it. Apple, Google and Paddle (the website) report purchases, renewals, cancellations and
     refunds to a Cloud Function. Suggested: **RevenueCat** (one entitlement across App Store, Google
     Play and Stripe/web; free up to ~$2.5k a month of revenue).
   - Store rules: in-app purchases inside the apps (they take 15%), no pointing to a cheaper web price;
@@ -91,7 +91,13 @@ price, and what's free versus paid.
 - **Referral scheme** (idea): a coach's share link gives the new team a longer trial; the referrer
   earns free time when that team pays. Builds on vouchers and the payment webhook.
 - **Admin checklist (the user):**
-  - [ ] Payment service account (Lemon Squeezy, Test mode first; or Stripe through RevenueCat).
+  - [ ] **Paddle** account for website payments (decided 7 Nov 2026): a merchant of record, so it handles
+    UK and overseas VAT/sales tax, and it plugs into RevenueCat with the App Store and Google Play. Use
+    Paddle's sandbox first. Order: app-store purchases first (Apple and Google handle VAT everywhere),
+    then the website through Paddle. Paddle needs the business verified (company, website, refund policy
+    and terms pages), so add a refund policy to terms.html before applying.
+  - [ ] **RevenueCat** account: connect App Store Connect, Google Play and Paddle; one "team paid"
+    entitlement; its webhook to a Cloud Function that sets `paidUntil` on the team.
   - [ ] Webhook signing secret: `firebase functions:secrets:set` (never in chat).
   - [ ] Budget alerts on both Firebase projects (both are on Blaze).
   - [ ] **Backups of live data:** none today (no schedule, point-in-time recovery off). Turn on a daily
