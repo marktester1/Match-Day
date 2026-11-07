@@ -72,7 +72,7 @@ agree before building. Done work is in the git history and the release tags.
 `monetisation` branch, which was written for one subscription per manager covering all their teams:
 change it to per team). **Referral scheme:** when a referred team **makes its first payment**, the team that
 referred it gets **two months free**, and the new team gets **two months free** too. **No limit** on
-referrals, as long as each referred team pays. Still to decide: a club price, and what's free versus paid. Details in
+referrals, as long as each referred team pays. No club price (decided). Still to decide: what's free versus paid. Details in
 MONETISATION.md on that branch.
 
 - **One payment unlocks the team everywhere (requested 7 Nov 2026).** Paying in the iPhone app, the
