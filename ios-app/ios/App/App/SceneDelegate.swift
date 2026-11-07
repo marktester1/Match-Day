@@ -40,6 +40,11 @@ class MatchDayViewController: UIViewController, WKNavigationDelegate, WKUIDelega
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = false
+        #if DEBUG
+        // Test builds only: lets Safari's Web Inspector and the automated tests (Appium) see inside the page.
+        // Never in the App Store build (Release).
+        if #available(iOS 16.4, *) { webView.isInspectable = true }
+        #endif
         webView.isOpaque = false
         webView.backgroundColor = pageBg
         webView.scrollView.backgroundColor = pageBg

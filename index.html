@@ -385,7 +385,7 @@ body:has(input:focus,textarea:focus,select:focus) .fb{visibility:hidden;transiti
 <a id="feedback" class="fb" href="mailto:hello@matchday-app.uk?subject=Match%20Day%20feedback" aria-label="Send feedback by email">💬 Feedback</a>
 
 <script>
-const APP_VERSION='0.29.8';
+const APP_VERSION='0.29.9';
 // Feedback by email, with the app version and phone type filled in (never the team's or players' details)
 {const fb=document.getElementById('feedback'),dev=(navigator.userAgent.match(/\(([^)]+)\)/)||[])[1]||'';
   fb.href='mailto:hello@matchday-app.uk?subject='+encodeURIComponent('Match Day feedback')+'&body='+
@@ -2233,22 +2233,23 @@ function setSync(on,txt){const s=document.getElementById('sync');s.textContent=t
 // When a coach opens the app, supporters' page catches up once (after an app update it could show an old
 // version's view until a coach changed something), but only from fresh server data, never this phone's
 // saved copy, which may be older than what another coach has sent.
-let fresh={},freshDone=false;
+let fresh={},freshDone=false,teamUnsubs=[],teamErr=null,resubTries=0;
 function freshFrom(k,s){if(freshDone||!s||s.fromCache)return;fresh[k]=true;
   if(fresh.settings&&fresh.tournament&&fresh.games&&fresh.feed){freshDone=true;schedulePublish()}}
 function subscribe(err){
+  teamUnsubs.forEach(u=>{try{u()}catch(_){}});teamUnsubs=[];const on=u=>teamUnsubs.push(u); // a fresh set each time
   fresh={};freshDone=false;
-  db.doc('club/settings').onSnapshot(s=>{S.cfg=s.exists?{...DEFAULT_CFG,...s.data()}:{...DEFAULT_CFG};S.cfgLoaded=true;freshFrom('settings',s);render()},err,true);
-  db.doc('club/squad').onSnapshot(s=>{S.squad=s.exists?alpha(s.data().players||[]):[];render()},err);
-  db.doc('club/feed').onSnapshot(s=>{S.feed=s.exists?s.data():null;freshFrom('feed',s);render()},err,true);
-  db.doc('club/notes').onSnapshot(s=>{S.notes=s.exists?[...(s.data().items||[])]:[];render()},err);
-  db.doc('club/tournament').onSnapshot(s=>{if(s.exists)S.tour={...S.tour,...s.data()};freshFrom('tournament',s);render()},err,true);
-  db.collection('awards').onSnapshot(s=>{S.awards=s.docs.map(d=>({id:d.id,...d.data()}));render()},err);
-  db.collection('archive').onSnapshot(s=>{S.archive=s.docs.map(d=>({id:d.id,...d.data()}));render()},err);
+  on(db.doc('club/settings').onSnapshot(s=>{S.cfg=s.exists?{...DEFAULT_CFG,...s.data()}:{...DEFAULT_CFG};S.cfgLoaded=true;freshFrom('settings',s);render()},err,true));
+  on(db.doc('club/squad').onSnapshot(s=>{S.squad=s.exists?alpha(s.data().players||[]):[];render()},err));
+  on(db.doc('club/feed').onSnapshot(s=>{S.feed=s.exists?s.data():null;freshFrom('feed',s);render()},err,true));
+  on(db.doc('club/notes').onSnapshot(s=>{S.notes=s.exists?[...(s.data().items||[])]:[];render()},err));
+  on(db.doc('club/tournament').onSnapshot(s=>{if(s.exists)S.tour={...S.tour,...s.data()};freshFrom('tournament',s);render()},err,true));
+  on(db.collection('awards').onSnapshot(s=>{S.awards=s.docs.map(d=>({id:d.id,...d.data()}));render()},err));
+  on(db.collection('archive').onSnapshot(s=>{S.archive=s.docs.map(d=>({id:d.id,...d.data()}));render()},err));
   gHold={};gServer=null;
-  db.collection('games').onSnapshot(s=>{const o={};s.docs.forEach(d=>{o[d.id]=d.data()});gServer=o;
+  on(db.collection('games').onSnapshot(s=>{const o={};s.docs.forEach(d=>{o[d.id]=d.data()});gServer=o;
     const g={...o};for(const id in gHold){if(S.games[id])g[id]=S.games[id];else delete g[id]} // still saving: keep this phone's copy
-    S.games=g;autoOpen();freshFrom('games',s);render()},err,true);
+    S.games=g;autoOpen();freshFrom('games',s);render()},err,true));
 }
 
 /* firebase: where every team's data lives */
@@ -2414,8 +2415,8 @@ function openTeam(t){
   lsSet(TEAM_KEY,t);S.gate=false;S.adding=false;S.teamId=t;db=fsAdapter('teams/'+t);liveLabel();watchTeams();
   watchTeamDoc(t);
   watchMembers(t);watchRequests(t);touchMember(t);
-  subscribe(e=>{logIssue('listen',e,'team');if(leaving)return; // we're leaving on purpose: let leaveTeam finish (and wipe)
-    if(e&&e.code==='permission-denied'&&!removedCheck){removedCheck=true;leaveTeam(false)}});
+  teamErr=e=>{logIssue('listen',e,'team');if(leaving)return; // we're leaving on purpose: let leaveTeam finish (and wipe)
+    if(e&&e.code==='permission-denied'&&!removedCheck){removedCheck=true;leaveTeam(false)}};resubTries=0;subscribe(teamErr);
   render();
 }
 const CODE_CHARS='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O or 1/I to misread
@@ -2658,7 +2659,9 @@ async function leaveTeam(remote=true,force=false,heir=null){
   const {F,fs,auth}=FB,t=S.teamId,uid=auth.currentUser?.uid;
   if(!remote){ // a coach removed this phone: keep a note of the team and its code, so it can ask to rejoin
     const left=await F.getDocFromServer(F.doc(fs,'teams',t,'members',uid)).then(m=>!m.exists()).catch(e=>e?.code==='permission-denied');
-    if(!left){removedCheck=false;setSync('bad','Not connected to the team');toast("Couldn't load the team just now. Nothing was removed from this phone; reload to try again.");return} // a glitch, not a removal: keep everything
+    if(!left){removedCheck=false; // a glitch, not a removal (e.g. just accepted): keep everything and watch again
+      if(resubTries<3&&S.teamId===t){resubTries++;setSync('wait','Connecting…');setTimeout(()=>{if(S.teamId===t){subscribe(teamErr);liveLabel()}},2000*resubTries);return}
+      setSync('bad','Not connected to the team');toast("Couldn't load the team just now. Nothing was removed from this phone; reload to try again.");return}
     setSync(false,'Not a member');toast("This phone isn't a member of that team any more.");
     if(S.invite)addPending(t,S.invite,{status:'removed',name:S.cfg.team||''});
     // off this sign-in's saved team list too, or the team would come back (and be refused) at every start

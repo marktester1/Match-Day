@@ -40,3 +40,20 @@ test('a refused watch on the coach list, requests or team record tries again', a
     await cleanUp(finished, [async () => { if (joined) await c.leave(T); }]);
   }
 });
+
+test("a just-accepted coach whose team data is refused once reconnects by itself (no 'Example Team')", async ({page}, info) => {
+  const c = app(page, info), T = 'Claude E2E Reconnect U10s';
+  let joined = false, finished = false;
+  try {
+    await c.createTeam(T, ['Ava', 'Ben', 'Cal', 'Dev', 'Eli']);
+    joined = true;
+    await c.saved();
+    // The team's data stops (as when the database refused it a moment too soon) and the placeholder shows
+    await page.evaluate(() => { teamUnsubs.forEach(u => u()); teamUnsubs = []; S.cfg = {...DEFAULT_CFG}; render(); teamErr({code: 'permission-denied', message: 'refused once'}); });
+    await expect(page.locator('#hteam')).toHaveText(T, {timeout: 20000}); // still a member: it watches again by itself
+    await expect(page.locator('#sync')).toHaveText('Shared · live', {timeout: 20000});
+    finished = true;
+  } finally {
+    await cleanUp(finished, [async () => { if (joined) await c.leave(T); }]);
+  }
+});

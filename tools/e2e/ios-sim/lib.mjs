@@ -73,6 +73,23 @@ const startSession = (udid, i) => remote({hostname: '127.0.0.1', port: 4723, log
         'appium:wdaLaunchTimeout': 180000} // it starts in 10-20 s when it works: give up sooner and try again
       : {})}});
 
+// The Match Day iPhone app itself (ios-app/, a Debug build for the simulator: it opens beta and lets the
+// tests see inside its page). Starts it fresh and switches into its web view; the same helpers as Safari.
+export async function appPhone(appPath, i = 0) {
+  const udid = simUdid(SIM_NAMES[i]);
+  const b = await remote({hostname: '127.0.0.1', port: 4723, logLevel: 'warn', connectionRetryCount: 0, connectionRetryTimeout: 900000,
+    capabilities: {platformName: 'iOS', 'appium:automationName': 'XCUITest', 'appium:udid': udid, 'appium:app': appPath,
+      'appium:bundleId': 'com.markmilesconsultancy.matchday', 'appium:fullReset': true, 'appium:wdaLocalPort': 8100 + i,
+      'appium:wdaLaunchTimeout': 600000, 'appium:simulatorStartupTimeout': 600000, 'appium:newCommandTimeout': 1800,
+      'appium:webviewConnectTimeout': 30000, 'appium:includeSafariInWebviews': false,
+      ...(process.env.PREBUILT_WDA ? {'appium:usePreinstalledWDA': true, 'appium:prebuiltWDAPath': process.env.PREBUILT_WDA, 'appium:wdaLaunchTimeout': 180000} : {})}});
+  await b.waitUntil(async () => (await b.getContexts()).some(c => String(c.id || c).startsWith('WEBVIEW')), {timeout: 60000, interval: 1000, timeoutMsg: "the app's web view never appeared (is it a Debug build?)"});
+  const web = (await b.getContexts()).map(c => String(c.id || c)).find(c => c.startsWith('WEBVIEW'));
+  await b.switchContext(web);
+  await b.setTimeout({script: 30000});
+  return makePhone(b, SIM_NAMES[i] + ' (app)');
+}
+
 // Close Safari's own tip pop-ups (native, outside the page). True if one was closed.
 async function dismissSafariTips(b) {
   let closed = false, ctx;

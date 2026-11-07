@@ -80,6 +80,15 @@ jobs:
       - run: node --test --test-concurrency=1 setup-wizard.test.mjs
         env:
           MATCHDAY_URL: http://127.0.0.1:8000
+      # The iPhone app itself (ios-app/): a Debug build for the simulator, which opens beta and lets the tests
+      # see inside its page. It tests the app's own parts (sign-in options, offline, links), on beta.
+      - name: Build the iPhone app (Debug, for the simulator)
+        working-directory: ios-app/ios/App
+        run: |
+          xcodebuild -project App.xcodeproj -scheme App -sdk iphonesimulator -configuration Debug \
+            -derivedDataPath "$RUNNER_TEMP/mdapp" CODE_SIGNING_ALLOWED=NO build -quiet
+          echo "APP=$RUNNER_TEMP/mdapp/Build/Products/Debug-iphonesimulator/App.app" >> "$GITHUB_ENV"
+      - run: node --test --test-concurrency=1 app.test.mjs
       # What Appium was doing when it failed: session start-up, WebDriverAgent, Safari's debugger (no typed values)
       - name: Appium's log
         if: failure()

@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-        <string>Match Day Beta</string>
+        <string>$(MATCHDAY_NAME)</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -51,6 +51,7 @@
 	<false/>
 	<key>WKAppBoundDomains</key>
 	<array>
+		<string>app.matchday-app.uk</string>
 		<string>match-day-17b23.web.app</string>
 		<string>match-day-17b23.firebaseapp.com</string>
 		<string>match-day-beta-17b23.web.app</string>
