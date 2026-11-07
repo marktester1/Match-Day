@@ -67,7 +67,7 @@ agree before building. Done work is in the git history and the release tags.
 ## Monetisation
 
 **Decided (7 Nov 2026):** **one team per subscription**: each team has its own yearly subscription
-(**£5 a year**, as decided before), and every coach in the team uses it; invited coaches and
+(**£5.99 a year**, decided 7 Nov 2026; App Store and Google Play have a £5.99 price point), and every coach in the team uses it; invited coaches and
 **supporters stay free**. **Six-week free trial** for each new team (`TRIAL_DAYS=42` on the
 `monetisation` branch, which was written for one subscription per manager covering all their teams:
 change it to per team). **Referral scheme:** when a referred team **makes its first payment**, the team that
