@@ -1,0 +1,10 @@
+# Built by Bubblewrap: not committed. Signing keys live outside the repo (~/matchday-keys).
+app/build/
+build/
+.gradle/
+*.apk
+*.aab
+*.idsig
+*.keystore
+*.jks
+local.properties
