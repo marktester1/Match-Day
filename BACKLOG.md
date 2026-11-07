@@ -406,6 +406,19 @@ decide: football grassroots sin bins (below).
   tighter DMARC (`p=none` added 4 Nov 2026; move to `p=quarantine` once sending works). Then Firebase's
   sign-in emails, app store listings and the payment provider.
 
+## Formations and positions (requested 7 Nov 2026)
+- Optional, per game: pick a formation for the game's size (e.g. 5-a-side 1-2-1 or 2-1-1, 7-a-side
+  2-3-1 or 3-2-1, 9-a-side 3-3-2, 11-a-side 4-4-2 / 4-3-3), or none (today's layout).
+- The pitch view lays the players out in their rows (keeper, defence, midfield, attack); a sub goes
+  into the position of the player coming off; drag to swap positions.
+- Minutes by position for the day and the season, so coaches can see every child gets a go in
+  different positions (grassroots development), not only total minutes.
+- Remember each team's usual formation and each player's usual position, so it costs no extra
+  taps on the day (fewest taps: no formation = works exactly as now).
+- Supporters never see positions or names. Data: add fields only (e.g. `formation` on the game,
+  `pos` per player in the line-up); old games and backups read as "no formation".
+- Rugby: positions by number (1–15, or the age group's), later.
+
 ## Later
 
 - Combined fixtures view across all of a coach's teams.
