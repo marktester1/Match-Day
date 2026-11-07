@@ -86,7 +86,7 @@ export async function appPhone(appPath, i = 0) {
   // GitHub's Mac can take a while to load the page and offer it for inspection; say what it saw if not
   let seen = [];
   await b.waitUntil(async () => { seen = (await b.getContexts().catch(() => [])).map(c => String(c.id || c)); return seen.some(c => c.startsWith('WEBVIEW')); },
-    {timeout: 180000, interval: 2000}).catch(async () => { throw new Error(`the app's web view never appeared (is it a Debug build?). Contexts: ${JSON.stringify(seen)}; app state: ${await b.queryAppState('com.markmilesconsultancy.matchday').catch(e => e.message)}`); });
+    {timeout: 180000, interval: 2000}).catch(async () => { mkdirSync('test-results', {recursive: true}); await b.saveScreenshot('test-results/app-no-webview.png').catch(() => {}); throw new Error(`the app's web view never appeared (is it a Debug build?). Contexts: ${JSON.stringify(seen)}; app state: ${await b.queryAppState('com.markmilesconsultancy.matchday').catch(e => e.message)}`); });
   const web = (await b.getContexts()).map(c => String(c.id || c)).find(c => c.startsWith('WEBVIEW'));
   await b.switchContext(web);
   await b.setTimeout({script: 30000});

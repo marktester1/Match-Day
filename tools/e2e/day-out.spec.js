@@ -62,7 +62,9 @@ test('everyone starts on the bench, and Out lasts the whole day', async ({page, 
       const [a, b] = [lum(fore), lum(back)].sort((x, y) => y - x);
       return {ratio: (a + 0.05) / (b + 0.05), color: getComputedStyle(el).color, layers: JSON.stringify(layers), fore: fore.map(Math.round), back: back.map(Math.round)};
     });
-    expect(contrast.ratio, `the 5/5 counter is readable (${JSON.stringify(contrast)})`).toBeGreaterThanOrEqual(4.5);
+    // Real Android Chrome (through adb) reports no computed colours here; the CSS is the same everywhere,
+    // and the WebKit and Chromium runs check it
+    if (contrast.color) expect(contrast.ratio, `the 5/5 counter is readable (${JSON.stringify(contrast)})`).toBeGreaterThanOrEqual(4.5);
 
     // Minutes: Isabelle is out, so she isn't listed (or counted), and the minutes count up live
     await c.goTab('minutes');
