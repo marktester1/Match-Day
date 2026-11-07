@@ -1,427 +1,222 @@
 # Match Day backlog
 
-Ideas and requests to pick up later. Each one goes to the beta link first (see CLAUDE.md).
-"Questions" are things to agree before building.
+Only what's still to do. Each change goes to beta first (see CLAUDE.md). "Questions" are things to
+agree before building. Done work is in the git history and the release tags.
 
 ## Now
 
-- **Live: v0.28.10** (4 Nov 2026), on match-day-17b23.web.app and app.matchday-app.uk: supporters (not
-  followers), Home | Away switch, "Your match" step for one match, goal times past full time, "Match days".
-  **Beta: v0.28.11** (branch `setup-wizard`): Half time button, "End at 20:00" in the Full time pop-up,
-  "Change match time", typed passwords kept through redraws. Next: the user tries it, then release.
-- **Injury time (branch `injury-time`, for assessment):** preview with beta data at
-  https://match-day-beta-17b23--injury-time-t3p36wj6.web.app (expires 19 Nov 2026). "Play added time" at
-  half time, 10+2' times, minutes include added time. Needs the rules change (games may have `added`):
-  on beta since 5 Nov 2026, **not live**. Until it's merged, release-check shows "beta rules differ".
+- **Releases:** live is **v0.29.7** (7 Nov 2026). Beta has **v0.29.8**: supporters keep the last
+  results until a new match day has a fixture, and their page catches up when a coach opens the app.
+  Release it once every GitHub test passes on it.
+- **In progress (not committed):** team data listeners (settings, squad, games…) try again when
+  refused just after a coach is accepted. Seen on Android: a new coach's phone kept the placeholder
+  team name. Also fix the 5/5 counter contrast check, which misreads colours in Android Chrome.
+- **Alert logging on live:** the push function logs how many phones each alert reached and why any
+  failed. On beta's server only; live needs `firebase deploy --only functions --project live` with
+  the user's go-ahead.
+- **Still to try on real phones:** supporters' alerts (Android: in Chrome, not inside WhatsApp;
+  iPhone: from the Home Screen) for kick-off, goals, cards, half time and full time; a coach's alert
+  for a join request, and the asker's when accepted; signing in to an existing account on a phone
+  that already has teams, and on a second phone (needs a password, so Claude can't).
 - **Notifications in set-up:** offer "Turn on notifications" (join requests) on the wizard's last screen.
 - **Coach name on a new address or phone:** the name is kept per address, so it's blank on
   app.matchday-app.uk. If the phone has no name but is in a team, fill it from the team's member entry.
-- **Website (`site/`):** coaches' copy https://matchday-website-preview.web.app (opens the live app),
-  testers' copy https://matchday-website-beta.web.app (opens beta; `sh tools/build_site_beta.sh`,
-  publish with `--config site-beta/firebase.json`). Both on the beta project; publish the main one
-  with `firebase deploy --only hosting --config site/firebase.json --project match-day-beta-17b23`.
-  Move to the live project and `matchday-app.uk` (bought 4 Nov 2026). Updated 3 Nov 2026 with the testers' wording.
-- **Still to try on real phones:** follower alerts (iPhone needs the app on the Home Screen first)
-  for kick-off, goals, cards, half time and full time; a coach's alert for a join request, and the
-  asker's when accepted. Signing into an existing account on a phone that already has teams, and
-  on a second phone (needs a password, so Claude can't).
-- Beta: https://match-day-beta-17b23.web.app (Beta Test Team code `L9J-Q7H`).
+- **Supporters' list:** a game being played shows under "Played"; maybe "Now" or "Today" instead.
 
-## Feedback from the testing round (Oct 2026)
+## Website and marketing
 
-**Website: done 3 Nov 2026** (bullet-point opening, "Tournament day" / "Match day" cards,
-"Works with no signal" plus a real-time sync card, shorter step 2, a link to the app in step 1,
-"Start for free" / "Create your team" buttons, "supporters" instead of families). Still open:
+- **Videos:** four clips (pick the team, a sub, minutes, supporters' goal) are on the preview and beta
+  websites and in the guide there; not yet on matchday-app.uk. Publish when the user says.
+- **Testimonials:** a "What coaches say" section once coaches reply to the WhatsApp request
+  (marketing/whatsapp-messages.md). Real quotes only, with permission and how they'd like to be named.
+- **Facebook page:** the pack is in marketing/facebook (page details, cover, profile picture, posts).
+  The user creates the page.
 - Make it clear it's an app: people read "app" and think it's a normal website.
-- Rugby feels like an afterthought. Should rugby and football have separate websites?
-- Maybe a pop-up in the app for first-time coaches (ties in with the step-by-step journey).
+- Rugby feels like an afterthought. Separate rugby website or listing? (see Later)
 
-**In the app.** Done in v0.27.3: instructions on separate lines, "Set up your games",
-"Clear scores…" no longer red, "Minutes played", no "Done editing". Still open:
-- Make the journey step by step, so the next action is obvious.
-- Saving a tournament is dodgy (get details: what went wrong?).
-- A back button is needed.
+## App stores (started 7 Nov 2026)
+
+- **Apple:** Developer Program enrolment (organisation, Mark Miles Consultancy Limited) under review.
+  Then: agreements in App Store Connect, the app record (bundle ID `com.markmilesconsultancy.matchday`),
+  a TestFlight build for the user and a few coaches.
+- **iPhone app (`ios-app/`) before review:** automated tests of the app shell on the simulator (needs
+  `isInspectable` in test builds only), the App Store build pointing at live, native push
+  notifications and Sign in with Apple (both help Apple's review; web push and Google sign-in don't
+  work inside the app).
+- **Google Play:** organisation account and identity check. The app is a Trusted Web Activity
+  (`android-app/`, steps in its README): the user installs Bubblewrap, makes the signing key
+  (kept in `~/matchday-keys`, never in the repo), builds, uploads to internal testing, then sends the
+  app signing key's SHA-256 so `/.well-known/assetlinks.json` can go on the website (needs adding to
+  `tools/build_public.sh`; beta first). Without it the app shows a browser address bar.
+- **Store listings:** name, descriptions, keywords, screenshots at each store's sizes, category Sports
+  (not Kids: the users are adult coaches), age rating, Apple's privacy label and Google's Data safety
+  answers (team data with first names, coaches' names and emails, problem reports kept 30 days, push
+  tokens; no tracking or ads), privacy policy link, "Delete my account" in the app (both stores require it).
+
+## Monetisation
+
+**Decided:** charging **per manager**: whoever creates teams pays one yearly subscription covering all
+their teams, from the day they subscribe; **£5 a year**, covering up to four managers; invited coaches
+and **supporters stay free**; **six-week free trial** (`TRIAL_DAYS=42` on the `monetisation` branch).
+Details in MONETISATION.md on that branch. Still to decide: a cap on teams per subscription, a club
+price, and what's free versus paid.
+
+- **One payment unlocks the team everywhere (requested 7 Nov 2026).** Paying in the iPhone app, the
+  Android app or on the website unlocks the team for every coach on every platform.
+  - The server records it on the team (e.g. `paidUntil` on `teams/{id}`); rules let only the server
+    write it. Apple, Google and the web payment service report purchases, renewals, cancellations and
+    refunds to a Cloud Function. Suggested: **RevenueCat** (one entitlement across App Store, Google
+    Play and Stripe/web; free up to ~$2.5k a month of revenue).
+  - Store rules: in-app purchases inside the apps (they take 15%), no pointing to a cheaper web price;
+    using a purchase on another platform is allowed (Apple 3.1.3(b)). The web uses its own payment service.
+  - The payer must be signed in (Google, email, or Sign in with Apple), asked only at the moment they pay.
+- **Founding club:** Winscombe team(s) flagged as paid for good, so the testers never see a paywall.
+- **Voucher codes** (e.g. WINSCOMBE) setting the same paid mark, with a use limit and optional expiry.
+  iPhone app: Apple offer codes instead (store rule). Safeguards: prefer unique single-use codes per
+  team; shared codes only with a small cap, a season expiry and a limited reward; redeeming needs an
+  account and works once per team; random 8+ character codes plus App Check; rules enforce expiry,
+  uses left, one use per team and membership, counting down by exactly one; an admin list with a
+  switch-off.
+- **Referral scheme** (idea): a coach's share link gives the new team a longer trial; the referrer
+  earns free time when that team pays. Builds on vouchers and the payment webhook.
+- **Admin checklist (the user):**
+  - [ ] Payment service account (Lemon Squeezy, Test mode first; or Stripe through RevenueCat).
+  - [ ] Webhook signing secret: `firebase functions:secrets:set` (never in chat).
+  - [ ] Budget alerts on both Firebase projects (both are on Blaze).
+  - [ ] **Backups of live data:** none today (no schedule, point-in-time recovery off). Turn on a daily
+    backup kept 14 days (`firebase firestore:backups:schedules:create --project live --recurrence DAILY
+    --retention 14d`) and point-in-time recovery (7 days). Needs the go-ahead (it changes live).
+  - [ ] **Bigger Mac for the iPhone tests:** GitHub's larger Macs ($0.102 a minute, about $3–5 a full
+    run) need a GitHub organisation on the Team plan ($4/user a month); move the repo there, then point
+    ios-sim.yml at it and run `npm test` in tools/e2e/ios-sim in full. Or a rented Mac with
+    `tools/e2e/ios-sim/cloud-mac.sh`. This Mac (8 GB) can't run them.
+  - [ ] Off-Mac copies: `exports/` (children's names) somewhere private (iCloud Drive), never GitHub.
+  - [ ] Apple Paid Apps agreement, bank and tax details, Small Business Program (15%); Google payments profile.
+  - [ ] HMRC (self-employment over the £1,000 trading allowance) and the ICO data protection fee (the
+    app stores children's first names): check whether each applies.
+  - [ ] Privacy notice and terms: update for payments and the stores.
+  - [ ] Before the first payment: make the GitHub repository private (switch the device test runs to
+    by-hand, or budget for minutes), and shrink the Feedback button (an icon, or into the ☰ menu).
+- **Selling internationally:** local prices via the stores or the payment service. Only if those
+  markets show interest: US wording (soccer, field, US dates) and rugby league scoring (try 4,
+  conversion 2, penalty 2, drop goal 1) next to union.
+
+## Security (deferred: server code or console set-up)
+
+- **Rate limiting** of code look-ups and join requests (per IP or device): a Cloud Function doing the
+  code → team look-up and counting attempts, with `codes/` unreadable to the app.
+- **Firebase App Check:** register a reCAPTCHA site key per project (Build → App Check), add
+  `initializeAppCheck` (plus the reCAPTCHA addresses to the security policy), watch beta's metrics for
+  a week, then enforce for Firestore (beta first).
+- **Long lists:** rules can't loop, so a long list (e.g. 30 subs) is checked at its newest entry; a
+  tampered app could hide junk in the middle. Fix with a Cloud Function validator, or one document per
+  sub/goal (needs a migration that keeps old backups loading).
+- **Drop 6-character codes** once every team has made a new code (or after a season).
+- `style-src 'unsafe-inline'` stays (screens use style="" attributes, which can't run code).
+- Account switching: if moving one team fails part-way, the teams already moved are in both sign-ins;
+  the user just tries again. A server function could make it one step.
+
+## Tests and structure
+
+- Tests for account recovery (no account → account, lost phone) and restore from a backup.
+- Schema version on stored data and backups, with explicit migrations.
+- Stop swallowing errors that affect access or data (the issues log now records many of them).
+- Split index.html into modules (match logic, storage, sign-in, screens); review listener lifecycles
+  and re-renders.
+
+## In the app (from testers)
+
+- Make the journey step by step on match day too, so the next action is obvious (set-up has the wizard).
+- A back button where screens lack one.
 - Put picking the team at the top at the start of a game.
-- At full time on a single game, where is Finish tournament? It should be obvious for one game
-  (see "Make it clear it works for tournaments and single matches").
+- **Make it clear it works for single matches as well as tournaments:** call the section "Match day"
+  when there's one game; "Save the match" for single games; results and summaries say "match"; mention
+  both in the blurb, empty screens and help.
 
-**New idea**
-- A viewing app for supporters (followers).
-- **Feedback button: on beta in v0.28.1.** A "💬 Feedback" button floats at the bottom right of every
-  screen (hidden while typing). It opens an email to us with the app version and phone type filled in
-  and a prompt to attach a screenshot; coaches get a thank-you when they come back to the app, or the
-  address if no email app opens. **When the app is monetised, make it smaller** (an icon only, or move
-  it into the ☰ menu) so it doesn't sit over paying coaches' screens.
+## Formations and positions (requested 7 Nov 2026)
 
-## From the code review (do these before more features)
-
-**Step 1: Data safety: done on beta (v0.20.0); rules on beta only, live needs the go-ahead.**
-Restore checks every field, previews the change, keeps an undo copy and writes all-or-nothing;
-save-status pill (Saving… / Waiting for signal / Some changes not saved / Shared · live);
-validated rules with 13 emulator tests (cd tests && npm test); sign-out and leave wipe the
-phone's copy (finishing at next start if another window blocks it); backup privacy warning.
-Also from scenario testing: subs checked against the live line-up (no duplicate players);
-one-tap Undo bar for subs, keeper changes, goals and clock actions; Full time asks first and
-shows the final score; the app opens on a live or about-to-start game.
-
-**Joining needs a coach to accept (v0.21.0, beta): done.** The invite code only sends a
-request; any coach accepts or declines (banner + ☰ dot); "X joined the team" notice; the
-manager can remove a coach. Rules enforce it (14 emulator tests). Push alerts when the app is
-closed are under Notifications.
-
-**Step 2: Invite codes and review findings: done on beta (v0.23.0).** 8-character codes for
-new teams; manager makes a new code (old one deleted at once) and can hand over the manager
-role; a sign-in can have requests waiting in at most 3 teams (joins/{uid}); requests carry the
-real sign-in email; entries inside lists (subs, goals, keeper changes, squad, notes, awards,
-saved games) are checked by the rules; enforced Content-Security-Policy (script hash, no
-unsafe-inline scripts: tools/csp.cjs); saves tracked per document with Try again / Dismiss;
-undo names the action and refuses if the game changed since; restore preview and status;
-leave / sign-out report what happened and finish removals later; switching to an existing
-account moves each team before switching. 31 emulator tests.
-
-**Deferred: needs the Blaze plan (server code) or console set-up**
-- **Real rate limiting** of code look-ups and join requests (per IP / per device), e.g. a
-  Cloud Function that does the code → team look-up and counts attempts, with `codes/` made
-  unreadable to the app. Today: 8-character codes (~1 trillion), ≤3 waiting requests per
-  sign-in, a coach must accept, but anyone can make new anonymous sign-ins (Firebase limits
-  those per IP) and a team can still be sent many requests from many sign-ins.
-- **Firebase App Check** (works on Spark): the user registers a reCAPTCHA v3 / Enterprise site
-  key for each project in the console (Build → App Check), we add `initializeAppCheck` to the
-  app (plus `https://www.google.com/recaptcha/` and `https://www.gstatic.com/recaptcha/` to the
-  security policy), watch the metrics on beta for a week, then turn on enforcement for Firestore
-  (beta first). Blocks scripted guessing from outside the app; not a substitute for rate limits.
-- **Checking every entry of long lists**: rules can't loop, so a long list (e.g. 30 subs) is
-  checked at its newest entry (squad at 7 spread-out places); a tampered app could still hide
-  junk in the middle. Fix with a Cloud Function validator, or by storing subs/goals as one
-  document each (a bigger change: needs a migration that keeps old backups loading).
-- **Drop 6-character codes** once every team has made a new code (or after a season): then
-  only 8 are accepted for new teams and joins.
-- **Lost manager phone with no account: done (v0.27.x).** A team can have up to 5 managers, and
-  if the manager's sign-in disappears a coach can tap "Become the manager". Was: if the manager's phone is lost and it had no
-  account, nobody can remove coaches or make a new code. Options: any coach can take over when
-  the manager has been inactive for N weeks (needs server time checks), or the owner's Admin
-  page can reassign. For now: encourage managers to sign in (Google/email), and "Make manager".
-- **style-src 'unsafe-inline'** stays (the app builds screens with style="" attributes; styles
-  can't run code). Remove by moving those to classes if ever needed.
-- Account switching: if moving one team fails part-way, teams already moved are in both
-  sign-ins; the user just tries again. A server function could make it one step.
-
-**Step 3: Tests and structure**
-- Account recovery tests (anonymous → account, lost phone). Automated tests for subs, minutes,
-  score correction, completion and restore. Schema version on stored data and backups with
-  explicit migrations. Stop swallowing errors that affect access or data. Split index.html into
-  modules (match logic, storage, auth, UI). Review listener lifecycles and re-renders.
-
-
-
-**Pricing decided Oct 2026: a yearly subscription from the day the coach subscribes** (see
-MONETISATION.md on the `monetisation` branch). The £3.99 unlock and £1 parent price below are
-superseded; the safeguards, founding club and voucher ideas still apply. Price to be set.
-
-**Before taking the first payment: make the GitHub repository private, and shrink the feedback button** (see the testing-round feedback). The repository decision was made Nov 2026: it's
-public for now so the automated tests run free. Going private limits free test minutes (Mac runs
-count ten times), so switch the iPhone Simulator and Android runs to by-hand only, or budget for minutes.
-
-**Monetisation admin (the user is setting these up, week of 5 Nov 2026):**
-- **Charging: per manager** (decided 5 Nov 2026): the person who creates teams pays one yearly
-  subscription covering all their teams; invited coaches and supporters never pay. Still to decide: a
-  cap on teams per subscription and a club price. Details in MONETISATION.md (`monetisation` branch).
-- **Price: £5 a year** (decided 5 Nov 2026). One person pays; it covers up to four managers. Coaches
-  who aren't managers are free. **Supporters stay free** (decided 5 Nov 2026).
-- **Free trial: six weeks** (decided 5 Nov 2026, was 30 days), so it covers two tournaments.
-  Changed on the `monetisation` branch (`TRIAL_DAYS=42`).
-- **Referral scheme** (idea, likely the cheapest way to reach coaches): a coach's share link gives the
-  new team a longer trial; the referrer earns free time when that team pays (not on sign-up). Builds on
-  vouchers and the payment webhook. Details in MONETISATION.md on the `monetisation` branch.
-- [ ] **Lemon Squeezy** account and store, Test mode on (web payments; merchant of record, handles VAT).
-- [ ] **Webhook signing secret**: the user sets it with `firebase functions:secrets:set` (never in chat).
-- [ ] **Budget alerts** on both Firebase projects (both are on Blaze).
-- [ ] **Backups of coaches' live data** (decided 5 Nov 2026: switch on when we monetise). Live has no
-  backups today (no schedule, point-in-time recovery off), so a wiped team can't be got back. Turn on a
-  daily Firestore backup kept 14 days (`firebase firestore:backups:schedules:create --project live
-  --recurrence DAILY --retention 14d`) and point-in-time recovery (7 days). Check the price first; at
-  this data size it should be pennies a month. Needs the user's go-ahead (it changes live).
-- [ ] **Bigger GitHub Mac for the iPhone tests** (decided 5 Nov 2026: revisit when we monetise). GitHub's
-  free Mac can't reliably run two iPhone simulators, so the iPhone run (ios-sim.yml) only does the
-  one-phone set-up wizard tests. The match day with a supporter, a second coach and several managers run
-  in WebKit and real Android Chrome instead. A larger macOS runner (paid per minute) should run
-  `npm test` in tools/e2e/ios-sim in full: switch `runs-on` and put journey.test.mjs and the rest back.
-- [ ] **Off-Mac copies**: `exports/` (children's names) in a private place (iCloud Drive), never GitHub;
-  `marketing/` (leaflet and card) can go on GitHub.
-- [ ] **Apple Developer Program** (£79/yr): enrol (individual, or organisation with a D-U-N-S number),
-  then in App Store Connect sign the Paid Apps agreement and add bank and tax details; apply for the
-  Small Business Program (15% commission instead of 30%).
-- [ ] **Google Play Console** ($25 one-off): create the developer account and verify identity; set up a
-  payments profile (merchant account) for subscriptions. New personal accounts must run a **closed test
-  with 12+ testers for 14 days** before the app can go public, so start this early.
-- [ ] **Store rules for selling in the apps:** subscriptions bought inside the iPhone and Android apps
-  must use Apple's and Google's own in-app purchase (they take 15%); the web stays on Lemon Squeezy.
-  Both stores also need "Delete my account" in the app, a privacy policy link, a privacy label / data
-  safety form, an age rating and screenshots.
-- [ ] **HMRC** (self-employment once over the £1,000 trading allowance) and the **ICO data protection
-  fee** (the app stores children's first names): check whether each applies.
-- [ ] **Privacy notice and terms**: update for payments, Lemon Squeezy, Apple and Google.
-- [ ] **GitHub repository private**, device test runs to by-hand or budgeted, **shrink the Feedback button**.
-
-1. **Parent view: live score only (built as followers, v0.24–v0.26).** Parents follow a game's score from their own phone, with
-   notifications for goals, half time and full time. No children's names, line-ups, minutes,
-   notes or scorers, ever.
-   - A separate parent link or code per team (or per game), different from the coaches'
-     invite code, so parents can't join as coaches.
-   - Data: the coaches' app copies just the score, opponent, kick-off and clock state into a
-     small public-to-parents record; parents can read only that, never the team's data
-     (security rule to match).
-   - Notifications: web push via the app's service worker (works on Android, and on iPhone
-     once the app is added to the home screen). Parents choose which alerts they want.
-   - Decided:
-     - One parent link per team per year (a new link each season).
-     - Our goals show as just "Goal!" (no scorer name).
-     - The opponent's name is shown.
-     - £1 per parent per year (one season, matching the yearly link), separate from the team's
-       £3.99 unlock. Keeps ~62p via the website or ~71p via the app stores after VAT and fees.
-     - Auto-renewing yearly subscription (decided), in the app stores and on the website
-       (merchant of record handles renewals and tax). Needs clear price and renewal terms before
-       buying, a reminder before each renewal, and easy cancellation (store rules and UK
-       subscription rules).
-
-2. **Paid team unlock: £3.99 one-off per team (decided).** Free to try, then the team's
-   manager pays once; coaches and parents who join with a code never pay.
-   - Decide what's free (e.g. one team, one tournament) and what the unlock adds.
-   - Take payment through a merchant of record (Paddle / Lemon Squeezy, ~5% + 50p) so UK and
-     overseas VAT/sales tax is handled; app stores later as in-app purchase.
-   - Security rule so only unlocked teams get the paid features.
-   - The user sets up the payment account and bank details themselves.
-   - Sell on the web first (decided direction); app stores later once coaches are paying.
-   - **Founding club:** Winscombe team(s) flagged as unlocked for good in the database, so the
-     loyal testers never see a paywall on any device.
-   - **Voucher codes** (e.g. WINSCOMBE): unlock a team free, with a use limit and optional
-     expiry. Web: merchant-of-record discount codes, or codes stored in the app's database.
-     iPhone app: must use Apple offer codes instead of our own (store rule).
-     - Abuse safeguards: prefer unique single-use codes per invited team (e.g. WIN-U10-7KQ3);
-       shared codes only with a small use cap and an end-of-season expiry, and a limited reward
-       (e.g. this season free); redeeming needs a Google/email account and works once per team;
-       random 8+ character codes plus Firebase App Check against guessing; security rules enforce
-       expiry, uses left, one use per team and team membership, and count down by exactly one;
-       an admin list of codes and redemptions with a switch-off.
-
-3. **Privacy policy and terms page: done** (privacy.html, terms.html). Review before taking money. First names only, adult
-   coaches as users, UK/EU GDPR. Host alongside the app (README plans Cloudflare Pages).
-
-4. **Selling internationally.** Local prices (£3.99 / €4.49 / $4.99 / A$6.99) via the merchant
-   of record. Only if those markets show interest: US wording switch (soccer, field, US dates)
-   and rugby league scoring (try 4, conversion 2, penalty 2, drop goal 1) next to union.
-   - **App stores (international):** Apple and Google act as seller and handle VAT/sales tax in
-     every country, with local prices from the £3.99 tier. Needs: Apple Developer Program (£79/yr,
-     Paid Apps agreement, bank and tax forms, Small Business Program for 15%), Google Play ($25,
-     closed test with ~12–20 testers for 14 days for new personal accounts). Build: Capacitor wrap
-     of the same code, £3.99 unlock as an in-app purchase (store rules), Sign in with Apple
-     alongside Google, store listing (screenshots, privacy label, privacy policy link, age
-     rating), full Xcode on the Mac. Risk: Apple may reject thin web wrappers; offline use, live
-     sync and push notifications help.
-
-5. **One payment unlocks the team everywhere (requested 7 Nov 2026).** A coach who pays in the
-   iPhone app, the Android app or on the website unlocks the **team**, for every coach in it, on
-   every platform.
-   - Unit of payment is the team, not the phone or the store account. The server records it on the
-     team (e.g. `paidUntil` on `teams/{id}`); security rules let only the server write it, so no
-     phone can unlock itself. Every phone reads it and unlocks.
-   - Apple, Google and the website's payment service report purchases, renewals, cancellations and
-     refunds to a Cloud Function, which checks them and updates the team. Suggested: **RevenueCat**
-     (one entitlement across App Store, Google Play and Stripe/web; free up to ~$2.5k a month of
-     revenue), rather than writing three receipt checks.
-   - Store rules: buying inside the iPhone/Android app must use Apple's/Google's in-app purchase,
-     and the apps can't point to a cheaper web price; using something bought on one platform on
-     another is allowed (Apple 3.1.3(b), multiplatform services). The web can use Stripe/Paddle.
-   - The coach who pays must be signed in (Google, email, or Sign in with Apple on iPhone) so the
-     purchase is attached to them and their team; "No account" coaches are asked to sign in only
-     at the moment they pay.
-   - Fits with the founding-club flag and voucher codes above: all three set the same team mark.
-   - Started 7 Nov 2026: Mark is registering Apple and Google developer accounts (organisation
-     accounts for Mark Miles Consultancy Ltd, D-U-N-S first). For Android, consider a Trusted Web
-     Activity instead of a Capacitor wrap: real Chrome, so web push, Google sign-in and offline work
-     unchanged.
-
-## Accessibility (from review)
-- Larger text: sizes in rem so phone text-size settings apply; check every screen at 200%
-  text size (nothing cut off, no sideways scrolling).
-- Screen readers: label every icon-only button; announce the save status, undo bar and toasts
-  as polite live regions; stop the ticking clock being read out every second; give the pitch
-  and bench lists proper headings; move focus into pop-ups and back out again.
-- Visible focus outlines for keyboard / switch users; dialogs close with Escape.
-- Contrast: check muted grey text and the green on dark against WCAG AA in both themes.
-- Clear confirmation of important actions (done: Full time, delete season, restore, remove
-  coach, undo bar); keep that pattern for new features.
-- Respect "reduce motion" everywhere (already for chips and the swap button).
-
-## Release checks (run before every promote to live)
-- Rules: live's deployed rules match firestore.rules (compare via the Firebase CLI).
-- Sign-in: Anonymous, Email/Password and Google switched on in both projects.
-- Separation: beta's app config can't read or write live (a beta sign-in is refused by live).
-- Privacy: a backup holds only first names (no surnames, emails or dates of birth).
-- Updates: the service worker cache name changed, and an old version picks up the new one on
-  next open (no coach stuck on an old version).
-- Isolation: emulator tests prove one team can't read another's data (have them; keep growing).
-- Before wider release: dependency check, security headers on Firebase Hosting (CSP, HSTS,
-  X-Content-Type-Options, Referrer-Policy), and Firebase usage limits / budget alert.
-
-## Should everyone log in? (question to decide)
-Today a phone can use the app with no account (anonymous sign-in); Google or email is optional.
-- For requiring it: team data and access survive a lost or reset phone; the Admin page shows
-  real people; join requests show a verified name; payments (team unlock, parent subscription)
-  need an account to attach the purchase to; removing a coach is clear-cut; App Store review
-  expects account deletion if accounts exist (add "Delete my account").
-- Against: friction on a cold touchline for helpers who only need to tap subs once; parents
-  and assistants may not want to share an email; more support ("I forgot which email").
-- Middle ground: required for the manager (who pays and approves) and anyone who wants their
-  teams on another phone; optional for helper coaches, who still need accepting by a coach.
-- Needs: "Delete my account" in ☰ (also an app store rule), privacy policy wording, and a
-  nudge for anonymous coaches before they lose access (e.g. when a team has games saved).
-
-## Usability on the touchline (from review)
-- Large tap targets with good spacing (check every button against ~44px).
-- High contrast in bright sunlight; works in the dark.
-- Don't rely on colour alone for match status (Live / Paused / Full time already have words;
-  check the game strip dots and pills).
-- Keep the essential controls (score, subs, clock) within thumb reach.
-- Short labels, familiar football words, clear icons.
-- Immediate feedback for goals, subs, clock changes and saves (undo bar and save pill cover most;
-  consider a short vibration on phones).
+- Optional, per game: pick a formation for the game's size (e.g. 5-a-side 1-2-1 or 2-1-1, 7-a-side
+  2-3-1 or 3-2-1, 9-a-side 3-3-2, 11-a-side 4-4-2 / 4-3-3), or none (today's layout).
+- The pitch view lays the players out in rows (keeper, defence, midfield, attack); a sub goes into the
+  position of the player coming off; drag to swap positions.
+- Minutes by position for the day and the season, so every child gets a go in different positions.
+- Remember each team's usual formation and each player's usual position, so it costs no extra taps.
+- Supporters never see positions or names. Data: add fields only (e.g. `formation` on the game, `pos`
+  per player); old games and backups read as "no formation". Rugby positions by number, later.
 
 ## Season history and PDF export (requested)
 
-- **Decided (17 Oct 2026): billing and seasons are separate.** Paying is a yearly subscription
-  that runs 12 months from the day the coach subscribes (not tied to the football calendar). A
-  season is the coach's own: they define it manually, from their first tournament to their last,
-  and results, awards, the season record and the PDF are grouped by it. A subscription can span
-  two seasons, and a season can span two subscription years; neither affects the other.
-- **More than one season.** Today the Season tab is one running list of saved tournaments and
-  awards, and the only way to start afresh is "delete season data". Instead: a season label
-  (e.g. 2026/27) on each saved tournament and award, a "Start a new season" step that files the
-  current one away (nothing deleted), and a season picker on the Season tab to look back.
-  Data: add a `season` field (adding fields only); older records without one count as the
-  first season; backups and restore keep loading old files. Ties in with the parent link,
-  which is already one per team per season.
-- **Export a season as PDF.** A printable season summary: results (W/D/L, goals), playing time
-  per player, awards, and optionally each tournament's games. Built in the app (print-friendly
-  page and the phone's Save as PDF / share sheet), so no server is needed. Holds children's
-  first names, so the same privacy warning as backups.
-- Questions: does a season follow the school year (September to July) or does the coach name
-  it? Should the PDF include playing time (some clubs prefer not to share it with parents)?
+- **Decided:** billing and seasons are separate. A season is the coach's own, from their first
+  tournament to their last; results, awards, the season record and the PDF are grouped by it.
+- **More than one season:** a season label (e.g. 2026/27) on each saved tournament and award, a
+  "Start a new season" step that files the current one away (nothing deleted), and a season picker on
+  the Season tab. Data: add a `season` field; records without one count as the first season.
+- **Export a season as PDF:** results, playing time per player, awards, optionally each tournament's
+  games. A print-friendly page and the phone's Save as PDF / share sheet; holds first names, so the
+  same privacy warning as backups.
+- Questions: does a season follow the school year or does the coach name it? Should the PDF include
+  playing time (some clubs prefer not to share it with parents)?
 
-## Notifications
-- Match starting soon: reminder before a game's kick-off time. While the app is open this can be
-  done in the app; when it's closed it needs web push plus a small scheduled server function
-  (Firebase Blaze plan, pennies at this size) and notification permission on each phone.
-  Shares the push set-up with the parent view.
-- **Live since v0.26.0**: follower notifications (kick-off, goals, cards, half time, full time,
-  chosen per follower) and coach notifications (join requests, accepted) via Cloud Messaging and three
-  server functions (functions/). Still to do: test on real phones (functions in europe-west2). Not yet: "game about to start" reminders before kick-off (needs a scheduled
-  function).
-- **Done (v0.26.0), kept for reference: push notifications for coaches about new coaches**, even with the app closed: "Sam (coach) wants
-  to join Example Team U10s: tap to accept or decline", and "Sam joined the team" once someone accepts.
-  The person who asked also gets one when they're accepted (or declined). Today coaches only see
-  requests when they open the app (banner and ☰ dot). Same push set-up as below (Cloud Messaging,
-  a server function on new join requests, Blaze plan); each coach allows notifications once.
-- **Done (v0.26.0), kept for reference: push notifications for followers**, even with the app closed: game about to start / kick-off,
-  goals (for either team, with the score), cards, half time and full time. Each follower chooses which
-  ones they want. No players' names: e.g. "Goal! Example Team 2–1 Riverside", "Yellow card for
-  Example Team (12')". Today followers only get alerts while the page is open.
-  - Needs: Firebase Cloud Messaging, a small server function that sends a push when the feed changes,
-    and the Blaze plan (pennies at this size). Followers allow notifications once; on iPhone they must
-    add the follower page to the home screen first (Apple's rule for web push).
-  - Cards: add a name-free card count to the follower feed (rules + tests), since followers can't see
-    cards at the moment.
+## Supporters
 
-## Make it clear it works for tournaments and single matches
-- The app reads as tournament-first. Make it obvious it's just as good for a **single match** (e.g. a
-  Saturday league game) as for a **one-day tournament** of several games.
-- Ideas: at set-up ask "What's today: one match or a tournament?" (one match sets 1 game and skips
-  tournament wording); call the section "Match day" rather than "Tournament" when there's one game;
-  "Save the match" instead of "Finish tournament"; results and summaries say "match" for single games.
-- Update the blurb, the empty screens and the set-up help to mention both.
-
-## Followers: follow several teams
-- A follower (e.g. a grandparent with two grandchildren in different teams, or a club official) can
-  follow more than one team in the app. Each follower link opened on the phone is remembered; the
-  follower screen lists the teams with their live score and status, and tapping one opens its
-  scoreboard and games. Live teams go to the top.
-- Remove a team from the list. No sign-in needed (the list lives on the phone), but if they sign in,
-  the list could follow them to a new phone.
-- Alerts (goals, half time, full time) say which team they're for.
-- Keep it read-only and name-free, exactly like a single follower link today.
-
-## Yellow and red cards: done
-Cards, the rugby sin bin countdown and name-free card alerts for followers are in the app. Still to
-decide: football grassroots sin bins (below).
-- Record cards against a player in a game (who, when, which card), shown on their label and in the
-  game's timeline, and in the season record.
-- **Rugby yellow card** = 10 minutes in the sin bin. The player is off the pitch but **the time still
-  counts towards their playing time**. Show a 10-minute countdown on their label, remind the coach when
-  it's up, and don't let them be subbed while they're binned (the team plays one short).
-- **Red card** = sent off for the rest of the game; the team plays one short (no replacement).
-- **Football**: decide how grassroots sin bins (temporary dismissals for dissent) work for the age
-  groups using the app, and whether a yellow alone needs anything beyond a record.
-- Followers see nothing about cards today (no players' names); name-free card alerts are planned under Notifications.
+- **Follow several teams:** each supporters' link opened on the phone is remembered; the page lists the
+  teams with their live score and status (live ones first); tap one for its scoreboard and games;
+  remove a team from the list. No sign-in needed. Alerts say which team they're for. Read-only and
+  name-free, as now.
+- **"Game about to start" reminder** before kick-off (needs a scheduled server function).
 
 ## Business and branding
-- **Apple Developer enrolment and TestFlight** for the iPhone app (`ios-app/`, branch `iphone-app`).
-- **Company name and address on the pages?** Privacy and terms currently say Mark Miles Consultancy
-  Limited (08286044), registered office in Winscombe. Decide whether Match Day should sit under a
-  different company or trading name, or show a different address (e.g. a registered office service
-  rather than a home address). Update privacy.html, terms.html and Lemon Squeezy's store details.
-  The website already says "Match Day is a trading name of Mark Miles Consultancy Limited". The
-  D-U-N-S number (218681417) belongs to that company, which matters for Apple enrolment.
-- **Change the company name to something less personal** (the App Store shows the company's legal
-  name as the seller, and doesn't accept trading names). Options: rename Mark Miles Consultancy
-  Limited (special resolution + form NM01 at Companies House, about £20 online; company number, bank
-  and tax stay the same) or set up a separate company for Match Day (about £50; needs its own
-  D-U-N-S number, bank account and accounts). Before renaming: check the name is free at Companies
-  House, on the UK IPO trade mark register (avoid anything near "Match of the Day") and as a domain.
-  Do it **before** Apple Developer enrolment. After a rename: tell Dun & Bradstreet the new name
-  (the D-U-N-S number stays the same), the bank, and HMRC for VAT/PAYE if registered; update
-  privacy.html, terms.html and the website footer. Until then, "Match Day" can be used as a trading
-  name (no registration needed; the legal name, number and registered office must still be shown).
-- **Domain: bought 4 Nov 2026, `matchday-app.uk`** (registered at Cloudflare). Still to do: connect it
-  to Firebase Hosting (live app, and the website), then add it to Google sign-in's authorised domains and
-  OAuth redirect URIs, update LIVE_HOSTS in firebase-config.js, Lemon Squeezy's links, the parent
-  link addresses, and the release checks. Keep the old address redirecting so existing home-screen
-  icons and parent links keep working.
-- **Move coaches to app.matchday-app.uk (plan agreed 4 Nov 2026).** The new address works (live data,
-  Google sign-in authorised), but each address has its own storage on a phone, so opening it signs the
-  phone out: accounts (Google/email) come back by signing in; anonymous coaches can only rejoin with the
-  invite code and another coach accepting, and a team's only anonymous coach couldn't get back in.
-  1. Build a **handover**: the app on the old address offers "Move to the new address"; a Cloud Function
-     mints a one-time sign-in for the same user, and the new address opens already signed in to the same
-     teams (no account needed). Same for followers' links. Beta first (beta needs its own new address too,
-     e.g. beta.matchday-app.uk, to test it).
-  2. Release it; then point the website's buttons at app.matchday-app.uk, and have the old address
-     offer (not force) the move.
-  3. **Never redirect or switch off** match-day-17b23.web.app: home-screen icons and old supporter links
-     keep working. Website links stay on the old address until step 1 is live.
-  Do it before the public launch, monetisation and app store listings, so they all use the new address.
-- **Email: hello@matchday-app.uk set up 4 Nov 2026** (Cloudflare Email Routing, forwarding to the Gmail
-  inbox; receive only). The app's feedback button, privacy.html, terms.html and the website use it from
-  v0.28.5. Still to do: if replies should come *from* hello@, add a sending service (Gmail "Send mail as"
-  through a mail provider's SMTP, or a mailbox from Zoho, Fastmail, Google Workspace or iCloud+), then a
-  tighter DMARC (`p=none` added 4 Nov 2026; move to `p=quarantine` once sending works). Then Firebase's
-  sign-in emails, app store listings and the payment provider.
 
-## Formations and positions (requested 7 Nov 2026)
-- Optional, per game: pick a formation for the game's size (e.g. 5-a-side 1-2-1 or 2-1-1, 7-a-side
-  2-3-1 or 3-2-1, 9-a-side 3-3-2, 11-a-side 4-4-2 / 4-3-3), or none (today's layout).
-- The pitch view lays the players out in their rows (keeper, defence, midfield, attack); a sub goes
-  into the position of the player coming off; drag to swap positions.
-- Minutes by position for the day and the season, so coaches can see every child gets a go in
-  different positions (grassroots development), not only total minutes.
-- Remember each team's usual formation and each player's usual position, so it costs no extra
-  taps on the day (fewest taps: no formation = works exactly as now).
-- Supporters never see positions or names. Data: add fields only (e.g. `formation` on the game,
-  `pos` per player in the line-up); old games and backups read as "no formation".
-- Rugby: positions by number (1–15, or the age group's), later.
+- **Company name and address on the pages?** Privacy and terms say Mark Miles Consultancy Limited
+  (08286044), registered office in Winscombe. Decide whether Match Day should sit under a different
+  company or show a different address (e.g. a registered office service rather than a home address).
+- **Change the company name to something less personal?** The App Store shows the legal name as the
+  seller (no trading names). Options: rename the company (special resolution + form NM01, about £20;
+  number, bank and tax stay the same), or a separate company for Match Day (about £50; its own D-U-N-S
+  number, bank account and accounts). Check the name at Companies House, the UK IPO trade mark register
+  (nothing near "Match of the Day") and as a domain. After a rename: tell Dun & Bradstreet (the
+  D-U-N-S number stays the same), the bank and HMRC; update privacy.html, terms.html and the website.
+- **Move coaches to app.matchday-app.uk (plan agreed 4 Nov 2026).** Each address has its own storage on
+  a phone, so opening the new one signs the phone out; anonymous coaches could only rejoin with the
+  invite code. 1. A **handover**: the old address offers "Move to the new address"; a Cloud Function
+  mints a one-time sign-in for the same user, so the new address opens signed in to the same teams
+  (supporters' links too). Beta first (needs e.g. beta.matchday-app.uk). 2. Then point the website's
+  buttons at app.matchday-app.uk and have the old address offer the move. 3. **Never redirect or switch
+  off** match-day-17b23.web.app (home-screen icons and old links). Before public launch and the stores.
+- **Email:** hello@matchday-app.uk receives (Cloudflare forwarding to Gmail). To reply *from* it, add a
+  sending service (a mailbox at Zoho, Fastmail, Google Workspace or iCloud+), then tighten DMARC from
+  `p=none` to `p=quarantine`. Then Firebase's sign-in emails, the store listings and the payment service.
+
+## Accessibility (from review)
+
+- Larger text: sizes in rem so phone text-size settings apply; check every screen at 200%.
+- Screen readers: label icon-only buttons; announce the save status, undo bar and toasts politely; stop
+  the ticking clock being read out every second; headings for the pitch and bench; move focus into
+  pop-ups and back.
+- Visible focus outlines for keyboard / switch users; dialogs close with Escape.
+- Contrast: check muted grey text and green on dark against WCAG AA in both themes.
+- Respect "reduce motion" everywhere.
+
+## Usability on the touchline (from review)
+
+- Tap targets of ~44px with good spacing on every button.
+- High contrast in bright sunlight; works in the dark.
+- Don't rely on colour alone (check the game strip dots and pills).
+- Essential controls (score, subs, clock) within thumb reach.
+- Consider a short vibration on goals, subs and clock changes.
+
+## Questions to decide
+
+- **Should everyone log in?** Today a phone can use the app with no account. For: data survives a lost
+  phone, real names on the Admin page, payments need an account, store review expects "Delete my
+  account". Against: friction for helpers who only tap subs, more support. Middle ground: required for
+  managers (who pay and approve) and anyone wanting their teams on another phone; optional for helpers.
+- **Football sin bins:** how grassroots temporary dismissals work for the age groups using the app, and
+  whether a yellow needs anything beyond a record.
+- **Feedback button** smaller once the app is paid for (see the monetisation checklist).
 
 ## Later
 
 - Combined fixtures view across all of a coach's teams.
-- A separate *Match Day Rugby* listing/web address from the same code (starts with rugby
-  selected), if rugby coaches take it up.
-- Paid-plan automatic database backups once real teams depend on it.
+- A separate *Match Day Rugby* listing or web address from the same code (starts with rugby selected),
+  if rugby coaches take it up.
