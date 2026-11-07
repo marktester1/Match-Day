@@ -31,6 +31,17 @@ agree before building. Done work is in the git history and the release tags.
   (marketing/whatsapp-messages.md). Real quotes only, with permission and how they'd like to be named.
 - **Facebook page:** the pack is in marketing/facebook (page details, cover, profile picture, posts).
   The user creates the page.
+- **Google Analytics on the website (requested 7 Nov 2026):** visitors, where they come from
+  (Facebook, WhatsApp, search), which pages they read, and how many tap "Open the app".
+  - Website only (matchday-app.uk), not the app or the supporters' link: those stay cookie-free.
+  - Google Analytics sets cookies, so UK law (PECR/UK GDPR) needs a consent banner first, with
+    analytics off until the visitor says yes ("Consent Mode" in Analytics). Update the privacy
+    notice, and allow googletagmanager.com / google-analytics.com in the website's security policy
+    (site/firebase.json and firebase.live.json).
+  - The user creates the Analytics account (analytics.google.com, under the same Google account as
+    Search Console) and sends the Measurement ID (G-XXXXXXX); link it to Search Console for search terms.
+  - Cookie-free alternatives with no banner: Cloudflare Web Analytics (free; the domain is already on
+    Cloudflare) or Plausible (paid). Fewer details than Google, but no pop-up for visitors.
 - Make it clear it's an app: people read "app" and think it's a normal website.
 - Rugby feels like an afterthought. Separate rugby website or listing? (see Later)
 
