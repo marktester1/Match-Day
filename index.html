@@ -728,17 +728,22 @@ function pGamesList(f){
 const isIOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const inApp=/MatchDayApp\//.test(navigator.userAgent); // the native iPhone app (ios-app/) adds this to its user agent
 const standalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+// Android: a link opened inside WhatsApp, Facebook or Instagram shows in that app's own browser, which can't get notifications
+const isAndroid=/Android/.test(navigator.userAgent);
+const inAppBrowser=()=>isAndroid&&(/; wv\)|FBAN|FBAV|FB_IAB|Instagram|WhatsApp/.test(navigator.userAgent)||!('PushManager' in window)||!('Notification' in window));
 let MSG=null;
 async function pushToken(){ // asks permission (straight after a tap) and returns this phone's push address
+  if(inAppBrowser())throw new Error('android-app');
   if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window))throw new Error(isIOS&&!standalone()?'ios-home':'unsupported');
   if(await Notification.requestPermission()!=='granted')throw new Error('denied');
   if(!MSG)MSG=await import(FB_SDK+'firebase-messaging.js');
   if(!(await MSG.isSupported()))throw new Error('unsupported');
   return MSG.getToken(MSG.getMessaging(),{serviceWorkerRegistration:await navigator.serviceWorker.ready});
 }
-const pushWhy=e=>({'ios-home':'On iPhone, first add this page to your Home Screen (Share → Add to Home Screen), then open it from there and try again.',
+const ANDROID_APP="This page is open inside another app (like WhatsApp), which can't get notifications. Tap ⋮ and choose Open in Chrome, then turn notifications on.";
+const pushWhy=e=>({'android-app':ANDROID_APP,'ios-home':'On iPhone, first add this page to your Home Screen (Share → Add to Home Screen), then open it from there and try again.',
   denied:"Notifications are blocked for this site. Allow them in your phone's settings for this browser, then try again.",
-  unsupported:"This browser can't get notifications. Try Chrome on Android, or the Home Screen app on iPhone."})[e&&e.message]||`Couldn't turn on notifications. ${whyPlain(e)}`;
+  unsupported:isIOS?"This browser can't get notifications. On iPhone, add this page to your Home Screen and open it from there.":"This browser can't get notifications. Open this page in Chrome and try again."})[e&&e.message]||`Couldn't turn on notifications. ${whyPlain(e)}`;
 const KINDS=[['kick','Kick-off'],['goal','Goals'],['card','Cards'],['ht','Half time'],['ft','Full time']];
 function followPushCard(f){
   if(S.fpush===undefined||inApp)return''; // web push doesn't work inside the iPhone app yet
@@ -749,7 +754,7 @@ function followPushCard(f){
   return `<div class="card"><h3>Get notifications</h3>
     <p class="note">Get an alert on this phone, even when this page is closed. Team names and scores only, never players' names.</p>
     <div class="kinds">${KINDS.map(([k])=>`<button class="${sel.includes(k)?'on':''}" data-act="fkind" data-k="${k}" aria-pressed="${sel.includes(k)}">${kl(k)}</button>`).join('')}</div>
-    ${isIOS&&!standalone()?'<p class="warnline">On iPhone: first add this page to your Home Screen (Share → Add to Home Screen), then open it from there and turn notifications on.</p>':''}
+    ${isIOS&&!standalone()?'<p class="warnline">On iPhone: first add this page to your Home Screen (Share → Add to Home Screen), then open it from there and turn notifications on.</p>':inAppBrowser()?`<p class="warnline">${ANDROID_APP}</p>`:''}
     <div class="cbtns"><button class="btn go" data-act="fpushon">${on?'Save':'Turn on notifications'}</button>${on?'<button class="btn" data-act="fpushcancel">Cancel</button>':''}</div></div>`;
 }
 async function followPushOn(){
@@ -775,7 +780,7 @@ function devicePushCard(){
   if(S.dpush===undefined||inApp)return'';
   return `<div class="card"><h3>${S.dpush?'🔔 ':''}Notifications on this phone</h3>
     <p class="note">${S.dpush?'On: you get':'Get'} a notification when someone asks to join a team you coach, and when a coach is accepted, even when the app is closed.</p>
-    ${!S.dpush&&isIOS&&!standalone()?'<p class="warnline">On iPhone, open Match Day from your Home Screen first (Share → Add to Home Screen).</p>':''}
+    ${!S.dpush&&isIOS&&!standalone()?'<p class="warnline">On iPhone, open Match Day from your Home Screen first (Share → Add to Home Screen).</p>':!S.dpush&&inAppBrowser()?`<p class="warnline">${ANDROID_APP}</p>`:''}
     <button class="btn ${S.dpush?'':'go'}" data-act="${S.dpush?'dpushoff':'dpushon'}">${S.dpush?'Turn off':'Turn on notifications'}</button></div>`;
 }
 let pbTimer;
