@@ -2263,14 +2263,29 @@ function whatIs(p){ // a coach-readable name for what a write was about
 function track(p,fail,path,retry){
   sync.pending++;if(path)sync.paths[path]=(sync.paths[path]||0)+1;liveLabel();
   const was=Object.keys(sync.failed).length;
-  p.then(()=>{sync.last=Date.now();if(path)delete sync.failed[path]},e=>{if(path)sync.failed[path]={what:whatIs(path),why:e,at:Date.now(),retry};if(fail)fail(e,path)})
+  p.then(()=>{sync.last=Date.now();if(path)delete sync.failed[path]},e=>{logIssue('save',e,path?path.replace(/\/[^/]+$/,'/…'):'');if(path)sync.failed[path]={what:whatIs(path),why:e,at:Date.now(),retry};if(fail)fail(e,path)})
     .finally(()=>{sync.pending--;if(path&&!--sync.paths[path])delete sync.paths[path];liveLabel();
       if(S.syncOpen||Object.keys(sync.failed).length!==was||(path&&S.game&&path==='games/'+S.game))render()});
   return p;
 }
 const failedPaths=()=>Object.keys(sync.failed);
 // Why something failed, in plain words for a coach (never a raw error code, unless it's one we don't know)
-function whyPlain(e){
+// Issues log, for support: problems on a coach's phone (a save that failed, an update refused, an app error,
+// a problem message shown) go to issues/, readable only by the developer in the Firebase console and deleted
+// after 30 days. No players' names: the error, where it happened, the team, the coach's name, version and phone.
+const issueSeen={};let issueCount=0;
+function logIssue(kind,e,where){try{
+  const u=FB&&FB.auth&&FB.auth.currentUser;if(!u||issueCount>=20)return;
+  const code=String(e&&e.code||e&&e.name||'error').slice(0,60),k=kind+'|'+code+'|'+(where||'');
+  if(issueSeen[k]&&Date.now()-issueSeen[k]<60000)return;issueSeen[k]=Date.now();issueCount++;
+  const {F,fs}=FB;F.addDoc(F.collection(fs,'issues'),{at:F.serverTimestamp(),expireAt:F.Timestamp.fromMillis(Date.now()+30*864e5),
+    kind:String(kind).slice(0,20),code,msg:String(e&&e.message||e||'').slice(0,300),where:String(where||'').slice(0,80),
+    team:String(S.teamId||'').slice(0,40),coach:String(myName()||'').slice(0,40),ver:APP_VERSION,online:navigator.onLine,
+    ua:navigator.userAgent.slice(0,200)}).then(()=>{window.lastIssue='saved'},e=>{window.lastIssue=String(e&&e.code||e)}); // lastIssue: for the tests
+}catch(_){}}
+addEventListener('error',ev=>logIssue('app',ev.error||{message:ev.message},(ev.filename||'').split('/').pop()+':'+ev.lineno));
+addEventListener('unhandledrejection',ev=>logIssue('app',ev.reason,'promise'));
+function whyPlain(e){logIssue('told',e,S.game?'game':S.tab);
   const c=String(e&&e.code||e&&e.message||'').replace(/^(firestore|auth|messaging)\//,'');
   return ['unavailable','network-request-failed','deadline-exceeded'].includes(c)||!navigator.onLine?"There's no signal. Try again when you have one."
     :c==='too-many-requests'?'Too many tries from this phone just now. Wait a few minutes and try again.'
@@ -2388,7 +2403,7 @@ function openTeam(t){
   lsSet(TEAM_KEY,t);S.gate=false;S.adding=false;S.teamId=t;db=fsAdapter('teams/'+t);liveLabel();watchTeams();
   F.onSnapshot(F.doc(fs,'teams',t),s=>{S.invite=s.data()?.code||'';S.createdBy=s.data()?.createdBy||null;S.managers=s.data()?.managers||[];render()},()=>{});
   watchMembers(t);watchRequests(t);touchMember(t);
-  subscribe(e=>{if(leaving)return; // we're leaving on purpose: let leaveTeam finish (and wipe)
+  subscribe(e=>{logIssue('listen',e,'team');if(leaving)return; // we're leaving on purpose: let leaveTeam finish (and wipe)
     if(e&&e.code==='permission-denied'&&!removedCheck){removedCheck=true;leaveTeam(false)}});
   render();
 }
@@ -2503,7 +2518,7 @@ function watchRequests(t){
   const {F,fs}=FB;
   // If watching fails (a blip just after joining, say), try again rather than never showing requests
   F.onSnapshot(F.collection(fs,'teams',t,'requests'),s=>{S.requests=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.at||0)-(b.at||0));render()},
-    e=>{(window.reqWatchErrors=window.reqWatchErrors||[]).push(e&&e.code||String(e));if(S.teamId===t)setTimeout(()=>{if(S.teamId===t)watchRequests(t)},3000)});
+    e=>{logIssue('listen',e,'requests');(window.reqWatchErrors=window.reqWatchErrors||[]).push(e&&e.code||String(e));if(S.teamId===t)setTimeout(()=>{if(S.teamId===t)watchRequests(t)},3000)});
 }
 const reqBusy={}; // request id -> 'accept' | 'decline' while it's being sent (no double taps)
 async function acceptRequest(id){
@@ -2898,10 +2913,13 @@ async function loadAdmin(){
       const seen=Math.max(0,...mem.map(m=>m.seen?.toMillis?.()||m.joined?.toMillis?.()||0));
       const mgr=d.data().createdBy,mgrs=d.data().managers||[],isM=id=>id===mgr||mgrs.includes(id);
       const list=ms?ms.docs.map(m=>({id:m.id,name:m.data().name||'Coach (no name)',mgr:isM(m.id)})):[];
-      return{id:d.id,name:cfg.team||'',sport:cfg.sport||'football',created:d.data().created?.toMillis?.()||0,coaches:mem.length,seen,
+      const coachSeen=mem.map(m=>m.seen?.toMillis?.()||m.joined?.toMillis?.()||0);
+      return{id:d.id,name:cfg.team||'',sport:cfg.sport||'football',created:d.data().created?.toMillis?.()||0,coaches:mem.length,seen,coachSeen,
         orphan:!!ms&&!list.some(m=>m.mgr),list,createdBy:mgr,managers:mgrs};
     }));
-    S.admin={loading:false,teams:rows.sort((a,b)=>b.seen-a.seen)};
+    const iss=await F.getDocs(F.query(F.collection(fs,'issues'),F.orderBy('at','desc'),F.limit(100))).catch(e=>({err:errCode(e)}));
+    S.admin={loading:false,teams:rows.sort((a,b)=>b.seen-a.seen),
+      issues:iss.err?null:iss.docs.map(d=>({...d.data(),at:d.data().at?.toMillis?.()||0})),issuesErr:iss.err||null};
   }catch(e){S.admin={loading:false,error:errCode(e),teams:[]}}
   render();
 }
@@ -2915,6 +2933,16 @@ async function adminMakeManager(t,id){ // owner: make a coach in any team a mana
   try{await F.updateDoc(F.doc(fs,'teams',t),patch);toast(c?.mgr?'No longer a manager.':'Now a manager.');loadAdmin()}
   catch(e){toast(`Couldn't change the managers. ${whyPlain(e)}`)}
 }
+// Issues log on the Admin page: the last 100 problems from coaches' phones (kept 30 days), newest first
+function adminIssues(A,T){
+  if(A.issuesErr)return `<p class="note">Couldn't load the issues log (${esc(A.issuesErr)}).</p>`;
+  const l=A.issues||[],tn=id=>(T.find(t=>t.id===id)||{}).name||id||'no team';
+  const t=ms=>{const d=new Date(ms);return nice(d.toISOString().slice(0,10))+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
+  const phone=ua=>/iPhone|iPad/.test(ua)?'iPhone':/Android/.test(ua)?'Android'+(/; wv\)|WhatsApp|FBAN|Instagram/.test(ua)?' (in another app)':''):/Mac/.test(ua)?'Mac':/Windows/.test(ua)?'Windows':'Other';
+  return `<details class="card"><summary><h3 style="display:inline">Issues log</h3> <span class="note">${l.length?`${l.length} in the last 30 days${l.length>=100?' (latest 100)':''}`:'nothing in the last 30 days'}</span></summary>
+    ${l.length?`<div class="rows">${l.map(x=>`<div class="row adm"><div class="who">${esc(x.coach||'Coach (no name)')} · ${esc(tn(x.team))}</div>
+      <div class="note num">${esc(t(x.at))} · ${esc(x.kind)} · ${esc(x.code)}${x.where?' · '+esc(x.where):''} · v${esc(x.ver)} · ${esc(phone(x.ua||''))}${x.online===false?' · no signal':''}</div>
+      ${x.msg?`<div class="note">${esc(x.msg)}</div>`:''}</div>`).join('')}</div>`:''}</details>`}
 function adminView(){
   const A=S.admin||{teams:[]},T=A.teams,day=864e5,now=Date.now();
   const week=T.filter(t=>now-t.seen<7*day).length,rug=T.filter(t=>t.sport==='rugby').length;
@@ -2924,7 +2952,10 @@ function adminView(){
   <h2>Admin</h2>
   <p class="note">Only you can see this. Team names and activity only, never squads, games or notes.</p>
   ${A.loading?'<p class="note">Loading…</p>':A.error?`<p class="note">Couldn't load (${esc(A.error)}).</p>`:`
-  <div class="summary num"><span>Teams <b>${T.length}</b></span><span>Active this week <b>${week}</b></span><span>Football <b>${T.length-rug}</b> · Rugby <b>${rug}</b></span></div>
+  ${(()=>{const cs=T.flatMap(t=>t.coachSeen||[]),today=new Date().setHours(0,0,0,0);
+    return `<div class="summary num"><span>Teams <b>${T.length}</b></span><span>Active today <b>${T.filter(t=>t.seen>=today).length}</b></span><span>Active this week <b>${week}</b></span><span>New in 30 days <b>${T.filter(t=>now-t.created<30*day).length}</b></span></div>
+  <div class="summary num"><span>Coaches <b>${cs.length}</b></span><span>Active today <b>${cs.filter(x=>x>=today).length}</b></span><span>Active this week <b>${cs.filter(x=>now-x<7*day).length}</b></span><span>Football <b>${T.length-rug}</b> · Rugby <b>${rug}</b></span></div>`})()}
+  ${adminIssues(A,T)}
   <div class="rows">${T.map(t=>`<div class="row adm"><div class="who">${esc(t.name||'(not set up yet)')}<span class="tag">${t.sport==='rugby'?'Rugby':'Football'}</span></div>
     <div class="note">${t.coaches} coach${t.coaches===1?'':'es'} · last active ${esc(when(t.seen))} · created ${esc(when(t.created))}</div>
     ${t.orphan?`<div class="warnline"><b>No manager.</b> ${t.list.length?'Make one of the coaches below a manager.':'No coaches left in this team.'}</div>`:''}

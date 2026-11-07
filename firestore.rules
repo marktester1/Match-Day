@@ -336,6 +336,21 @@ service cloud.firestore {
       }
     }
 
+    // Issues log, for support: a signed-in phone can add a problem report (sizes checked); only the owner can
+    // read them (Admin page, or the Firebase console), and nobody can change or delete one. Each is deleted
+    // automatically 30 days on (expireAt, a TTL policy in firestore.indexes.json).
+    match /issues/{id} {
+      allow create: if signedIn() && request.resource.data.keys().hasOnly(['at', 'expireAt', 'kind', 'code', 'msg', 'where', 'team', 'coach', 'ver', 'online', 'ua'])
+        && request.resource.data.at == request.time
+        && request.resource.data.expireAt is timestamp && request.resource.data.expireAt > request.time
+        && request.resource.data.expireAt < request.time + duration.value(31, 'd')
+        && fStr(request.resource.data, 'kind', 20) && fStr(request.resource.data, 'code', 60) && fStr(request.resource.data, 'msg', 300)
+        && fStr(request.resource.data, 'where', 80) && fStr(request.resource.data, 'team', 40) && fStr(request.resource.data, 'coach', 40)
+        && fStr(request.resource.data, 'ver', 20) && fBool(request.resource.data, 'online') && fStr(request.resource.data, 'ua', 200);
+      allow get, list: if isOwner(); // the Admin page
+      allow update, delete: if false;
+    }
+
     // Everything else is closed.
     match /{path=**} {
       allow read, write: if false;

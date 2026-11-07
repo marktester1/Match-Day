@@ -3,7 +3,7 @@
 import {readFileSync} from 'node:fs';
 import {test, before, after, beforeEach} from 'node:test';
 import {initializeTestEnvironment, assertSucceeds, assertFails} from '@firebase/rules-unit-testing';
-import {doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField, collection, writeBatch, serverTimestamp} from 'firebase/firestore';
+import {doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField, collection, writeBatch, serverTimestamp, addDoc, Timestamp} from 'firebase/firestore';
 
 const OWNER = 'markdavidmiles@gmail.com';
 let env;
@@ -553,4 +553,25 @@ test('a full restore saves in one all-or-nothing batch', async () => {
   for (let i = 0; i < 20; i++) b.set(d(f, 'archive', 't' + i), fullArchive);
   for (let i = 0; i < 20; i++) b.set(d(f, 'awards', 'a' + i), award);
   await assertSucceeds(b.commit());
+});
+
+test('issues log: any signed-in phone adds a report; only the owner reads them; nobody changes or deletes one', async () => {
+  const issue = (over = {}) => ({at: serverTimestamp(), expireAt: Timestamp.fromMillis(Date.now() + 30 * 864e5), kind: 'save', code: 'permission-denied',
+    msg: 'Missing or insufficient permissions.', where: 'games/…', team: T, coach: 'Sam (coach)', ver: '0.29.7', online: true, ua: 'Mozilla/5.0 (Linux; Android 14)', ...over});
+  await assertSucceeds(addDoc(collection(alice(), 'issues'), issue()));
+  await assertSucceeds(addDoc(collection(mallory(), 'issues'), issue({team: ''}))); // not in a team yet, still reports
+  await assertFails(addDoc(collection(db(null), 'issues'), issue()));                 // signed out
+  await assertFails(addDoc(collection(alice(), 'issues'), issue({msg: 'x'.repeat(301)})));
+  await assertFails(addDoc(collection(alice(), 'issues'), issue({squad: ['Ava']})));  // nothing else (no players)
+  await assertFails(addDoc(collection(alice(), 'issues'), issue({at: 1})));           // the server's time only
+  await assertFails(addDoc(collection(alice(), 'issues'), issue({expireAt: Timestamp.fromMillis(Date.now() + 60 * 864e5)}))); // kept 30 days, no longer
+  const ref = doc(alice(), 'issues', 'i1');
+  await assertSucceeds(setDoc(ref, issue()));
+  await assertFails(getDoc(ref));                                   // a coach can't read it back
+  await assertFails(getDocs(collection(alice(), 'issues')));
+  await assertFails(getDocs(collection(owner(false), 'issues')));   // owner's email not verified
+  await assertSucceeds(getDocs(collection(owner(), 'issues')));     // the Admin page
+  await assertFails(updateDoc(doc(owner(), 'issues', 'i1'), {msg: 'changed'}));
+  await assertFails(deleteDoc(doc(alice(), 'issues', 'i1')));
+  await assertFails(deleteDoc(doc(owner(), 'issues', 'i1')));
 });

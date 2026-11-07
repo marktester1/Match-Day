@@ -1,7 +1,7 @@
 // Every text box has a length limit that matches the database rules (checked for all of them in
 // tests.yml); typing past it stops at the limit and says so once, in plain words.
 const {test, expect} = require('./test'); // Playwright's, or real Android Chrome with ANDROID=1
-const {app} = require('./helpers');
+const {app, cleanUp} = require('./helpers');
 
 test('a box at its length limit stops there and says so once', async ({page}, info) => {
   const c = app(page, info);
@@ -24,4 +24,21 @@ test('failure messages are in plain words, never a raw error code', async ({page
   expect(said[1]).toBe('Too many tries from this phone just now. Wait a few minutes and try again.');
   expect(said[2]).toContain('may have been removed from the team');
   expect(await page.evaluate(() => whyPlain({code: 'weird-new-thing'}))).toContain('mention "weird-new-thing"'); // unknown ones can still be reported
+});
+
+test('a problem on a coach\'s phone goes to the issues log (which the phone can\'t read back)', async ({page}, info) => {
+  const c = app(page, info), T = 'Claude E2E Issues U10s';
+  let joined = false, finished = false;
+  try {
+    await c.createTeam(T, ['Ava', 'Ben', 'Cal', 'Dev', 'Eli']);
+    joined = true;
+    await page.evaluate(() => logIssue('test', {code: 'e2e-check', message: 'A test report from the browser tests'}, 'limits.spec'));
+    await expect.poll(() => page.evaluate(() => window.lastIssue), {timeout: 20000}).toBe('saved');
+    // only the owner reads them: this phone can't
+    const read = await page.evaluate(() => FB.F.getDocs(FB.F.collection(FB.fs, 'issues')).then(() => 'read', e => e.code));
+    expect(read).toBe('permission-denied');
+    finished = true;
+  } finally {
+    await cleanUp(finished, [async () => { if (joined) await c.leave(T); }]);
+  }
 });
