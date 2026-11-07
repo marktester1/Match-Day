@@ -73,8 +73,15 @@ agree before building. Done work is in the git history and the release tags.
 change it to per team). **Referral scheme:** when a referred team **makes its first payment**, the team that
 referred it gets **two months free**, and the new team gets **two months free** too. **No limit** on
 referrals, as long as each referred team pays. No club price (decided). **The trial unlocks every feature** (decided), to show coaches the whole app.
-Still to decide: what happens when the trial ends without a payment (e.g. the team's data stays and can
-be seen, but new games can't be started until someone pays; supporters' links keep working). Details in
+**When the trial ends without a payment (decided):**
+- The team's data stays, for good (goodwill): squad, results, season minutes, awards and notes can
+  still be seen. Nothing is deleted or hidden.
+- **No new games or tournaments can be started** until someone pays: a clear "Subscribe for £5.99 a
+  year to keep playing" with one tap to pay, where the coach would start one.
+- Supporters' links keep working for past results.
+- A reminder a few days before the trial ends, shown in the app (a card, not a pop-up to answer).
+- Enforced by the server and security rules (no new games without `paidUntil` or the trial in date),
+  not only by the app, so it can't be got round on a phone. Details in
 MONETISATION.md on that branch.
 
 - **One payment unlocks the team everywhere (requested 7 Nov 2026).** Paying in the iPhone app, the
