@@ -60,9 +60,9 @@ test('everyone starts on the bench, and Out lasts the whole day', async ({page, 
       const fore = over(parse(getComputedStyle(el).color), back);
       const lum = c => { const [r, g, b] = c.slice(0, 3).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
       const [a, b] = [lum(fore), lum(back)].sort((x, y) => y - x);
-      return (a + 0.05) / (b + 0.05);
+      return {ratio: (a + 0.05) / (b + 0.05), color: getComputedStyle(el).color, layers: JSON.stringify(layers), fore: fore.map(Math.round), back: back.map(Math.round)};
     });
-    expect(contrast, 'the 5/5 counter is readable').toBeGreaterThanOrEqual(4.5);
+    expect(contrast.ratio, `the 5/5 counter is readable (${JSON.stringify(contrast)})`).toBeGreaterThanOrEqual(4.5);
 
     // Minutes: Isabelle is out, so she isn't listed (or counted), and the minutes count up live
     await c.goTab('minutes');

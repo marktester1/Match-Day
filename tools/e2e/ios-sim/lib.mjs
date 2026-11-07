@@ -81,9 +81,12 @@ export async function appPhone(appPath, i = 0) {
     capabilities: {platformName: 'iOS', 'appium:automationName': 'XCUITest', 'appium:udid': udid, 'appium:app': appPath,
       'appium:bundleId': 'com.markmilesconsultancy.matchday', 'appium:fullReset': true, 'appium:wdaLocalPort': 8100 + i,
       'appium:wdaLaunchTimeout': 600000, 'appium:simulatorStartupTimeout': 600000, 'appium:newCommandTimeout': 1800,
-      'appium:webviewConnectTimeout': 30000, 'appium:includeSafariInWebviews': false,
+      'appium:webviewConnectTimeout': 90000, 'appium:webviewConnectRetries': 20, 'appium:includeSafariInWebviews': false,
       ...(process.env.PREBUILT_WDA ? {'appium:usePreinstalledWDA': true, 'appium:prebuiltWDAPath': process.env.PREBUILT_WDA, 'appium:wdaLaunchTimeout': 180000} : {})}});
-  await b.waitUntil(async () => (await b.getContexts()).some(c => String(c.id || c).startsWith('WEBVIEW')), {timeout: 60000, interval: 1000, timeoutMsg: "the app's web view never appeared (is it a Debug build?)"});
+  // GitHub's Mac can take a while to load the page and offer it for inspection; say what it saw if not
+  let seen = [];
+  await b.waitUntil(async () => { seen = (await b.getContexts().catch(() => [])).map(c => String(c.id || c)); return seen.some(c => c.startsWith('WEBVIEW')); },
+    {timeout: 180000, interval: 2000}).catch(async () => { throw new Error(`the app's web view never appeared (is it a Debug build?). Contexts: ${JSON.stringify(seen)}; app state: ${await b.queryAppState('com.markmilesconsultancy.matchday').catch(e => e.message)}`); });
   const web = (await b.getContexts()).map(c => String(c.id || c)).find(c => c.startsWith('WEBVIEW'));
   await b.switchContext(web);
   await b.setTimeout({script: 30000});
