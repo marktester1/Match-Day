@@ -83,7 +83,7 @@ test('added time at half time and full time', async ({page, browser}, info) => {
     // Saved results keep the added time: Ben's goal is 10+2'
     await c.goTab('games');
     await press(btn('Finish tournament and save to Results'));
-    await press(btn('Tap again to save and start fresh'));
+    await press(page.getByRole('button', {name: /^(Tap again to save and start fresh|Games? [0-9, ]+ not finished\. Tap again to save anyway)$/}));
     await press(btn('Write it later', modal));
     await c.reload(TEAM);
     await c.goTab('season');

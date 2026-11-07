@@ -383,7 +383,7 @@ body:has(input:focus,textarea:focus,select:focus) .fb{visibility:hidden;transiti
 <a id="feedback" class="fb" href="mailto:hello@matchday-app.uk?subject=Match%20Day%20feedback" aria-label="Send feedback by email">💬 Feedback</a>
 
 <script>
-const APP_VERSION='0.29.5';
+const APP_VERSION='0.29.6';
 // Feedback by email, with the app version and phone type filled in (never the team's or players' details)
 {const fb=document.getElementById('feedback'),dev=(navigator.userAgent.match(/\(([^)]+)\)/)||[])[1]||'';
   fb.href='mailto:hello@matchday-app.uk?subject='+encodeURIComponent('Match Day feedback')+'&body='+
@@ -603,7 +603,7 @@ const newFeedId=()=>Array.from(crypto.getRandomValues(new Uint8Array(24)),n=>FEE
 const feedUrl=id=>location.origin+location.pathname.replace(/index\.html$/,'')+'?follow='+id;
 const feedOn=()=>FB&&S.teamId&&S.feed&&S.feed.season===seasonNow();
 const gStatus=g=>g.done?'ft':g.clock.running?'live':atBreak(g)?'break':started(g)?'paused':'pre';
-let feedGame=null,feedLast='',feedGamesLast={},feedT;
+let feedGame=null,feedLast='',feedGamesLast={},feedGone=new Set(),feedT;
 const schedulePublish=()=>{clearTimeout(feedT);feedT=setTimeout(publishFeed,300)}; // one update after a burst of changes
 function feedBody(id){
   const g=id?G(id):null,us=usName().slice(0,40);
@@ -629,12 +629,14 @@ function publishFeed(){ // sends parents the changes made on this phone (only wh
   if(k!==feedLast){feedLast=k;track(F.setDoc(F.doc(fs,'feeds',id),{...b,updatedAt:Date.now()}),()=>{feedLast=''})}
   ids.forEach(g=>{const x=feedFixture(g),k=JSON.stringify(x);if(feedGamesLast[g]===k)return;feedGamesLast[g]=k;
     track(F.setDoc(F.doc(fs,'feeds',id,'games',g),x),()=>{delete feedGamesLast[g]})});
-  Object.keys(feedGamesLast).filter(g=>!ids.includes(g)).forEach(g=>{delete feedGamesLast[g];track(F.deleteDoc(F.doc(fs,'feeds',id,'games',g)),()=>{})});
+  // a game taken off the day goes from supporters' list too, even if another phone (or an earlier visit) sent it
+  for(let i=1;i<=10;i++){const g='g'+i;if(ids.includes(g)){feedGone.delete(g);continue}if(feedGone.has(g))continue;
+    feedGone.add(g);delete feedGamesLast[g];track(F.deleteDoc(F.doc(fs,'feeds',id,'games',g)),()=>{feedGone.delete(g)})}
 }
 function makeFeed(){
   if(!navigator.onLine){toast('You need a signal to create the supporters\' link.');return}
   const old=S.feed&&S.feed.id,id=newFeedId();
-  S.feed={id,season:seasonNow()};put('club/feed',S.feed);feedLast='';feedGamesLast={};
+  S.feed={id,season:seasonNow()};put('club/feed',S.feed);feedLast='';feedGamesLast={};feedGone=new Set();
   // the new link starts with the team name; fixtures follow once a tournament is set up
   if(tourReady())publishFeed();else track(FB.F.setDoc(FB.F.doc(FB.fs,'feeds',id),{...feedBody(null),updatedAt:Date.now()}),()=>{});
   if(old){const {F,fs}=FB,b=F.writeBatch(fs); // the old link stops working
@@ -675,8 +677,11 @@ function pClock(f){
 function pStatus(f){
   const {n,per,e,i,over}=pPer(f);
   const pname=over?'Added time':n===2?['1st half','2nd half'][i]:n===4?'Quarter '+(i+1):'Live';
-  return{none:'No game yet',pre:'Kick-off soon',live:pname,paused:'Clock paused',break:n===2?'Half time':'End of quarter '+Math.round(e/per),ft:'Full time'}[f.status]||'';
+  return{none:'No game yet',pre:pWhen(f),live:pname,paused:'Clock paused',break:n===2?'Half time':'End of quarter '+Math.round(e/per),ft:'Full time'}[f.status]||'';
 }
+// Before kick-off: the game's date (unless it's today) and kick-off time, e.g. "Sat 7 Nov · 9:30" or "9:30"
+function pWhen(f){const g=(S.pgames||[]).find(x=>x.n===f.gameN),t=String(g&&g.time||'').trim(),d=f.tdate&&f.tdate!==today()?nice(f.tdate):'';
+  return [d,t].filter(Boolean).join(' · ')||'Kick-off soon'}
 const pScore=(f,side)=>(f.us===side)?f.score.us:f.score.them;
 function parentView(){
   const f=S.pfeed;
@@ -1164,7 +1169,7 @@ function gamesList(){
     </button>`}).join('')}</div>
   <button class="btn" data-act="fxopen">Enter opponents and kick-off times</button>
   ${(()=>{const no=ids.filter(id=>started(G(id))&&!G(id).opponent).map(id=>G(id).n);return no.length?`<p class="warnline">⚠️ No opposition entered for game${no.length>1?'s':''} ${no.join(', ')}. Tap <b>Enter opponents and kick-off times</b> to add ${no.length>1?'them':'it'} before you save.</p>`:''})()}
-  <button class="btn go" data-act="finish">${S.confirm==='finish'?'Tap again to save and start fresh':'Finish tournament and save to Results'}</button>
+  <button class="btn go" data-act="finish">${S.confirm==='finish'?finishAgain():'Finish tournament and save to Results'}</button>
   <p class="note">Saves results and every player's minutes to Season → Results, then clears the games ready for the next tournament.</p>
   <button class="btn quiet" data-act="reset">${S.confirm==='reset'?'Tap again to clear without saving':'Clear scores and line-ups without saving'}</button>
   ${setupLine()}
@@ -1227,6 +1232,7 @@ function gameView(id){
   ${S.askGk===id?keeperAsk(g):''}
   ${S.askSize&&S.askSize.g===id?sizeAsk(g,S.askSize):''}
   <div class="cbtns">${cb}<button class="btn" data-act="fix" aria-expanded="${S.fix===id}">Edit</button></div>
+  ${g.done&&gids().every(x=>G(x).done)?saveDayCard():''}
   ${hint}
   <div class="pitch"><span class="lbl">On the pitch</span><span class="cnt num">${pitch.length}/${gameSize(g)}</span>
     <div class="chips">${pitch.length?pitch.map(p=>chip(p,'pitch')).join(''):'<span style="color:#ffffffcc;font-size:14px;padding-top:24px">Pick the starters below</span>'}</div></div>
@@ -1273,11 +1279,15 @@ function minutesView(){
   if(!S.squad.length)return `<div class="empty"><b>No squad yet</b>Add the players on the Squad tab and their playing time will add up here.</div>`;
   const per=gids().map(id=>({g:G(id),m:mins(G(id)),k:G(id)})),gl=goalTally(per.map(x=>x.g));
   const rows=S.squad.map(p=>{let t=0,n=0,gk=0,brk=[];per.forEach(({g,m})=>{if(p.id in m){t+=m[p.id];n++;brk.push(`G${g.n} ${fmt(m[p.id])}`)}if(g.gk===p.id)gk++});return{p,t,n,gk,brk}}).sort((a,b)=>a.t-b.t);
+  // Players marked Out (in no game today) aren't here: leave them out until they're brought in
+  const out=rows.filter(r=>!r.n);rows.splice(0,rows.length,...rows.filter(r=>r.n));
+  if(!rows.length)return `<div class="empty"><b>Nobody picked yet</b>Pick the team for a game and everyone's playing time adds up here.</div>`;
   const max=Math.max(1,...rows.map(r=>r.t)),avg=rows.reduce((s,r)=>s+r.t,0)/rows.length;
-  return `<div class="sec"><p class="note">Least time first, so you can see who needs more minutes. Average so far: <b class="num">${fmtM(avg)}</b>.</p>
-  <div class="rows">${rows.map(r=>{const low=avg>0&&r.t<avg*0.8;return `<div class="mrow ${low?'low':''}"><span class="who">${esc(r.p.name)}${low?'<span class="flag">Needs time</span>':''}</span><span class="tot num">${fmtM(r.t)}</span>
+  return `<div class="sec"><p class="note">Least time first, so you can see who needs more minutes. Average so far: <b class="num">${fmt(avg)}</b>.</p>
+  <div class="rows">${rows.map(r=>{const low=avg>0&&r.t<avg*0.8;return `<div class="mrow ${low?'low':''}"><span class="who">${esc(r.p.name)}${low?'<span class="flag">Needs time</span>':''}</span><span class="tot num">${fmt(r.t)}</span>
     <span class="bar"><i style="width:${(r.t/max*100).toFixed(1)}%"></i></span>
-    <span class="brk num">${r.n?r.n+(r.n>1?' games':' game')+(r.gk&&!isRugby()?` · starts in goal ${r.gk}×`:'')+(gl[r.p.id]?` · ${isRugby()?'🏉':'⚽'} ${gl[r.p.id]}${isRugby()&&!triesOnly()?' pts':''}`:'')+' · '+r.brk.join(' · '):'Not picked yet'}</span></div>`}).join('')}</div></div>`;
+    <span class="brk num">${r.n?r.n+(r.n>1?' games':' game')+(r.gk&&!isRugby()?` · starts in goal ${r.gk}×`:'')+(gl[r.p.id]?` · ${isRugby()?'🏉':'⚽'} ${gl[r.p.id]}${isRugby()&&!triesOnly()?' pts':''}`:'')+' · '+r.brk.join(' · '):''}</span></div>`}).join('')}</div>
+  ${out.length?`<p class="note">Out today: ${out.map(r=>esc(r.p.name)).join(', ')}.</p>`:''}</div>`;
 }
 function squadView(){
   return `<div class="sec">
@@ -1700,6 +1710,7 @@ function finishTournament(){
   const doc={name:S.tour.name||'',date:S.tour.date||today(),savedAt:Date.now(),games,players:S.squad.map(p=>({id:p.id,name:p.name}))};
   const tid='t'+Date.now();
   put('archive/'+tid,doc);S.archive=[{id:tid,...doc},...S.archive.filter(t=>t.id!==tid)];
+  S.unfinish={tid,tour:{...S.tour},games:Object.fromEntries(ids.map(id=>[id,structuredClone(S.games[id]||G(id))]))}; // Undo puts the day back
   ids.forEach(id=>{const n=blank(G(id).n);S.games[id]=n;put('games/'+id,n)});
   S.tour={...S.tour,name:'',date:'',ready:false};saveTour();
   // take the coach to where it went: Season → Results, with this tournament open
@@ -1737,6 +1748,12 @@ function editField(key,val){ // one change to the draft; scorers follow our goal
   else if(f==='gat'){const v=parseT(val);if(v==null||v>36e6)toast('Type the time like 12:30.');else g.goals[+k]={...g.goals[+k],at:v}}
   render();
 }
+// After the last game's full time: save the day in one tap, where the coach already is
+function saveDayCard(){const n=gids().length;
+  return `<div class="card benchask"><h3>That was the last game</h3><p class="note">Save today's ${n>1?n+' games':'match'} to the season: results, scorers, everyone's minutes and a message to share.</p>
+    <button class="btn go" data-act="finishnow">Save today's results</button></div>`}
+function finishAgain(){const no=gids().map(G).filter(g=>!g.done).map(g=>g.n);
+  return no.length?`Game${no.length>1?'s':''} ${no.join(', ')} not finished. Tap again to save anyway`:'Tap again to save and start fresh'}
 function savedPop(){
   const x=S.saved;
   return `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="svq"><div class="box">
@@ -1747,7 +1764,7 @@ function savedPop(){
       <textarea id="rptnew" maxlength="3000" placeholder="How did the day go? Highlights, what went well, what to work on."></textarea></label>
     <div class="cbtns"><button class="btn go" data-act="rptsave" data-id="${esc(x.id)}">Save report</button><button class="btn" data-act="savedok">Write it later</button></div>
     <p class="note">You can write or change the report any time: open the tournament in Season → Results.</p>
-    <button class="btn small" data-act="backtogames" style="align-self:flex-start">Back to games</button>
+    <div class="cbtns"><button class="btn small" data-act="backtogames">Back to games</button>${S.unfinish&&S.unfinish.tid===x.id?'<button class="btn small" data-act="unfinish">Undo: put the day back</button>':''}</div>
   </div></div>`;
 }
 function record(games){let W=0,D=0,L=0,F=0,A=0;games.filter(g=>g.played||g.done).forEach(g=>{F+=g.score.us;A+=g.score.them;g.score.us>g.score.them?W++:g.score.us<g.score.them?L++:D++});return{W,D,L,F,A}}
@@ -1992,6 +2009,11 @@ document.addEventListener('click',e=>{
     case'addbench':mut(id,g=>{if(!g.bench.includes(p))g.bench.push(p)});break;
     case'del':if(S.confirm===p){S.confirm=null;S.squad=S.squad.filter(x=>x.id!==p);saveSquad()}else{S.confirm=p;render()}break;
     case'finish':if(S.confirm==='finish'){S.confirm=null;finishTournament()}else{S.confirm='finish';render()}break;
+    case'finishnow':if(gids().every(x=>G(x).done))finishTournament();break;
+    case'unfinish':{const u=S.unfinish;if(!u)break;S.unfinish=null;S.saved=null;
+      Object.entries(u.games).forEach(([id,g])=>{S.games[id]=g;put('games/'+id,g)});S.tour=u.tour;saveTour();
+      remove('archive/'+u.tid);S.archive=S.archive.filter(t=>t.id!==u.tid);S.openT=null;
+      S.tab='games';lastTab.tournament='games';S.game=null;render();window.scrollTo(0,0);toast('The day is back, and taken out of Results.');break}
     case'awtype':S.aw.type=b.dataset.v;render();break;
     case'awpick':if(p in S.aw.picks)delete S.aw.picks[p];else S.aw.picks[p]='';render();break;
     case'awsave':{const ps=Object.entries(S.aw.picks);if(!ps.length)break;const aid='a'+Date.now();

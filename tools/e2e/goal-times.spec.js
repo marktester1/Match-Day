@@ -50,7 +50,7 @@ test('goal times can be corrected in the game and in saved results', async ({pag
     await c.saved();
     await c.goTab('games');
     await c.press(c.btn('Finish tournament and save to Results'));
-    await c.press(c.btn('Tap again to save and start fresh'));
+    await c.press(c.page.getByRole('button', {name: /^(Tap again to save and start fresh|Games? [0-9, ]+ not finished\. Tap again to save anyway)$/}));
     await c.press(c.btn('Write it later', c.modal));
     await c.reload(TEAM);
     await c.goTab('season');

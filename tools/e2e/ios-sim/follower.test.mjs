@@ -67,7 +67,7 @@ test('a follower watches the day from the link, in iPhone Safari', {timeout: 30 
   assert.ok((await row(0)).includes(`${SHORT} v Riverside`) && (await row(0)).includes('9:30'));
   assert.ok((await row(1)).includes(`Hillside v ${SHORT}`) && (await row(1)).includes('10:15')); // away: they're the home side
   assert.match(await fp.text('#view'), /Still to play/);
-  await fp.until(() => document.querySelector('.pboard')?.textContent.includes('Kick-off soon'), 'Kick-off soon');
+  await fp.until(() => /^[A-Z][a-z]{2} \d{1,2} [A-Z][a-z]{2} · 9:30$/.test(document.querySelector('.pboard .pst')?.textContent || ''), 'the date and kick-off time');
 
   // Game 1: kick-off, a goal each way, a card, half time by itself, second half, full time
   await coach.openGame(1);
@@ -129,7 +129,7 @@ test('a follower watches the day from the link, in iPhone Safari', {timeout: 30 
   // The coach saves the tournament: followers keep the day's results
   await coach.goTab('games');
   await coach.tapText('Finish tournament and save to Results');
-  await coach.tapText('Tap again to save and start fresh');
+  await coach.tapTextLike('Tap again to save');
   await coach.tapText('Write it later', '.modal');
   await fp.reload();
   await status('Full time');

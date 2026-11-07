@@ -72,7 +72,7 @@ test('quick start survives an interruption, and the next match day reuses the se
       await c.fullTime(1);
       await c.goTab('games');
       await c.tapText('Finish tournament and save to Results');
-      await c.tapText('Tap again to save and start fresh');
+      await c.tapTextLike('Tap again to save');
       await c.tapText('Write it later', '.modal');
       await c.goTab('games');
       await sees('Next match day: same as last time?');

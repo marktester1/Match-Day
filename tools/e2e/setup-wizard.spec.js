@@ -59,7 +59,7 @@ test('quick start survives an interruption, and the next match day reuses the se
     await c.fullTime(1);
     await c.goTab('games');
     await press(btn('Finish tournament and save to Results'));
-    await press(btn('Tap again to save and start fresh'));
+    await press(page.getByRole('button', {name: /^(Tap again to save and start fresh|Games? [0-9, ]+ not finished\. Tap again to save anyway)$/}));
     await press(btn('Write it later', c.modal));
     await c.goTab('games');
     await expect(view).toContainText('Next match day: same as last time?');

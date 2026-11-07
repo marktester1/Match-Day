@@ -77,7 +77,7 @@ test('a coach runs a whole match day in iPhone Safari', {timeout: 30 * 60000}, (
   await c.setUpGames({count: '3'});
   await c.fixtures(FIXTURES);
   await f.until(() => document.getElementById('view')?.textContent.includes('Still to play') && document.getElementById('view').textContent.includes('Riverside'), 'the fixtures on the follower page', 30000);
-  await f.until(() => document.querySelector('.pboard')?.textContent.includes('Kick-off soon'), 'Kick-off soon');
+  await f.until(() => /^[A-Z][a-z]{2} \d{1,2} [A-Z][a-z]{2} · 9:30$/.test(document.querySelector('.pboard .pst')?.textContent || ''), 'the date and kick-off time');
   const checkFixtures = () => c.until(fx => { const cards = [...document.querySelectorAll('#view .gcard')];
     return cards.length === 3 && fx.every(([t, o, p], i) => cards[i].textContent.includes(` v ${o}`) && cards[i].textContent.includes(`${t} · Pitch ${p}`)); }, 'the three fixtures', 20000, FIXTURES);
   await checkFixtures();
@@ -172,7 +172,7 @@ test('a coach runs a whole match day in iPhone Safari', {timeout: 30 * 60000}, (
   // 7. Finish the tournament, write the report, check the results
   await c.goTab('games');
   await c.tapText('Finish tournament and save to Results');
-  await c.tapText('Tap again to save and start fresh');
+  await c.tapTextLike('Tap again to save');
   await c.until(() => document.querySelector('.modal h3')?.textContent === 'Tournament saved ✓', 'Tournament saved');
   assert.match(await c.text('.modal'), /W0 D1 L0/);
   await c.type('#rptnew', REPORT);

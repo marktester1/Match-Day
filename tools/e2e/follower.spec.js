@@ -3,7 +3,7 @@
 // away game, and the results staying up after the tournament is saved; and a new link replacing
 // the old one. They must never see a player's name or be able to change anything. Beta only; the coach leaves the team at the end.
 const {test, expect} = require('./test'); // Playwright's, or real Android Chrome with ANDROID=1
-const {app, newPhone, cleanUp, nameRe} = require('./helpers');
+const {app, newPhone, cleanUp, nameRe, DAY} = require('./helpers');
 
 const TEAM = 'Claude E2E Follow U11s', SHORT = 'Claude E2E Follow';
 const SQUAD = ['Bea', 'Cormac', 'Dara', 'Esme', 'Finn', 'Gus'];
@@ -79,7 +79,7 @@ test('a follower watches the day from the link', async ({page, browser}, info) =
     await expect(board).not.toContainText('Hillside');
     await expect(rows.nth(1)).toContainText('10:15');
     await expect(fview.locator('.lbl', {hasText: 'Still to play'})).toBeVisible();
-    await expect(board).toContainText('Kick-off soon');
+    await expect(status).toHaveText(`${new Date(DAY + 'T12:00').toLocaleDateString('en-GB', {weekday: 'short', day: 'numeric', month: 'short'})} · 9:30`); // before kick-off: the date (not today) and time
 
     // Game 1: kick-off, a goal each way, a card, half time by itself, second half, full time
     await coach.openGame(1);
@@ -146,7 +146,7 @@ test('a follower watches the day from the link', async ({page, browser}, info) =
     // The coach saves the tournament: followers keep the day's results
     await coach.goTab('games');
     await coach.press(coach.btn('Finish tournament and save to Results'));
-    await coach.press(coach.btn('Tap again to save and start fresh'));
+    await coach.press(coach.page.getByRole('button', {name: /^(Tap again to save and start fresh|Games? [0-9, ]+ not finished\. Tap again to save anyway)$/}));
     await coach.press(coach.btn('Write it later', coach.modal));
     await fp.reload();
     await expect(status).toHaveText('Full time', {timeout: 30000});
