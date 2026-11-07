@@ -40,9 +40,26 @@ test('everyone starts on the bench, and Out lasts the whole day', async ({page, 
     expect(await roles()).toMatchObject({Fay: 'bench', Isabelle: 'out'});
     // The 5/5 counter on the pitch was hard to read in light mode: its text must stand out from its background
     const contrast = await view.locator('.pitch .cnt').evaluate(el => {
-      const rgb = c => { const m = c.match(/color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)/); return m ? m.slice(1, 4).map(v => +v * 255) : c.match(/[\d.]+/g).slice(0, 3).map(Number); }, lum = c => { const [r, g, b] = rgb(c).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
-      let bg = 'rgba(0, 0, 0, 0)', n = el; while (n && /rgba\(0, 0, 0, 0\)|transparent/.test(bg)) { bg = getComputedStyle(n).backgroundColor; if (/rgba\(0, 0, 0, 0\)|transparent/.test(bg) && getComputedStyle(n).backgroundImage !== 'none') bg = 'rgb(30, 106, 58)'; n = n.parentElement; } // the striped pitch: its green
-      const [a, b] = [lum(getComputedStyle(el).color), lum(bg)].sort((x, y) => y - x);
+      // colours as [r, g, b, alpha]: rgb()/rgba(), color(srgb …), or anything else through a canvas
+      const parse = c => {
+        let m = c.match(/^rgba?\(([\d.]+)[ ,]+([\d.]+)[ ,]+([\d.]+)(?:[ ,/]+([\d.]+))?/);
+        if (m) return [+m[1], +m[2], +m[3], m[4] === undefined ? 1 : +m[4]];
+        m = c.match(/^color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)(?: \/ ([\d.]+))?/);
+        if (m) return [m[1] * 255, m[2] * 255, m[3] * 255, m[4] === undefined ? 1 : +m[4]];
+        const x = document.createElement('canvas').getContext('2d'); x.fillStyle = c; x.fillRect(0, 0, 1, 1); const d = x.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2], d[3] / 255];
+      };
+      const over = (top, under) => [0, 1, 2].map(k => top[k] * top[3] + under[k] * (1 - top[3])).concat(1); // one colour over another
+      // the layers behind the text, nearest first, down to the first solid one (the striped pitch counts as its green)
+      const layers = []; let n = el;
+      while (n) { const cs = getComputedStyle(n), bg = parse(cs.backgroundColor);
+        if (bg[3] > 0) layers.push(bg);
+        if (bg[3] >= 1) break;
+        if (cs.backgroundImage !== 'none') { layers.push([30, 106, 58, 1]); break; }
+        n = n.parentElement; }
+      let back = [255, 255, 255, 1]; for (const l of layers.reverse()) back = over(l, back);
+      const fore = over(parse(getComputedStyle(el).color), back);
+      const lum = c => { const [r, g, b] = c.slice(0, 3).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+      const [a, b] = [lum(fore), lum(back)].sort((x, y) => y - x);
       return (a + 0.05) / (b + 0.05);
     });
     expect(contrast, 'the 5/5 counter is readable').toBeGreaterThanOrEqual(4.5);
