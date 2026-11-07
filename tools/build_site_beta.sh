@@ -8,6 +8,7 @@ cd "$(dirname "$0")/.."
 rm -rf site-beta
 mkdir -p site-beta/img
 cp site/img/*.png site-beta/img/
+mkdir -p site-beta/videos && cp site/videos/*.mp4 site/videos/*.jpg site-beta/videos/
 sed -e 's#https://match-day-17b23.web.app#https://match-day-beta-17b23.web.app#g' \
     -e 's#<meta name="viewport"#<meta name="robots" content="noindex,nofollow">\
 <meta name="viewport"#' \

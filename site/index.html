@@ -73,7 +73,7 @@ h2{font-size:clamp(34px,4.5vw,48px);margin-top:6px}
 
 .shots{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:32px}
 .shot figure{margin:0}
-.shot img{display:block;width:100%;height:auto;border-radius:22px;border:6px solid #0d140f;background:#0d140f;aspect-ratio:393/659;object-fit:cover;object-position:top}
+.shot img,.shot video{display:block;width:100%;height:auto;border-radius:22px;border:6px solid #0d140f;background:#0d140f;aspect-ratio:393/659;object-fit:cover;object-position:top}
 .shot figcaption{margin-top:10px;font-size:15px;color:var(--muted)}
 .shot figcaption b{display:block;color:var(--ink);font-size:16px}
 
@@ -198,10 +198,10 @@ footer .links{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:12px;font-s
       <p class="kicker">See it</p>
       <h2>Simple to use mid-game</h2>
       <div class="shots">
-        <div class="shot"><figure><img src="img/pitch.png" alt="The pitch view: players' cards showing their minutes, the bench, goals and subs" loading="lazy" width="786" height="1318"><figcaption><b>Tap to sub</b>Who's on, who's off and everyone's minutes.</figcaption></figure></div>
-        <div class="shot"><figure><img src="img/minutes.png" alt="Playing time list, least first, with players who need more time marked" loading="lazy" width="786" height="1318"><figcaption><b>Fair minutes</b>Least time first, flagged when someone needs more.</figcaption></figure></div>
-        <div class="shot"><figure><img src="img/follower.png" alt="The supporters' page: live score 1–0 and the day's fixtures, with no players' names" loading="lazy" width="786" height="1318"><figcaption><b>For supporters</b>Live score and fixtures. Team names only.</figcaption></figure></div>
-        <div class="shot"><figure><img src="img/games.png" alt="The tournament list of four games with results and kick-off times" loading="lazy" width="786" height="1318"><figcaption><b>The whole day</b>Fixtures, pitches, results as they finish.</figcaption></figure></div>
+        <div class="shot"><figure><video src="videos/1-pick-team.mp4" poster="videos/1-pick-team.jpg" autoplay muted loop playsinline preload="metadata" width="786" height="1704" aria-label="Picking the team: everyone starts on the bench; tap GK and Start, then Kick off"></video><figcaption><b>Pick the team</b>Everyone starts on the bench. Tap GK and Start, then Kick off.</figcaption></figure></div>
+        <div class="shot"><figure><video src="videos/2-sub.mp4" poster="videos/2-sub.jpg" autoplay muted loop playsinline preload="metadata" width="786" height="1704" aria-label="Making a sub: tap the player coming off, then the one coming on"></video><figcaption><b>Tap to sub</b>Who comes off, who goes on. Everyone's minutes for the day, live.</figcaption></figure></div>
+        <div class="shot"><figure><video src="videos/3-minutes.mp4" poster="videos/3-minutes.jpg" autoplay muted loop playsinline preload="metadata" width="786" height="1704" aria-label="Minutes played: everyone's time today, least first, counting up live"></video><figcaption><b>Fair minutes</b>Least time first, flagged when someone needs more.</figcaption></figure></div>
+        <div class="shot"><figure><video src="videos/4-supporters.mp4" poster="videos/4-supporters.jpg" autoplay muted loop playsinline preload="metadata" width="786" height="1704" aria-label="The supporters' page showing a goal as it goes in: team names only"></video><figcaption><b>For supporters</b>A goal goes in and family see it straight away. Team names only.</figcaption></figure></div>
       </div>
     </div>
   </section>
