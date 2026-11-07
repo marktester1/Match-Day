@@ -70,10 +70,9 @@ agree before building. Done work is in the git history and the release tags.
 (**£5 a year**, as decided before), and every coach in the team uses it; invited coaches and
 **supporters stay free**. **Six-week free trial** for each new team (`TRIAL_DAYS=42` on the
 `monetisation` branch, which was written for one subscription per manager covering all their teams:
-change it to per team). **Referral scheme:** a coach who refers another team gets **two months free**
-when the referred team signs up. Still to decide: whether "signs up" means starting the free trial or
-the first payment (paying is safer against made-up teams), whether the new team gets anything too (e.g.
-a longer trial), a limit on free months, a club price, and what's free versus paid. Details in
+change it to per team). **Referral scheme:** when a referred team **makes its first payment**, the team that
+referred it gets **two months free**, and the new team gets **two months free** too. **No limit** on
+referrals, as long as each referred team pays. Still to decide: a club price, and what's free versus paid. Details in
 MONETISATION.md on that branch.
 
 - **One payment unlocks the team everywhere (requested 7 Nov 2026).** Paying in the iPhone app, the
@@ -93,10 +92,10 @@ MONETISATION.md on that branch.
   uses left, one use per team and membership, counting down by exactly one; an admin list with a
   switch-off.
 - **Referral scheme (decided):** each team gets a referral link or code to share. When a team that came
-  through it signs up, the referring team's subscription is extended by **two months** (its
-  `paidUntil` moves on by two months, set by the server, as for payments). Safeguards: a team can't
-  refer itself, each referred team counts once, and the reward is given when the referred team pays (or
-  when its trial starts, if that's chosen), checked by the Cloud Function. In the iPhone app the free
+  through it **makes its first payment**, both teams get **two months free**: each team's `paidUntil`
+  moves on by two months, set by the server (the Cloud Function that hears about payments), never by a
+  phone. No limit on how many teams one team refers. Safeguards: a team can't refer itself, each
+  referred team counts once (its first payment only), and a refund of that payment takes the months back. In the iPhone app the free
   months come from our server, not an Apple purchase: check Apple's rules allow this for an
   auto-renewing subscription (Apple's own offer codes and promotional offers are the safe route).
 - **Admin checklist (the user):**
