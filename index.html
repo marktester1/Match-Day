@@ -2401,7 +2401,7 @@ function openTeam(t){
   if(S.teamId&&S.teamId!==t){switchTeam(t);return} // adding a second team: reload into it
   saveTeams([...myTeams(),t]);syncTeamList();
   lsSet(TEAM_KEY,t);S.gate=false;S.adding=false;S.teamId=t;db=fsAdapter('teams/'+t);liveLabel();watchTeams();
-  F.onSnapshot(F.doc(fs,'teams',t),s=>{S.invite=s.data()?.code||'';S.createdBy=s.data()?.createdBy||null;S.managers=s.data()?.managers||[];render()},()=>{});
+  watchTeamDoc(t);
   watchMembers(t);watchRequests(t);touchMember(t);
   subscribe(e=>{logIssue('listen',e,'team');if(leaving)return; // we're leaving on purpose: let leaveTeam finish (and wipe)
     if(e&&e.code==='permission-denied'&&!removedCheck){removedCheck=true;leaveTeam(false)}});
@@ -2965,13 +2965,19 @@ function adminView(){
   <button class="btn small" data-act="adminload" style="align-self:flex-start">Refresh</button>`}
   </div>`;
 }
+function watchTeamDoc(t){ // the invite code and who the managers are; tries again after a failure
+  const {F,fs}=FB;
+  F.onSnapshot(F.doc(fs,'teams',t),s=>{S.invite=s.data()?.code||'';S.createdBy=s.data()?.createdBy||null;S.managers=s.data()?.managers||[];render()},
+    e=>{logIssue('listen',e,'team record');if(S.teamId===t)setTimeout(()=>{if(S.teamId===t)watchTeamDoc(t)},3000)});
+}
 function watchMembers(t){
   const {F,fs}=FB;
   let known=null;
   F.onSnapshot(F.collection(fs,'teams',t,'members'),s=>{S.members=s.docs.map(d=>({id:d.id,...d.data()}));
     const me=FB.auth.currentUser?.uid,ids=new Set(S.members.map(m=>m.id));
     if(known)S.members.filter(m=>!known.has(m.id)&&m.id!==me).forEach(m=>toast(`${m.name||'A new coach'} joined the team.`));
-    known=ids;if(S.menu)render()},()=>{});
+    known=ids;if(S.menu)render()},
+    e=>{logIssue('listen',e,'members');if(S.teamId===t)setTimeout(()=>{if(S.teamId===t)watchMembers(t)},3000)}); // a blip just after joining: try again
 }
 function ago(ts){
   const ms=ts?.toMillis?.();if(!ms)return'';const d=Math.floor((Date.now()-ms)/864e5);
