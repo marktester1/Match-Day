@@ -66,11 +66,15 @@ agree before building. Done work is in the git history and the release tags.
 
 ## Monetisation
 
-**Decided:** charging **per manager**: whoever creates teams pays one yearly subscription covering all
-their teams, from the day they subscribe; **£5 a year**, covering up to four managers; invited coaches
-and **supporters stay free**; **six-week free trial** (`TRIAL_DAYS=42` on the `monetisation` branch).
-Details in MONETISATION.md on that branch. Still to decide: a cap on teams per subscription, a club
-price, and what's free versus paid.
+**Decided (7 Nov 2026):** **one team per subscription**: each team has its own yearly subscription
+(**£5 a year**, as decided before), and every coach in the team uses it; invited coaches and
+**supporters stay free**. **Six-week free trial** for each new team (`TRIAL_DAYS=42` on the
+`monetisation` branch, which was written for one subscription per manager covering all their teams:
+change it to per team). **Referral scheme:** a coach who refers another team gets **two months free**
+when the referred team signs up. Still to decide: whether "signs up" means starting the free trial or
+the first payment (paying is safer against made-up teams), whether the new team gets anything too (e.g.
+a longer trial), a limit on free months, a club price, and what's free versus paid. Details in
+MONETISATION.md on that branch.
 
 - **One payment unlocks the team everywhere (requested 7 Nov 2026).** Paying in the iPhone app, the
   Android app or on the website unlocks the team for every coach on every platform.
@@ -88,8 +92,13 @@ price, and what's free versus paid.
   account and works once per team; random 8+ character codes plus App Check; rules enforce expiry,
   uses left, one use per team and membership, counting down by exactly one; an admin list with a
   switch-off.
-- **Referral scheme** (idea): a coach's share link gives the new team a longer trial; the referrer
-  earns free time when that team pays. Builds on vouchers and the payment webhook.
+- **Referral scheme (decided):** each team gets a referral link or code to share. When a team that came
+  through it signs up, the referring team's subscription is extended by **two months** (its
+  `paidUntil` moves on by two months, set by the server, as for payments). Safeguards: a team can't
+  refer itself, each referred team counts once, and the reward is given when the referred team pays (or
+  when its trial starts, if that's chosen), checked by the Cloud Function. In the iPhone app the free
+  months come from our server, not an Apple purchase: check Apple's rules allow this for an
+  auto-renewing subscription (Apple's own offer codes and promotional offers are the safe route).
 - **Admin checklist (the user):**
   - [ ] **Paddle** account for website payments (decided 7 Nov 2026): a merchant of record, so it handles
     UK and overseas VAT/sales tax, and it plugs into RevenueCat with the App Store and Google Play. Use
