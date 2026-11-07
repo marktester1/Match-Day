@@ -72,7 +72,9 @@ agree before building. Done work is in the git history and the release tags.
 `monetisation` branch, which was written for one subscription per manager covering all their teams:
 change it to per team). **Referral scheme:** when a referred team **makes its first payment**, the team that
 referred it gets **two months free**, and the new team gets **two months free** too. **No limit** on
-referrals, as long as each referred team pays. No club price (decided). Still to decide: what's free versus paid. Details in
+referrals, as long as each referred team pays. No club price (decided). **The trial unlocks every feature** (decided), to show coaches the whole app.
+Still to decide: what happens when the trial ends without a payment (e.g. the team's data stays and can
+be seen, but new games can't be started until someone pays; supporters' links keep working). Details in
 MONETISATION.md on that branch.
 
 - **One payment unlocks the team everywhere (requested 7 Nov 2026).** Paying in the iPhone app, the
