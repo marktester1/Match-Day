@@ -68,6 +68,12 @@ test('everyone starts on the bench, and Out lasts the whole day', async ({page, 
     await expect(mrow('Ben').locator('.tot')).toHaveText(/^0:0[2-9]$/, {timeout: 15000});
     await c.openGame(1);
     await press(btn('Pause'));
+    // Each player's button shows their minutes for the whole day: in game 2, Ben's are from game 1
+    await expect(c.chip('Ben').locator('.d')).toHaveText('today');
+    const ben1 = await c.chip('Ben').locator('.m').textContent();
+    await c.openGame(2);
+    await expect(c.chip('Ben', '.benchbox').locator('.m')).toHaveText(ben1);
+    await expect(c.chip('Ben', '.benchbox').locator('.m')).not.toHaveText('0:00');
 
     // It all sticks after a reload, and game 3 (never opened) follows when it is
     await c.reload(TEAM);

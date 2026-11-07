@@ -21,6 +21,9 @@ async function send(targets, alert, url, tag) {
     data: {title: alert.title, body: alert.body, url, tag},
     webpush: {headers: {Urgency: 'high', TTL: '900'}},
   });
+  // Logged (no tokens or names): how many phones, how many took it, and why any didn't
+  const why = res.responses.filter(r => !r.success).map(r => r.error?.code || 'unknown');
+  console.log(JSON.stringify({alert: tag.replace(/-[A-Za-z0-9]{24}-/, '-'), phones: targets.length, sent: res.successCount, failed: why}));
   await Promise.all(res.responses.map((r, i) => (!r.success && DEAD.includes(r.error?.code) ? targets[i].ref.delete().catch(() => {}) : null)));
 }
 
@@ -30,6 +33,7 @@ exports.followerAlerts = onDocumentWritten('feeds/{f}', async e => {
   const alerts = feedAlerts(before, after);
   if (!alerts.length) return;
   const subs = (await db().collection(`feeds/${e.params.f}/push`).get()).docs.map(d => ({ref: d.ref, ...d.data()}));
+  if (!subs.length) console.log(JSON.stringify({alerts: alerts.map(a => a.kind), phones: 0}));
   for (const a of alerts)
     await send(subs.filter(s => (s.kinds || []).includes(a.kind)), a, `${SITE.value()}/?follow=${e.params.f}`, `md-${e.params.f}-${a.kind}`);
 });

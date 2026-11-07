@@ -180,7 +180,9 @@ input[type=date]::-webkit-date-and-time-value{text-align:left}
 .chips{position:relative;display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 .chip{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;min-width:86px;padding:8px 12px;border-radius:10px;border:2px solid transparent;background:var(--surface);color:var(--ink);box-shadow:0 1px 2px #0002;touch-action:none;user-select:none;-webkit-user-select:none}
 .chip .n{font-weight:700;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.chip .m{font-size:12px;color:var(--muted)}
+.chip .m{font:700 22px/1 var(--display);color:var(--ink);font-variant-numeric:tabular-nums;margin-top:2px}
+.chip .d{font-size:11px;color:var(--muted);line-height:1}
+.chip.low .m{color:var(--live)}
 .chip .gkb{position:absolute;top:-8px;right:-6px;font-size:10px;font-weight:700;letter-spacing:.05em;background:var(--gk);color:var(--surface);padding:1px 5px;border-radius:5px}
 .chip.keeper{background:var(--gk-bg)}
 .chip.sel{border-color:var(--live);background:var(--live-bg)}
@@ -545,6 +547,9 @@ function onPitch(g){const s=new Set(g.starters);for(const e of bySubTime(g)){s.d
 function keeper(g){if(isRugby())return null;const ev=[...bySubTime(g).filter(e=>e.gk).map(e=>({at:e.at,p:e.on})),...(g.gkChanges||[])].sort((a,b)=>a.at-b.at);let k=g.gk;ev.forEach(e=>k=e.p);return k}
 function inGame(g){return [...new Set([...g.starters,...g.bench,...g.subs.flatMap(e=>[e.off,e.on])])].filter(Boolean)}
 function benchNow(g){const p=onPitch(g);return inGame(g).filter(x=>!p.has(x))}
+// Each player's minutes across today's games, and who is well below the day's average (as on Minutes played)
+function dayMins(){const t={};gids().forEach(id=>{const m=mins(G(id));Object.entries(m).forEach(([p,v])=>{t[p]=(t[p]||0)+v})});return t}
+function dayLow(t){const v=Object.values(t),avg=v.length?v.reduce((a,b)=>a+b,0)/v.length:0;return p=>avg>0&&(t[p]||0)<avg*0.8}
 function mins(g){
   const m={},end=el(g);let set=new Set(g.starters),prev=0;
   for(const e of bySubTime(g)){const at=Math.min(e.at,end);for(const p of set)m[p]=(m[p]||0)+Math.max(0,at-prev);set.delete(e.off);if(e.on)set.add(e.on);prev=at}
@@ -927,8 +932,9 @@ function quickPick(g,q){
   if(off.has(q.p))return `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="qpq"><div class="box"><h3 id="qpq">${nm} was sent off</h3>
     <p class="note">A player who's been sent off can't come back on. Undo the card from the list under the pitch if it was a mistake.</p><button class="btn" data-act="qpclose">OK</button></div></div>`;
   const bl=q.side==='pitch'?binLeft(g,q.p):0;
-  const opt=(p,side,extra='')=>`<button class="qp" data-act="qpick" data-p="${p}" data-side="${side}"><b>${esc(nameOf(p))}</b>${extra}<span class="num">${st?fmt(m[p]||0):''}</span></button>`;
-  const byMins=l=>[...l].sort((a,b)=>(m[a]||0)-(m[b]||0)||nameOf(a).localeCompare(nameOf(b)));
+  const dm=dayMins();
+  const opt=(p,side,extra='')=>`<button class="qp" data-act="qpick" data-p="${p}" data-side="${side}"><b>${esc(nameOf(p))}</b>${extra}<span class="num">${fmt(dm[p]||0)} today</span></button>`;
+  const byMins=l=>[...l].sort((a,b)=>(dm[a]||0)-(dm[b]||0)||nameOf(a).localeCompare(nameOf(b)));
   let title,body;
   if(q.side==='pitch'){
     const isK=q.p===k;
@@ -1181,7 +1187,8 @@ function gameView(id){
   pitch.sort((a,b)=>(b===k)-(a===k)||nameOf(a).localeCompare(nameOf(b),'en',{sensitivity:'base'}));
   bench.sort((a,b)=>nameOf(a).localeCompare(nameOf(b),'en',{sensitivity:'base'}));
   const pk=S.pick&&S.pick.g===id?S.pick:null;
-  const chip=(p,side)=>`<button class="chip ${p===k&&side==='pitch'?'keeper':''} ${pk&&pk.p===p?'sel':''} ${pk&&pk.p!==p&&(pk.side!==side||(side==='pitch'&&(pk.p===k||p===k)))?'target':''}" data-act="tap" data-side="${side}" data-p="${p}" data-g="${id}">${p===k&&side==='pitch'?'<span class="gkb">GK</span>':''}<span class="n">${esc(nameOf(p))}</span><span class="m num" data-m="${id}|${p}">${fmt(m[p]||0)}</span>${scoredBadge(g,p)}${cardBadge(id,g,p)}</button>`;
+  const dm=dayMins(),low=dayLow(dm);
+  const chip=(p,side)=>`<button class="chip ${low(p)?'low':''} ${p===k&&side==='pitch'?'keeper':''} ${pk&&pk.p===p?'sel':''} ${pk&&pk.p!==p&&(pk.side!==side||(side==='pitch'&&(pk.p===k||p===k)))?'target':''}" data-act="tap" data-side="${side}" data-p="${p}" data-g="${id}">${p===k&&side==='pitch'?'<span class="gkb">GK</span>':''}<span class="n">${esc(nameOf(p))}</span><span class="m num" data-dm="${p}">${fmt(dm[p]||0)}</span><span class="d">today</span>${scoredBadge(g,p)}${cardBadge(id,g,p)}</button>`;
   let hint='';
   if(pk)hint=`<div class="hint">${pk.side==='pitch'?`<b>${esc(nameOf(pk.p))}</b> selected. Tap a bench player to swap${pk.p===k?', or a pitch player to hand over the gloves':''}.`:`Bringing on <b>${esc(nameOf(pk.p))}</b>. Tap who's coming off.`} <button class="x" data-act="cancel">Cancel</button></div>`;
   else if(pitch.length)hint=`<div class="hint quiet">${st?'Tap a player to make a sub (or drag one onto another).':'Tap a player to swap them in or out of the starting line-up.'}</div>`;
@@ -2208,7 +2215,8 @@ setInterval(()=>{
     document.querySelectorAll(`[data-clock="${id}"]`).forEach(n=>n.textContent=(n.classList.contains('sub')&&nPer()>1?perShort(perOf(el(g),g))+' ':'')+clockText(g));
     document.querySelectorAll(`[data-clocksub="${id}"]`).forEach(n=>n.textContent=clockSub(g));
     document.querySelectorAll(`[data-bin^="${id}|"]`).forEach(n=>{const left=binLeft(g,n.dataset.bin.split('|')[1]);const bp=n.dataset.bin.split('|')[1];n.textContent=left?'🟨 '+fmt(left):'🟨';if(!left){n.removeAttribute('data-bin');toast(`${nameOf(bp)}'s 10 minutes in the sin bin are up.`)}});
-    const m=mins(g);document.querySelectorAll(`[data-m^="${id}|"]`).forEach(n=>{n.textContent=fmt(m[n.dataset.m.split('|')[1]]||0)})});
+  });
+  if(any&&document.querySelector('[data-dm]')){const dm=dayMins();document.querySelectorAll('[data-dm]').forEach(n=>{n.textContent=fmt(dm[n.dataset.dm]||0)})}
   if(any&&S.tab==='minutes'&&!drag)render();
 },1000);
 
